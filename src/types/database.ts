@@ -410,6 +410,7 @@ export type Database = {
           pack_id: string
           level_number: number
           current_question_index: number
+          completed_levels: number[]
           is_completed: boolean | null
           started_at: string | null
           last_played_at: string | null
@@ -420,6 +421,7 @@ export type Database = {
           pack_id: string
           level_number?: number
           current_question_index?: number
+          completed_levels?: number[]
           is_completed?: boolean | null
           started_at?: string | null
           last_played_at?: string | null
@@ -430,6 +432,7 @@ export type Database = {
           pack_id?: string
           level_number?: number
           current_question_index?: number
+          completed_levels?: number[]
           is_completed?: boolean | null
           started_at?: string | null
           last_played_at?: string | null
