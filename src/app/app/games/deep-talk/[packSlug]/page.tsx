@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Lock, CheckCircle2, Play, RotateCcw } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
-import { getPackBySlug, getLevelsForPack, getProgress } from '@/lib/deep-talk'
-import type { DeepTalkPack, DeepTalkLevel, DeepTalkProgress } from '@/lib/deep-talk'
+import { getPackBySlug, getLevelsForPack, getProgress, getLevelStatus } from '@/lib/deep-talk'
+import type { DeepTalkPack, DeepTalkLevel, DeepTalkProgress, LevelStatus } from '@/lib/deep-talk'
 
 const LEVEL_COLORS = [
   { bg: 'bg-emerald-50', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-700', ring: 'ring-emerald-200' },
@@ -24,6 +24,7 @@ export default function PackDetailPage() {
   const [levels, setLevels] = useState<DeepTalkLevel[]>([])
   const [progress, setProgress] = useState<DeepTalkProgress | null>(null)
   const [loading, setLoading] = useState(true)
+  const [lockedToast, setLockedToast] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
@@ -51,29 +52,16 @@ export default function PackDetailPage() {
 
   useEffect(() => { loadData() }, [loadData])
 
-  function isLevelUnlocked(levelNumber: number): boolean {
-    if (levelNumber === 1) return true
-    if (!progress) return false
-    // Level N unlocked if level N-1 is completed
-    return progress.level_number > levelNumber - 1 ||
-      (progress.level_number === levelNumber - 1 && progress.is_completed === true) ||
-      progress.level_number >= levelNumber
-  }
+  useEffect(() => {
+    if (!lockedToast) return
+    const timer = setTimeout(() => setLockedToast(null), 2000)
+    return () => clearTimeout(timer)
+  }, [lockedToast])
 
-  function getLevelStatus(level: DeepTalkLevel) {
-    if (!progress) return 'locked_but_first' as const
-    if (progress.level_number > level.level_number) return 'completed' as const
-    if (progress.level_number === level.level_number) {
-      if (progress.is_completed) return 'completed' as const
-      if (progress.current_question_index > 0) return 'in_progress' as const
-    }
-    return 'available' as const
-  }
-
-  function getButtonLabel(level: DeepTalkLevel, status: string, unlocked: boolean) {
-    if (!unlocked) return 'Terkunci'
+  function getButtonLabel(status: LevelStatus): string {
+    if (status === 'coming_soon') return 'Segera Hadir'
+    if (status === 'locked') return 'Terkunci'
     if (status === 'completed') return 'Main Lagi'
-    if (status === 'in_progress') return `Lanjut (${progress?.current_question_index}/${level.question_count})`
     return 'Mulai'
   }
 
@@ -116,49 +104,57 @@ export default function PackDetailPage() {
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Pilih Level</p>
 
         {levels.map((level, idx) => {
-          const unlocked = isLevelUnlocked(level.level_number)
-          const status = unlocked ? getLevelStatus(level) : 'locked'
+          const status = getLevelStatus(level, progress?.completed_levels ?? [])
           const colors = LEVEL_COLORS[idx] ?? LEVEL_COLORS[0]
-          const label = getButtonLabel(level, status, unlocked)
+          const label = getButtonLabel(status)
           const isCompleted = status === 'completed'
+          const isUnlocked = status === 'unlocked' || status === 'completed'
+          const isComingSoon = status === 'coming_soon'
 
           return (
             <div
               key={level.id}
+              onClick={() => {
+                if (status === 'locked') {
+                  setLockedToast(`Selesaikan Level ${level.level_number - 1} dulu untuk membuka ini ✨`)
+                }
+              }}
               className={`rounded-2xl border p-4 transition-all ${
-                unlocked ? 'border-border bg-white shadow-card' : 'border-border bg-cream/30 opacity-70'
+                isUnlocked
+                  ? 'border-border bg-white shadow-card'
+                  : isComingSoon
+                    ? 'border-amber-200 bg-amber-50/40'
+                    : 'border-border bg-cream/30 opacity-70 cursor-pointer'
               }`}
             >
               <div className="flex items-start gap-4">
                 <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl text-xl ${
-                  unlocked ? colors.bg : 'bg-cream'
+                  isUnlocked ? colors.bg : isComingSoon ? 'bg-amber-100' : 'bg-cream'
                 }`}>
-                  {unlocked ? LEVEL_EMOJIS[idx] : '🔒'}
+                  {isUnlocked ? LEVEL_EMOJIS[idx] : isComingSoon ? '🌟' : '🔒'}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <p className={`text-sm font-bold ${unlocked ? 'text-ink' : 'text-ink-muted'}`}>
+                    <p className={`text-sm font-bold ${isUnlocked ? 'text-ink' : 'text-ink-muted'}`}>
                       Level {level.level_number}: {level.title}
                     </p>
                     {isCompleted && <CheckCircle2 className="h-4 w-4 text-sage" />}
                   </div>
                   <p className="mt-0.5 text-xs text-ink-muted">{level.description}</p>
                   <div className="mt-1.5 flex items-center gap-2">
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${unlocked ? colors.badge : 'bg-cream text-ink-muted'}`}>
-                      {level.question_count} pertanyaan
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      isUnlocked ? colors.badge : isComingSoon ? 'bg-amber-100 text-amber-700' : 'bg-cream text-ink-muted'
+                    }`}>
+                      {isComingSoon ? 'Segera Hadir' : `${level.question_count} pertanyaan`}
                     </span>
-                    {status === 'in_progress' && (
-                      <span className="rounded-full bg-gold/20 px-2 py-0.5 text-[10px] font-bold text-yellow-700">
-                        Sedang berlangsung
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>
 
-              {unlocked && (
+              {isUnlocked && (
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation()
                     if (!coupleId) return
                     router.push(`/app/games/deep-talk/${packSlug}/${level.level_number}`)
                   }}
@@ -177,16 +173,30 @@ export default function PackDetailPage() {
                 </button>
               )}
 
-              {!unlocked && (
+              {status === 'locked' && (
                 <div className="mt-3 flex items-center gap-1.5">
                   <Lock className="h-3.5 w-3.5 text-ink-muted" />
                   <p className="text-xs text-ink-muted">Selesaikan Level {level.level_number - 1} untuk membuka</p>
+                </div>
+              )}
+
+              {isComingSoon && (
+                <div className="mt-3 flex items-center gap-1.5">
+                  <p className="text-xs text-amber-700">Konten level ini sedang dipersiapkan</p>
                 </div>
               )}
             </div>
           )
         })}
       </div>
+
+      {lockedToast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+          <div className="rounded-full bg-ink px-5 py-2.5 text-xs font-semibold text-white shadow-elevated max-w-[90vw]">
+            {lockedToast}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
