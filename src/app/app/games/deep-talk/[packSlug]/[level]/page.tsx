@@ -116,8 +116,11 @@ export default function DeepTalkPlayPage() {
     if (!isCompleted || !coupleId || !packId) return
 
     setSaving(true)
+    let isMounted = true
+
     markLevelCompleted(coupleId, packId, levelNumber, questions.length)
       .then(({ unlockedNext }) => {
+        if (!isMounted) return
         const next = allLevels.find(l => l.level_number === levelNumber + 1)
         // Show celebration hanya kalau: (1) baru pertama kali completed, (2) ada next level, (3) next level punya konten (bukan coming_soon)
         if (unlockedNext && next && (next.question_count ?? 0) > 0) {
@@ -125,7 +128,14 @@ export default function DeepTalkPlayPage() {
           setShowCelebration(true)
         }
       })
-      .finally(() => setSaving(false))
+      .catch((err) => {
+        console.error('Failed to mark level completed:', err)
+      })
+      .finally(() => {
+        if (isMounted) setSaving(false)
+      })
+
+    return () => { isMounted = false }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCompleted])
 
