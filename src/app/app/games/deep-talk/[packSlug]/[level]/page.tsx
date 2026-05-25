@@ -10,8 +10,11 @@ import {
   getQuestionsForLevel,
   getProgress,
   saveProgress,
+  markLevelCompleted,
+  getLevelStatus,
 } from '@/lib/deep-talk'
-import type { DeepTalkPack, DeepTalkQuestion } from '@/lib/deep-talk'
+import type { DeepTalkPack, DeepTalkQuestion, DeepTalkLevel } from '@/lib/deep-talk'
+import UnlockCelebration from '@/components/app/UnlockCelebration'
 
 export default function DeepTalkPlayPage() {
   const router = useRouter()
@@ -31,6 +34,9 @@ export default function DeepTalkPlayPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [flipped, setFlipped] = useState(false)
+  const [showCelebration, setShowCelebration] = useState(false)
+  const [nextLevel, setNextLevel] = useState<DeepTalkLevel | null>(null)
+  const [allLevels, setAllLevels] = useState<DeepTalkLevel[]>([])
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
@@ -65,16 +71,28 @@ export default function DeepTalkPlayPage() {
     setPack(p)
     setPackId(p.id)
 
-    // Load level + questions
+    // Load level + questions + progress
     const levels = await getLevelsForPack(p.id)
+    setAllLevels(levels)
     const targetLevel = levels.find(l => l.level_number === levelNumber)
     if (!targetLevel) { setLoading(false); return }
+
+    // URL guard: cek status level berdasarkan completed_levels
+    const prog = await getProgress(membership.couple_id, p.id)
+    const status = getLevelStatus(targetLevel, prog?.completed_levels ?? [])
+    if (status === 'locked') {
+      router.replace(`/app/games/deep-talk/${packSlug}?locked=${levelNumber}`)
+      return
+    }
+    if (status === 'coming_soon') {
+      router.replace(`/app/games/deep-talk/${packSlug}?coming_soon=${levelNumber}`)
+      return
+    }
 
     const qs = await getQuestionsForLevel(targetLevel.id)
     setQuestions(qs)
 
-    // Restore progress
-    const prog = await getProgress(membership.couple_id, p.id)
+    // Restore progress (prog sudah di-fetch di URL guard di atas)
     if (prog && prog.level_number === levelNumber && !prog.is_completed) {
       setCurrentIndex(prog.current_question_index)
     }
@@ -84,14 +102,32 @@ export default function DeepTalkPlayPage() {
 
   useEffect(() => { loadData() }, [loadData])
 
-  // Save progress whenever index changes
+  // Save in-progress (saat user scroll antar pertanyaan)
   useEffect(() => {
-    if (!coupleId || !packId || questions.length === 0 || loading) return
+    if (!coupleId || !packId || questions.length === 0 || loading || isCompleted) return
     setSaving(true)
-    saveProgress(coupleId, packId, levelNumber, currentIndex, isCompleted)
+    saveProgress(coupleId, packId, levelNumber, currentIndex, false)
       .finally(() => setSaving(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex, isCompleted])
+  }, [currentIndex])
+
+  // Mark level completed saat isCompleted flag jadi true (sekali saja)
+  useEffect(() => {
+    if (!isCompleted || !coupleId || !packId) return
+
+    setSaving(true)
+    markLevelCompleted(coupleId, packId, levelNumber, questions.length)
+      .then(({ unlockedNext }) => {
+        const next = allLevels.find(l => l.level_number === levelNumber + 1)
+        // Show celebration hanya kalau: (1) baru pertama kali completed, (2) ada next level, (3) next level punya konten (bukan coming_soon)
+        if (unlockedNext && next && (next.question_count ?? 0) > 0) {
+          setNextLevel(next)
+          setShowCelebration(true)
+        }
+      })
+      .finally(() => setSaving(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCompleted])
 
   function getAssignedName(index: number): string {
     // Deterministic turn order: compare user IDs alphabetically
@@ -137,34 +173,44 @@ export default function DeepTalkPlayPage() {
   // Completion screen
   if (isCompleted) {
     return (
-      <div
-        className="fixed inset-0 z-50 flex flex-col items-center justify-center px-8 text-white text-center"
-        style={{ background: `linear-gradient(135deg, ${pack.color ?? '#E07A9E'}, ${pack.color ?? '#E07A9E'}99)` }}
-      >
-        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-          <Trophy className="h-12 w-12 text-white" strokeWidth={1.5} />
+      <>
+        {showCelebration && nextLevel && (
+          <UnlockCelebration
+            levelNumber={nextLevel.level_number}
+            levelTitle={nextLevel.title}
+            questionCount={nextLevel.question_count ?? 0}
+            onDismiss={() => setShowCelebration(false)}
+          />
+        )}
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center px-8 text-white text-center"
+          style={{ background: `linear-gradient(135deg, ${pack.color ?? '#E07A9E'}, ${pack.color ?? '#E07A9E'}99)` }}
+        >
+          <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+            <Trophy className="h-12 w-12 text-white" strokeWidth={1.5} />
+          </div>
+          <h1 className="text-3xl font-extrabold">Level {levelNumber} Selesai!</h1>
+          <p className="mt-3 text-base text-white/80">
+            Kalian baru saja menyelesaikan {questions.length} pertanyaan bersama. Luar biasa!
+          </p>
+          <div className="mt-8 w-full space-y-3">
+            <button
+              onClick={() => router.push(`/app/games/deep-talk/${packSlug}`)}
+              className="w-full rounded-2xl bg-white py-4 text-sm font-bold text-ink shadow-elevated transition-all active:scale-[0.98]"
+              style={{ color: pack.color ?? '#E07A9E' }}
+            >
+              Lihat Level Berikutnya
+            </button>
+            <button
+              onClick={() => router.push('/app/games/deep-talk')}
+              className="w-full rounded-2xl border border-white/30 py-3.5 text-sm font-semibold text-white transition-all active:scale-[0.98]"
+            >
+              Kembali ke Deep Talk
+            </button>
+          </div>
+          {saving && <p className="mt-4 text-xs text-white/60 animate-pulse">Menyimpan progress...</p>}
         </div>
-        <h1 className="text-3xl font-extrabold">Level {levelNumber} Selesai!</h1>
-        <p className="mt-3 text-base text-white/80">
-          Kalian baru saja menyelesaikan {questions.length} pertanyaan bersama. Luar biasa!
-        </p>
-        <div className="mt-8 w-full space-y-3">
-          <button
-            onClick={() => router.push(`/app/games/deep-talk/${packSlug}`)}
-            className="w-full rounded-2xl bg-white py-4 text-sm font-bold text-ink shadow-elevated transition-all active:scale-[0.98]"
-            style={{ color: pack.color ?? '#E07A9E' }}
-          >
-            Lihat Level Berikutnya
-          </button>
-          <button
-            onClick={() => router.push('/app/games/deep-talk')}
-            className="w-full rounded-2xl border border-white/30 py-3.5 text-sm font-semibold text-white transition-all active:scale-[0.98]"
-          >
-            Kembali ke Deep Talk
-          </button>
-        </div>
-        {saving && <p className="mt-4 text-xs text-white/60 animate-pulse">Menyimpan progress...</p>}
-      </div>
+      </>
     )
   }
 
