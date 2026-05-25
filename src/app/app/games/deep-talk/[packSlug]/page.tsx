@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Lock, CheckCircle2, Play, RotateCcw } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { getPackBySlug, getLevelsForPack, getProgress, getLevelStatus } from '@/lib/deep-talk'
@@ -17,6 +17,7 @@ const LEVEL_EMOJIS = ['🌱', '🌿', '🔥']
 
 export default function PackDetailPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { packSlug } = useParams<{ packSlug: string }>()
 
   const [coupleId, setCoupleId] = useState<string | null>(null)
@@ -51,6 +52,16 @@ export default function PackDetailPage() {
   }, [packSlug])
 
   useEffect(() => { loadData() }, [loadData])
+
+  useEffect(() => {
+    const lockedParam = searchParams.get('locked')
+    const comingSoonParam = searchParams.get('coming_soon')
+    if (lockedParam) {
+      setLockedToast(`Selesaikan Level ${Number(lockedParam) - 1} dulu untuk membuka Level ${lockedParam} ✨`)
+    } else if (comingSoonParam) {
+      setLockedToast(`Level ${comingSoonParam} masih dalam persiapan, nantikan ya 🌟`)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (!lockedToast) return
