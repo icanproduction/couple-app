@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
-import { ArrowLeft, Lock, CheckCircle2, Play, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Lock, CheckCircle2, Play, RotateCcw, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { getPackBySlug, getLevelsForPack, getProgress, getLevelStatus } from '@/lib/deep-talk'
 import type { DeepTalkPack, DeepTalkLevel, DeepTalkProgress, LevelStatus } from '@/lib/deep-talk'
+import { PremiumGate } from '@/components/app/PremiumGate'
 
 const LEVEL_COLORS = [
   { bg: 'bg-emerald-50', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-700', ring: 'ring-emerald-200' },
@@ -26,6 +27,7 @@ export default function PackDetailPage() {
   const [progress, setProgress] = useState<DeepTalkProgress | null>(null)
   const [loading, setLoading] = useState(true)
   const [lockedToast, setLockedToast] = useState<string | null>(null)
+  const [isPremium, setIsPremium] = useState(false)
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
@@ -36,6 +38,9 @@ export default function PackDetailPage() {
       .from('couple_members').select('couple_id').eq('profile_id', user.id).single()
     if (membership?.couple_id) {
       setCoupleId(membership.couple_id)
+      const { data: couple } = await supabase
+        .from('couples').select('is_premium').eq('id', membership.couple_id).single()
+      setIsPremium(!!couple?.is_premium)
     }
 
     const p = await getPackBySlug(packSlug)
@@ -56,8 +61,11 @@ export default function PackDetailPage() {
   useEffect(() => {
     const lockedParam = searchParams.get('locked')
     const comingSoonParam = searchParams.get('coming_soon')
+    const premiumParam = searchParams.get('premium')
     if (lockedParam) {
       setLockedToast(`Selesaikan Level ${Number(lockedParam) - 1} dulu untuk membuka Level ${lockedParam} ✨`)
+    } else if (premiumParam) {
+      setLockedToast('Level ini fitur Premium — buka Premium dulu ya ✨')
     } else if (comingSoonParam) {
       setLockedToast(`Level ${comingSoonParam} masih dalam persiapan, nantikan ya 🌟`)
     }
@@ -115,12 +123,13 @@ export default function PackDetailPage() {
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Pilih Level</p>
 
         {levels.map((level, idx) => {
-          const status = getLevelStatus(level, progress?.completed_levels ?? [])
+          const status = getLevelStatus(level, progress?.completed_levels ?? [], isPremium)
           const colors = LEVEL_COLORS[idx] ?? LEVEL_COLORS[0]
           const label = getButtonLabel(status)
           const isCompleted = status === 'completed'
           const isUnlocked = status === 'unlocked' || status === 'completed'
           const isComingSoon = status === 'coming_soon'
+          const isPremiumLocked = status === 'premium_locked'
 
           return (
             <div
@@ -128,6 +137,8 @@ export default function PackDetailPage() {
               onClick={() => {
                 if (status === 'locked') {
                   setLockedToast(`Selesaikan Level ${level.level_number - 1} dulu untuk membuka ini ✨`)
+                } else if (isPremiumLocked) {
+                  setLockedToast('Buka Premium untuk main level ini ✨')
                 }
               }}
               className={`rounded-2xl border p-4 transition-all ${
@@ -142,7 +153,7 @@ export default function PackDetailPage() {
                 <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl text-xl ${
                   isUnlocked ? colors.bg : isComingSoon ? 'bg-amber-100' : 'bg-cream'
                 }`}>
-                  {isUnlocked ? LEVEL_EMOJIS[idx] : isComingSoon ? '🌟' : '🔒'}
+                  {isUnlocked ? LEVEL_EMOJIS[idx] : isComingSoon ? '🌟' : isPremiumLocked ? '✨' : '🔒'}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
@@ -191,6 +202,13 @@ export default function PackDetailPage() {
                 </div>
               )}
 
+              {isPremiumLocked && (
+                <div className="mt-3 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-rose" />
+                  <p className="text-xs text-rose">Fitur premium — buka untuk main level ini</p>
+                </div>
+              )}
+
               {isComingSoon && (
                 <div className="mt-3 flex items-center gap-1.5">
                   <p className="text-xs text-amber-700">Konten level ini sedang dipersiapkan</p>
@@ -199,6 +217,10 @@ export default function PackDetailPage() {
             </div>
           )
         })}
+
+        {!isPremium && levels.some((l) => l.level_number > 1 && (l.question_count ?? 0) > 0) && (
+          <PremiumGate onUnlocked={() => setIsPremium(true)} />
+        )}
       </div>
 
       {lockedToast && (

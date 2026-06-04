@@ -4,10 +4,12 @@ import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import {
   MessageCircle, Compass, Wallet, Users, Heart,
-  ArrowRight, RotateCcw, TrendingUp, Sprout,
+  ArrowRight, RotateCcw, TrendingUp, Sprout, Share2,
 } from 'lucide-react'
 import { questions, DIMENSION_LABELS, type Dimension } from '@/data/questions'
 import { createClient } from '@/lib/supabase'
+import { getMyCouplePremium } from '@/lib/premium'
+import { PremiumGate } from '@/components/app/PremiumGate'
 
 const DIMENSION_ICON_MAP: Record<Dimension, React.ElementType> = {
   komunikasi: MessageCircle,
@@ -72,6 +74,7 @@ export default function ResultsPage() {
   const [overall, setOverall] = useState(0)
   const [mounted, setMounted] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [isPremium, setIsPremium] = useState(false)
   const saveAttempted = useRef(false)
 
   useEffect(() => {
@@ -88,6 +91,7 @@ export default function ResultsPage() {
         saveToSupabase(answers, calculated)
       }
     }
+    getMyCouplePremium().then((p) => setIsPremium(!!p?.isPremium))
     setMounted(true)
   }, [])
 
@@ -163,6 +167,31 @@ export default function ResultsPage() {
         <p className={`mt-2 text-sm font-semibold ${style.text}`}>{getScoreLabel(overall)}</p>
       </div>
 
+      {/* Free tier paywall */}
+      {!isPremium && (
+        <div className="mb-8">
+          <PremiumGate
+            title="Lihat Hasil Lengkap"
+            subtitle="Buka breakdown per dimensi, area bertumbuh, dan kartu hasil."
+            perks={['Breakdown skor per dimensi', 'Area untuk bertumbuh', 'Kartu hasil siap dibagikan', 'Semua level Deep Talk']}
+            onUnlocked={() => setIsPremium(true)}
+          />
+        </div>
+      )}
+
+      {/* Premium content */}
+      {isPremium && (
+        <>
+          {/* Shareable card */}
+          <a
+            href={`/api/share-card?score=${overall}&label=${encodeURIComponent(getScoreLabel(overall))}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mb-8 flex w-full items-center justify-center gap-2 rounded-2xl border border-rose/20 bg-rose/5 px-6 py-3.5 text-sm font-semibold text-rose shadow-card transition-all active:scale-[0.98]"
+          >
+            <Share2 className="h-4 w-4" /> Bagikan Kartu Hasil
+          </a>
+
       {/* Per-dimension breakdown */}
       <div className="animate-slide-up mb-8">
         <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-ink-muted">Breakdown per Dimensi</h3>
@@ -234,6 +263,8 @@ export default function ResultsPage() {
             })}
           </div>
         </div>
+      )}
+        </>
       )}
 
       {/* CTAs */}

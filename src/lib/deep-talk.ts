@@ -40,7 +40,7 @@ export interface DeepTalkProgress {
   last_played_at: string | null
 }
 
-export type LevelStatus = 'coming_soon' | 'locked' | 'unlocked' | 'completed'
+export type LevelStatus = 'coming_soon' | 'locked' | 'premium_locked' | 'unlocked' | 'completed'
 
 /**
  * Cek apakah level boleh dimainkan berdasarkan completed_levels.
@@ -54,16 +54,22 @@ export function isLevelUnlocked(levelNumber: number, completedLevels: number[]):
 /**
  * Status visual level. Prioritas:
  * 1. coming_soon (0 pertanyaan) — selalu menang, tidak playable
- * 2. completed (ada di completed_levels)
- * 3. unlocked (level sebelumnya completed)
- * 4. locked (default)
+ * 2. completed (ada di completed_levels) — replay tetap boleh walau free
+ * 3. premium_locked (free tier, level > 1) — butuh unlock premium
+ * 4. unlocked (level sebelumnya completed)
+ * 5. locked (default)
+ *
+ * Free tier: hanya Level 1 yang bisa dimainkan. Level 2+ butuh premium.
+ * `isPremium` default true agar pemanggil lama tidak berubah perilakunya.
  */
 export function getLevelStatus(
   level: DeepTalkLevel,
-  completedLevels: number[]
+  completedLevels: number[],
+  isPremium = true
 ): LevelStatus {
   if ((level.question_count ?? 0) === 0) return 'coming_soon'
   if (completedLevels.includes(level.level_number)) return 'completed'
+  if (!isPremium && level.level_number > 1) return 'premium_locked'
   if (isLevelUnlocked(level.level_number, completedLevels)) return 'unlocked'
   return 'locked'
 }

@@ -77,11 +77,17 @@ export default function DeepTalkPlayPage() {
     const targetLevel = levels.find(l => l.level_number === levelNumber)
     if (!targetLevel) { setLoading(false); return }
 
-    // URL guard: cek status level berdasarkan completed_levels
+    // URL guard: cek status level (completed_levels + premium tier)
+    const { data: coupleRow } = await supabase
+      .from('couples').select('is_premium').eq('id', membership.couple_id).single()
     const prog = await getProgress(membership.couple_id, p.id)
-    const status = getLevelStatus(targetLevel, prog?.completed_levels ?? [])
+    const status = getLevelStatus(targetLevel, prog?.completed_levels ?? [], !!coupleRow?.is_premium)
     if (status === 'locked') {
       router.replace(`/app/games/deep-talk/${packSlug}?locked=${levelNumber}`)
+      return
+    }
+    if (status === 'premium_locked') {
+      router.replace(`/app/games/deep-talk/${packSlug}?premium=${levelNumber}`)
       return
     }
     if (status === 'coming_soon') {
