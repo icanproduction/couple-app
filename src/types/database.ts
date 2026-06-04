@@ -261,18 +261,24 @@ export type Database = {
           created_by: string
           invite_code: string
           created_at: string
+          is_premium: boolean
+          unlocked_at: string | null
         }
         Insert: {
           id?: string
           created_by: string
           invite_code: string
           created_at?: string
+          is_premium?: boolean
+          unlocked_at?: string | null
         }
         Update: {
           id?: string
           created_by?: string
           invite_code?: string
           created_at?: string
+          is_premium?: boolean
+          unlocked_at?: string | null
         }
         Relationships: [
           {
