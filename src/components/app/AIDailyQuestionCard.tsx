@@ -33,7 +33,7 @@ export default function AIDailyQuestionCard({ coupleId }: AIDailyQuestionCardPro
         setQuestion(data.question)
         setPending(false)
       } else {
-        // null question = "belum ada" (or still being generated)
+        // null question = "none yet" (or still being generated)
         setPending(!!data.pending)
       }
     } catch { /* keep current state */ }
@@ -70,10 +70,10 @@ export default function AIDailyQuestionCard({ coupleId }: AIDailyQuestionCardPro
       } else if (data.pending) {
         setPending(true)
       } else {
-        setError(data.error ?? 'Gagal generate, tap untuk coba lagi')
+        setError(data.error ?? "Couldn't write a question. Tap to try again.")
       }
     } catch {
-      setError('Gagal generate, tap untuk coba lagi')
+      setError("Couldn't write a question. Tap to try again.")
     }
     setLoading(false)
   }
@@ -89,9 +89,9 @@ export default function AIDailyQuestionCard({ coupleId }: AIDailyQuestionCardPro
             <Sparkles className="h-3.5 w-3.5 text-purple-600" strokeWidth={2} />
           </div>
           <span className="text-xs font-bold uppercase tracking-wider text-purple-500">
-            AI Question
+            AI question
           </span>
-          <span className="ml-auto text-[10px] text-purple-400">personalized</span>
+          <span className="ml-auto text-[10px] text-purple-400">just for you two</span>
         </div>
         <p className="text-sm font-medium leading-relaxed text-ink">
           {question}
@@ -121,16 +121,16 @@ export default function AIDailyQuestionCard({ coupleId }: AIDailyQuestionCardPro
         </div>
         <div className="flex-1">
           <p className="text-sm font-bold text-ink">
-            {loading ? 'Generating...' : pending ? 'Sedang dibuat...' : error ? 'Coba lagi' : 'AI Question Hari Ini'}
+            {loading ? 'Writing...' : pending ? 'On its way...' : error ? 'Try again' : "Today's AI question"}
           </p>
           <p className="text-xs text-ink-muted">
             {loading
-              ? 'AI sedang buat pertanyaan khusus buat kalian'
+              ? 'Writing a question for the two of you'
               : pending
-              ? 'Pertanyaan hari ini sedang disiapkan, tunggu sebentar ya'
+              ? "Today's question is being written. Hang on a moment."
               : error
               ? error
-              : 'Tap untuk generate pertanyaan personal dari AI'
+              : 'Tap to get a question written for you two'
             }
           </p>
         </div>

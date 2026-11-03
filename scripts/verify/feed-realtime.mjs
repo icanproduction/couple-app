@@ -187,11 +187,11 @@ async function main() {
     && byKind('moment')?.url === `/app/moments/${moment.id}` && byKind('moment')?.summary.includes('Piknik di Kebun Raya'))
   ok('bucket_done actor is the partner who ticked it', byKind('bucket_done')?.actor_id === B.id)
   ok('daily actor is the answerer', byKind('daily')?.actor_id === B.id)
-  ok('deposit summary formatted', acts.some((x) => x.kind === 'saving' && x.summary === 'menabung Rp 50.000'), acts.filter((x) => x.kind === 'saving').map((x) => x.summary).join('|'))
-  ok('withdrawal summary formatted', acts.some((x) => x.kind === 'saving' && x.summary === 'menarik Rp 20.000 dari tabungan'))
-  ok('letter summary is metadata only', byKind('letter')?.summary === 'menulis surat rahasia')
-  ok('gratitude summary is generic', byKind('gratitude')?.summary === 'menaruh apresiasi baru di toples')
-  ok('mood summary has mood only', acts.filter((x) => x.kind === 'mood').map((x) => x.summary).join('|') === 'lagi merasa senang hari ini|lagi merasa capek hari ini')
+  ok('deposit summary formatted', acts.some((x) => x.kind === 'saving' && x.summary === 'saved Rp 50.000'), acts.filter((x) => x.kind === 'saving').map((x) => x.summary).join('|'))
+  ok('withdrawal summary formatted', acts.some((x) => x.kind === 'saving' && x.summary === 'took Rp 20.000 out of savings'))
+  ok('letter summary is metadata only', byKind('letter')?.summary === 'wrote a letter')
+  ok('gratitude summary is generic', byKind('gratitude')?.summary === 'left a note of thanks in the Toples')
+  ok('mood summary has mood only', acts.filter((x) => x.kind === 'mood').map((x) => x.summary).join('|') === 'checked in: Happy|checked in: Tired')
 
   // ============ Activities are read-only for users ============
   const before = await kindsOf(admin, cid)
@@ -332,10 +332,10 @@ async function main() {
     // answers 503 before claiming (the AI feature is off), so the 429 path can
     // only be reached with a key; it is also covered offline by `npm test`.
     if (env.LLM_API_KEY?.trim()) {
-      ok('route: quota used up → 429 with message', quota.status === 429 && quota.json?.error === 'Kuota ide hari ini sudah habis, coba lagi besok',
+      ok('route: quota used up → 429 with message', quota.status === 429 && quota.json?.error === 'You\'ve used up today\'s ideas. Try again tomorrow.',
         `status ${quota.status} ${JSON.stringify(quota.json)}`)
     } else {
-      ok('route: no LLM_API_KEY → 503 "Fitur AI belum diaktifkan"', quota.status === 503 && quota.json?.error === 'Fitur AI belum diaktifkan',
+      ok('route: no LLM_API_KEY → 503 "AI features aren\'t turned on yet"', quota.status === 503 && quota.json?.error === 'AI features aren\'t turned on yet',
         `status ${quota.status} ${JSON.stringify(quota.json)}`)
       notes.push('route quota → 429 check needs LLM_API_KEY in .env.local; checked the 503 "AI off" answer instead')
     }

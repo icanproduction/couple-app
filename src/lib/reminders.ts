@@ -4,11 +4,11 @@
 
 /** remind_days_before values the form and the DB accept (null = no reminder). */
 export const REMIND_OPTIONS: ReadonlyArray<{ value: number | null; label: string }> = [
-  { value: null, label: 'Tidak' },
-  { value: 0, label: 'Hari H' },
-  { value: 1, label: 'H-1' },
-  { value: 3, label: 'H-3' },
-  { value: 7, label: 'H-7' },
+  { value: null, label: 'Off' },
+  { value: 0, label: 'On the day' },
+  { value: 1, label: '1 day before' },
+  { value: 3, label: '3 days before' },
+  { value: 7, label: '1 week before' },
 ]
 
 export interface ReminderEvent {
@@ -105,17 +105,17 @@ export function flipScopeForViewer(scope: string, createdByPartner: boolean): st
   return scope
 }
 
-/** "Hari ini: X" / "Besok: X" / "3 hari lagi: X" */
+/** "Today: X" / "Tomorrow: X" / "In 3 days: X" */
 export function reminderTitle(title: string, daysBefore: number): string {
-  const prefix = daysBefore <= 0 ? 'Hari ini' : daysBefore === 1 ? 'Besok' : `${daysBefore} hari lagi`
+  const prefix = daysBefore <= 0 ? 'Today' : daysBefore === 1 ? 'Tomorrow' : `In ${daysBefore} days`
   return `${prefix}: ${title}`
 }
 
-const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
-const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December']
 
-/** "Jumat, 30 Oktober 2026" (+ " · lokasi"), the notification body. */
+/** "Friday, 30 October 2026" (+ " · place"), the notification body. */
 export function reminderBody(occurrence: string, location?: string | null): string {
   const d = new Date(keyToUTC(occurrence))
   const label = `${DAY_NAMES[d.getUTCDay()]}, ${d.getUTCDate()} ${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCFullYear()}`
@@ -123,7 +123,7 @@ export function reminderBody(occurrence: string, location?: string | null): stri
   return place ? `${label} · ${place}` : label
 }
 
-/** Short badge for the event list: "Hari H", "H-1", … */
+/** Short badge for the event list: "On the day", "1 day before", … */
 export function remindLabel(daysBefore: number | null): string | null {
   const opt = REMIND_OPTIONS.find((o) => o.value === daysBefore)
   return opt && opt.value !== null ? opt.label : null

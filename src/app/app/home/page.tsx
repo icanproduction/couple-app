@@ -76,7 +76,7 @@ export default async function HomePage() {
       >
         <MissYouButton
           myId={user.id}
-          myName={profile?.name ?? 'Seseorang'}
+          myName={profile?.name ?? 'Someone'}
           partnerId={partnerId}
           partnerName={partnerName}
           coupleId={myMembership?.couple_id ?? null}
@@ -87,7 +87,7 @@ export default async function HomePage() {
         {/* ===== KANGEN RECEIVED (reply "kangen kamu juga") ===== */}
         <MissYouToast
           myId={user.id}
-          myName={profile?.name ?? 'Pasanganmu'}
+          myName={profile?.name ?? 'Your partner'}
           partnerId={partnerId}
           partnerName={partnerName}
           coupleId={myMembership?.couple_id ?? null}
@@ -120,7 +120,7 @@ export default async function HomePage() {
         {/* ===== QUICK ACCESS 2x2 GRID ===== */}
         <div>
           <p className="mb-2 px-6 text-[10px] font-bold uppercase tracking-widest text-ink-muted/50">
-            Akses Cepat
+            Quick access
           </p>
           <QuickAccessGrid />
         </div>

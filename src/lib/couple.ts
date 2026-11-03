@@ -18,17 +18,21 @@ export function isInviteExpired(expiresAt: string, now: Date = new Date()): bool
   return new Date(expiresAt).getTime() <= now.getTime()
 }
 
-/** "3 November 2026, 14.05 WIB" */
+/** "3 November 2026, 14:05 WIB" */
 export function formatInviteExpiry(expiresAt: string): string {
   const d = new Date(expiresAt)
-  const date = d.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'long', year: 'numeric' })
-  const time = d.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  const date = d.toLocaleDateString('en-GB', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'long', year: 'numeric' })
+  const time = d.toLocaleTimeString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
   return `${date}, ${time} WIB`
 }
 
-/** The join error for an expired code, so forms can explain it instead of just showing it. */
+/**
+ * The join error for an expired code, so forms can explain it instead of just
+ * showing it. Accepts the English message ("expired") and the old Indonesian
+ * one ("kedaluwarsa") so mixed versions during a deploy still match.
+ */
 export function isExpiredInviteError(message: string | null | undefined): boolean {
-  return /kedaluwarsa/i.test(message ?? '')
+  return /expired|kedaluwarsa/i.test(message ?? '')
 }
 
 /** The caller's couple (one per person), or null when they have none yet. */
@@ -48,7 +52,7 @@ export async function getMyCouple(userId: string): Promise<MyCouple | null> {
     .select('id, invite_code, invite_expires_at, closed_at, couple_members(profile_id)')
     .eq('id', membership.couple_id)
     .single()
-  if (coupleError || !couple) throw new Error(coupleError?.message ?? 'Pasangan tidak ditemukan')
+  if (coupleError || !couple) throw new Error(coupleError?.message ?? 'Couple not found')
 
   return {
     id: couple.id,
@@ -66,7 +70,7 @@ export async function getMyCouple(userId: string): Promise<MyCouple | null> {
 export async function regenerateInviteCode(): Promise<Pick<MyCouple, 'id' | 'inviteCode' | 'inviteExpiresAt'>> {
   const supabase = createClient()
   const { data, error } = await supabase.rpc('regenerate_invite_code')
-  if (error || !data) throw new Error(error?.message ?? 'Gagal membuat kode baru')
+  if (error || !data) throw new Error(error?.message ?? 'Couldn\'t make a new code')
   return { id: data.id, inviteCode: data.invite_code, inviteExpiresAt: data.invite_expires_at }
 }
 
@@ -77,7 +81,7 @@ export async function regenerateInviteCode(): Promise<Pick<MyCouple, 'id' | 'inv
 export async function leaveCouple(): Promise<{ deleted: boolean }> {
   const res = await fetch('/api/couple/leave', { method: 'POST' })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Gagal keluar dari pasangan')
+  if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Couldn\'t leave this couple')
   return { deleted: !!data.deleted }
 }
 
@@ -89,7 +93,7 @@ export async function createCouple(userId: string) {
   const supabase = createClient()
 
   const { data: couple, error } = await supabase.rpc('create_couple')
-  if (error || !couple) throw new Error(error?.message ?? 'Gagal membuat pasangan')
+  if (error || !couple) throw new Error(error?.message ?? 'Couldn\'t create your couple')
 
   // Best effort: the couple exists either way, and a profile save re-syncs.
   await seedCalendarEvents(userId, couple.id).catch((e) => console.warn('seedCalendarEvents', e))
@@ -128,7 +132,7 @@ export async function joinCouple(inviteCode: string, userId: string, options: { 
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok || typeof data.coupleId !== 'string') {
-    const message = typeof data.error === 'string' ? data.error : 'Gagal bergabung'
+    const message = typeof data.error === 'string' ? data.error : 'Couldn\'t join'
     throw new JoinCoupleError(message, res.status === 409 && data.code === COUPLE_HAS_DATA)
   }
   const coupleId: string = data.coupleId
@@ -175,7 +179,7 @@ export async function seedCalendarEvents(userId: string, coupleId: string, previ
       .in('event_date', birthdayDates)
     fail(error)
     const row = rows?.find((r) => r.event_date === oldBirthday) ?? rows?.find((r) => r.event_date === profile.birthday)
-    const title = `Ulang Tahun ${profile.name ?? 'Pasangan'}`
+    const title = profile.name ? `${profile.name}'s birthday` : 'Birthday'
 
     if (!profile.birthday) {
       if (row) fail((await supabase.from('couple_events').delete().eq('id', row.id)).error)

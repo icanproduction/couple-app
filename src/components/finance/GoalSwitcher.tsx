@@ -22,7 +22,7 @@ interface GoalSwitcherProps {
 export default function GoalSwitcher({ goals, selectedId, onSelect, onAdd }: GoalSwitcherProps) {
   return (
     <div className="-mx-6 overflow-x-auto px-6 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <div className="flex gap-2.5" role="group" aria-label="Pilih target tabungan">
+      <div className="flex gap-2.5" role="group" aria-label="Choose a savings goal">
         {goals.map(g => {
           const target = Number(g.target_amount)
           const pct = target > 0 ? Math.max(0, Math.min(100, Math.round((Number(g.current_amount) / target) * 100))) : 0
@@ -52,11 +52,11 @@ export default function GoalSwitcher({ goals, selectedId, onSelect, onAdd }: Goa
         <button
           type="button"
           onClick={onAdd}
-          aria-label="Tambah target tabungan"
+          aria-label="Add a savings goal"
           className="flex w-24 flex-shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-rose/40 bg-white p-3 text-rose transition-all hover:bg-rose/5 active:scale-[0.98]"
         >
           <Plus className="h-5 w-5" />
-          <span className="text-[11px] font-semibold">Target baru</span>
+          <span className="text-[11px] font-semibold">New goal</span>
         </button>
       </div>
     </div>

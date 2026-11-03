@@ -32,11 +32,11 @@ const QUIET_DEFAULT = { start: 22, end: 6 }
 const HOURS = Array.from({ length: 24 }, (_, h) => h)
 
 const KINDS: { key: KindKey; label: string; desc: string }[] = [
-  { key: 'kangen', label: 'Kangen', desc: 'Saat pasanganmu menekan tombol kangen' },
-  { key: 'letters', label: 'Surat', desc: 'Surat baru dan surat yang sudah bisa dibuka' },
-  { key: 'moments', label: 'Moment', desc: 'Moment baru, komentar, dan reaksi' },
-  { key: 'reminders', label: 'Pengingat kalender', desc: 'Ulang tahun, anniversary, dan acara yang kamu beri pengingat' },
-  { key: 'activity', label: 'Aktivitas pasangan', desc: 'Mood, bucket list, tabungan, toples, dan pertanyaan harian' },
+  { key: 'kangen', label: 'Kangen', desc: 'When your partner sends you a Kangen' },
+  { key: 'letters', label: 'Letters', desc: 'New letters, and letters that are ready to open' },
+  { key: 'moments', label: 'Moments', desc: 'New moments, comments and reactions' },
+  { key: 'reminders', label: 'Calendar reminders', desc: 'Birthdays, anniversaries and events you set a reminder for' },
+  { key: 'activity', label: 'Partner activity', desc: 'Daily Mood, Bucket List, Savings, Toples and the Daily Question' },
 ]
 
 function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: () => void; label: string; disabled?: boolean }) {
@@ -71,7 +71,7 @@ export default function NotificationSettingsPage() {
   const [saveError, setSaveError] = useState('')
   const [savedAt, setSavedAt] = useState<number | null>(null)
   const [saving, setSaving] = useState(0)
-  // Last state the database confirmed — what we fall back to on a failed save.
+  // Last state the database confirmed: what we fall back to on a failed save.
   const savedRef = useRef<Prefs>(DEFAULTS)
   // Saves run one after another so a slow request can't land after a newer one.
   const chainRef = useRef<Promise<void>>(Promise.resolve())
@@ -98,7 +98,7 @@ export default function NotificationSettingsPage() {
     setUserId(user.id)
     const stored = await fetchPrefs(user.id)
     if (!stored) {
-      setLoadError('Gagal memuat pengaturan notifikasi.')
+      setLoadError("Couldn't load your notification settings.")
     } else {
       savedRef.current = stored
       setPrefs(stored)
@@ -126,7 +126,7 @@ export default function NotificationSettingsPage() {
         .select(PREF_COLUMNS)
         .single()
       if (error || !data) {
-        setSaveError('Belum tersimpan. Cek koneksimu lalu coba lagi.')
+        setSaveError("That didn't save. Check your connection and try again.")
         const stored = await fetchPrefs(userId)
         if (stored) savedRef.current = stored
         if (seq === latestRef.current) setPrefs(savedRef.current)
@@ -150,7 +150,7 @@ export default function NotificationSettingsPage() {
   function setQuietHour(which: 'quiet_start' | 'quiet_end', hour: number) {
     const next = { ...prefs, [which]: hour }
     if (next.quiet_start === next.quiet_end) {
-      setSaveError('Jam mulai dan jam selesai tidak boleh sama.')
+      setSaveError("Start and end can't be the same hour.")
       return
     }
     save(next)
@@ -162,22 +162,22 @@ export default function NotificationSettingsPage() {
     <div className="animate-fade-in pb-8">
       <div className="border-b border-border bg-white px-6 pb-5 pt-6">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/app/profile')} aria-label="Kembali ke Profil" className="rounded-lg p-1 hover:bg-cream">
+          <button onClick={() => router.push('/app/profile')} aria-label="Back to Profile" className="rounded-lg p-1 hover:bg-cream">
             <ArrowLeft className="h-5 w-5 text-ink-muted" />
           </button>
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-ink">Notifikasi</h1>
-            <p className="text-sm text-ink-muted">Atur kabar apa saja yang mau kamu terima</p>
+            <h1 className="text-xl font-bold text-ink">Notifications</h1>
+            <p className="text-sm text-ink-muted">Choose what you want to hear about</p>
           </div>
           <span aria-live="polite" className="text-xs text-ink-muted">
-            {saving > 0 ? 'Menyimpan...' : savedAt ? <span className="flex items-center gap-1 text-sage-dark"><Check className="h-3.5 w-3.5" /> Tersimpan</span> : null}
+            {saving > 0 ? 'Saving...' : savedAt ? <span className="flex items-center gap-1 text-sage-dark"><Check className="h-3.5 w-3.5" /> Saved</span> : null}
           </span>
         </div>
       </div>
 
       <div className="space-y-6 px-6 pt-5">
         <div>
-          <SectionLabel>Perangkat ini</SectionLabel>
+          <SectionLabel>This device</SectionLabel>
           <NotificationToggle />
         </div>
 
@@ -190,7 +190,7 @@ export default function NotificationSettingsPage() {
         ) : loadError ? (
           <div className="rounded-2xl border border-border bg-white p-5 text-center shadow-card">
             <p className="text-sm text-danger">{loadError}</p>
-            <Button onClick={load} variant="secondary" size="sm" className="mt-4">Coba lagi</Button>
+            <Button onClick={load} variant="secondary" size="sm" className="mt-4">Try again</Button>
           </div>
         ) : (
           <>
@@ -199,7 +199,7 @@ export default function NotificationSettingsPage() {
             )}
 
             <div>
-              <SectionLabel>Kirimi aku kabar soal</SectionLabel>
+              <SectionLabel>Notify me about</SectionLabel>
               <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-card">
                 {KINDS.map((k, i) => (
                   <div key={k.key} className={cn('flex items-center gap-3 px-4 py-3.5', i < KINDS.length - 1 && 'border-b border-border')}>
@@ -209,38 +209,38 @@ export default function NotificationSettingsPage() {
                     </div>
                     <Switch
                       checked={prefs[k.key]}
-                      label={`Notifikasi ${k.label}`}
+                      label={`${k.label} notifications`}
                       onChange={() => save({ ...prefs, [k.key]: !prefs[k.key] })}
                     />
                   </div>
                 ))}
               </div>
               <p className="mt-2 px-1 text-[11px] leading-relaxed text-ink-muted">
-                Berlaku di semua perangkatmu. Kalau dimatikan, kabarnya tetap ada di aplikasi, hanya tidak dikirim sebagai notifikasi.
+                Applies to all your devices. When one is off, you still see the update in the app. We just don&apos;t send a notification.
               </p>
             </div>
 
             <div>
-              <SectionLabel>Jam tenang</SectionLabel>
+              <SectionLabel>Quiet hours</SectionLabel>
               <div className="rounded-2xl border border-border bg-white p-4 shadow-card">
                 <div className="flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cream">
                     <Moon className="h-4 w-4 text-ink-muted" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-ink">Jam tenang</p>
+                    <p className="text-sm font-medium text-ink">Quiet hours</p>
                     <p className="text-[11px] text-ink-muted">
                       {quietOn
-                        ? `${hourLabel(prefs.quiet_start!)} sampai ${hourLabel(prefs.quiet_end!)} WIB${quietNow ? ' · sedang berlaku' : ''}`
-                        : 'Tahan notifikasi di jam tertentu'}
+                        ? `${hourLabel(prefs.quiet_start!)} to ${hourLabel(prefs.quiet_end!)} WIB${quietNow ? ' · on now' : ''}`
+                        : 'Hold notifications during set hours'}
                     </p>
                   </div>
-                  <Switch checked={quietOn} label="Jam tenang" onChange={toggleQuiet} />
+                  <Switch checked={quietOn} label="Quiet hours" onChange={toggleQuiet} />
                 </div>
 
                 {quietOn && (
                   <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4">
-                    {([['quiet_start', 'Mulai'], ['quiet_end', 'Selesai']] as const).map(([key, label]) => (
+                    {([['quiet_start', 'Start'], ['quiet_end', 'End']] as const).map(([key, label]) => (
                       <label key={key} className="space-y-1">
                         <span className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">{label}</span>
                         <select
@@ -253,8 +253,8 @@ export default function NotificationSettingsPage() {
                       </label>
                     ))}
                     <p className="col-span-2 text-[11px] leading-relaxed text-ink-muted">
-                      Waktu Jakarta (WIB). Notifikasi yang datang di jam tenang tidak dikirim, termasuk pengumuman dari admin.
-                      Pengingat kalender dan kabar surat yang sudah bisa dibuka tetap dikirim, karena hanya dikirim sekali sehari (pukul 07.00 WIB).
+                      Jakarta time (WIB). Notifications that come in during quiet hours aren&apos;t sent, including announcements from the admin.
+                      Calendar reminders and letters that are ready to open still come through, because they go out only once a day (at 07:00 WIB).
                     </p>
                   </div>
                 )}

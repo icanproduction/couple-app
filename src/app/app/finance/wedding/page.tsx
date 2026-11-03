@@ -20,16 +20,16 @@ interface BudgetItem {
 }
 
 const CATEGORIES = [
-  { value: 'venue', label: '🏛️ Venue & Dekorasi' },
-  { value: 'catering', label: '🍽️ Katering' },
-  { value: 'attire', label: '👗 Busana & MUA' },
-  { value: 'photo', label: '📸 Foto & Video' },
-  { value: 'music', label: '🎵 Hiburan & MC' },
-  { value: 'invitation', label: '💌 Undangan & Souvenir' },
-  { value: 'ceremony', label: '💍 Akad & Pemberkatan' },
-  { value: 'transport', label: '🚗 Transportasi' },
+  { value: 'venue', label: '🏛️ Venue & decor' },
+  { value: 'catering', label: '🍽️ Catering' },
+  { value: 'attire', label: '👗 Outfits & MUA' },
+  { value: 'photo', label: '📸 Photo & video' },
+  { value: 'music', label: '🎵 Entertainment & MC' },
+  { value: 'invitation', label: '💌 Invitations & souvenirs' },
+  { value: 'ceremony', label: '💍 Wedding ceremony' },
+  { value: 'transport', label: '🚗 Transportation' },
   { value: 'honeymoon', label: '✈️ Honeymoon' },
-  { value: 'other', label: '📦 Lainnya' },
+  { value: 'other', label: '📦 Other' },
 ]
 
 function fmtRp(n: number): string {
@@ -111,7 +111,7 @@ export default function WeddingPlannerPage() {
     })
     setSaving(false)
     // Keep what was typed when the save fails
-    if (error) { setAddError('Gagal menambah item. Coba lagi ya.'); return }
+    if (error) { setAddError("Couldn't add the item. Try again."); return }
     setAddName(''); setAddEstimated(''); setAddActual(''); setAddNotes('')
     setShowAdd(false); loadData()
   }
@@ -127,7 +127,7 @@ export default function WeddingPlannerPage() {
       notes: editNotes.trim() || null,
     }).eq('id', editId)
     setEditSaving(false)
-    if (error) { setEditError('Gagal menyimpan. Coba lagi ya.'); return }
+    if (error) { setEditError("Couldn't save the item. Try again."); return }
     setEditId(null); loadData()
   }
 
@@ -135,7 +135,7 @@ export default function WeddingPlannerPage() {
     setRowError(null)
     const supabase = createClient()
     const { error } = await supabase.from('wedding_budget_items').update({ is_paid: !item.is_paid }).eq('id', item.id)
-    if (error) { setRowError({ id: item.id, message: 'Gagal mengubah status. Coba lagi ya.' }); return }
+    if (error) { setRowError({ id: item.id, message: "Couldn't update the item. Try again." }); return }
     loadData()
   }
 
@@ -144,7 +144,7 @@ export default function WeddingPlannerPage() {
     const supabase = createClient()
     const { error } = await supabase.from('wedding_budget_items').delete().eq('id', id)
     setConfirmDeleteId(null)
-    if (error) { setRowError({ id, message: 'Gagal menghapus item. Coba lagi ya.' }); return }
+    if (error) { setRowError({ id, message: "Couldn't delete the item. Try again." }); return }
     loadData()
   }
 
@@ -182,10 +182,10 @@ export default function WeddingPlannerPage() {
           <Heart className="h-8 w-8 text-rose" />
         </div>
         <h1 className="text-xl font-bold text-ink">Wedding Planner</h1>
-        <p className="mt-2 max-w-xs text-sm text-ink-muted">Hubungkan akunmu dengan pasangan dulu untuk mulai menghitung biaya nikah bareng.</p>
+        <p className="mt-2 max-w-xs text-sm text-ink-muted">Connect with your partner first to plan your wedding budget together.</p>
         <button onClick={() => router.push('/app/profile')}
           className="mt-6 w-full max-w-xs rounded-2xl bg-rose py-3.5 text-sm font-bold text-white shadow-elevated">
-          Undang Pasangan
+          Invite your partner
         </button>
       </div>
     )
@@ -196,7 +196,7 @@ export default function WeddingPlannerPage() {
       {/* Header */}
       <div className="border-b border-border bg-white px-6 py-5">
         <button onClick={() => router.back()} className="mb-3 flex items-center gap-1 text-sm text-ink-muted">
-          <ArrowLeft className="h-4 w-4" /> Keuangan
+          <ArrowLeft className="h-4 w-4" /> Money
         </button>
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose/10">
@@ -204,7 +204,7 @@ export default function WeddingPlannerPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-ink">Wedding Planner</h1>
-            <p className="text-sm text-ink-muted">Hitung biaya nikah kalian sendiri</p>
+            <p className="text-sm text-ink-muted">Work out your wedding costs together</p>
           </div>
         </div>
       </div>
@@ -212,25 +212,25 @@ export default function WeddingPlannerPage() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 px-6 pt-5">
         <div className="rounded-2xl bg-gradient-to-br from-rose to-rose-dark p-4 text-white">
-          <p className="text-[10px] font-medium text-white/70">Total Estimasi</p>
+          <p className="text-[10px] font-medium text-white/70">Estimated total</p>
           <p className="mt-0.5 text-lg font-extrabold">{fmtRp(totalEstimated)}</p>
         </div>
         <div className="rounded-2xl border border-border bg-white p-4">
-          <p className="text-[10px] font-medium text-ink-muted">Aktual / Real</p>
+          <p className="text-[10px] font-medium text-ink-muted">Actual</p>
           <p className="mt-0.5 text-lg font-extrabold text-ink">{fmtRp(totalActual)}</p>
           {diff !== 0 && (
             <p className={`text-[10px] font-semibold ${diff > 0 ? 'text-red-500' : 'text-sage-dark'}`}>
-              {diff > 0 ? `+${fmtRp(diff)} over` : `-${fmtRp(Math.abs(diff))} hemat`}
+              {diff > 0 ? `+${fmtRp(diff)} over` : `-${fmtRp(Math.abs(diff))} under`}
             </p>
           )}
         </div>
         <div className="rounded-2xl border border-sage/30 bg-sage/5 p-4">
-          <p className="text-[10px] font-medium text-ink-muted">Sudah Lunas</p>
+          <p className="text-[10px] font-medium text-ink-muted">Paid</p>
           <p className="mt-0.5 text-lg font-extrabold text-sage-dark">{fmtRp(totalPaid)}</p>
-          <p className="text-[10px] text-ink-muted">{paidCount}/{items.length} item</p>
+          <p className="text-[10px] text-ink-muted">{paidCount}/{items.length} {items.length === 1 ? 'item' : 'items'}</p>
         </div>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <p className="text-[10px] font-medium text-amber-700">Belum Lunas</p>
+          <p className="text-[10px] font-medium text-amber-700">Still to pay</p>
           <p className="mt-0.5 text-lg font-extrabold text-amber-800">{fmtRp(totalUnpaid)}</p>
         </div>
       </div>
@@ -269,30 +269,30 @@ export default function WeddingPlannerPage() {
                       {editId === item.id ? (
                         // Edit mode
                         <div className="space-y-2">
-                          <input value={editName} onChange={e => setEditName(e.target.value)} aria-label="Nama item"
+                          <input value={editName} onChange={e => setEditName(e.target.value)} aria-label="Item name"
                             className="w-full rounded-xl border border-border px-3 py-2 text-sm focus:border-rose focus:outline-none" />
                           <div className="grid grid-cols-2 gap-2">
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted">Est</span>
-                              <input value={editEstimated} onChange={e => setEditEstimated(fmtInput(e.target.value))} aria-label="Biaya estimasi"
+                              <input value={editEstimated} onChange={e => setEditEstimated(fmtInput(e.target.value))} aria-label="Estimated cost"
                                 className="w-full rounded-xl border border-border py-2 pl-10 pr-3 text-sm focus:border-rose focus:outline-none" inputMode="numeric" />
                             </div>
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted">Real</span>
-                              <input value={editActual} onChange={e => setEditActual(fmtInput(e.target.value))} aria-label="Biaya real"
+                              <input value={editActual} onChange={e => setEditActual(fmtInput(e.target.value))} aria-label="Actual cost"
                                 className="w-full rounded-xl border border-border py-2 pl-10 pr-3 text-sm focus:border-rose focus:outline-none" inputMode="numeric"
-                                placeholder="kosong = sama estimasi" />
+                                placeholder="Same as Est" />
                             </div>
                           </div>
-                          <input value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Catatan..." aria-label="Catatan"
+                          <input value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Notes..." aria-label="Notes"
                             className="w-full rounded-xl border border-border px-3 py-2 text-xs focus:border-rose focus:outline-none" />
                           {editError && <p className="text-xs font-medium text-red-500">{editError}</p>}
                           <div className="flex gap-2">
                             <button onClick={handleSaveEdit} disabled={editSaving}
                               className="flex items-center gap-1 rounded-lg bg-rose px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60">
-                              <Check className="h-3 w-3" /> {editSaving ? 'Menyimpan...' : 'Simpan'}
+                              <Check className="h-3 w-3" /> {editSaving ? 'Saving...' : 'Save'}
                             </button>
-                            <button onClick={() => { setEditId(null); setEditError('') }} className="text-xs text-ink-muted">Batal</button>
+                            <button onClick={() => { setEditId(null); setEditError('') }} className="text-xs text-ink-muted">Cancel</button>
                           </div>
                         </div>
                       ) : (
@@ -300,7 +300,7 @@ export default function WeddingPlannerPage() {
                         <div className="flex items-start gap-3">
                           <button onClick={() => togglePaid(item)}
                             role="checkbox" aria-checked={!!item.is_paid}
-                            aria-label={`${item.name} sudah dibayar`}
+                            aria-label={`${item.name} paid`}
                             className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
                               item.is_paid ? 'border-sage bg-sage text-white' : 'border-border'
                             }`}>
@@ -311,7 +311,7 @@ export default function WeddingPlannerPage() {
                             <div className="flex items-center gap-2 mt-0.5">
                               <span className="text-xs text-ink-muted">Est: {fmtRp(Number(item.estimated_cost))}</span>
                               {item.actual_cost != null && (
-                                <span className="text-xs font-semibold text-ink">Real: {fmtRp(Number(item.actual_cost))}</span>
+                                <span className="text-xs font-semibold text-ink">Actual: {fmtRp(Number(item.actual_cost))}</span>
                               )}
                             </div>
                             {item.notes && <p className="mt-0.5 text-[10px] text-ink-muted/70">{item.notes}</p>}
@@ -320,17 +320,17 @@ export default function WeddingPlannerPage() {
                             )}
                             {confirmDeleteId === item.id && (
                               <div className="mt-2 flex items-center gap-2">
-                                <span className="text-[11px] font-medium text-red-600">Hapus item ini?</span>
+                                <span className="text-[11px] font-medium text-red-600">Delete this item?</span>
                                 <button onClick={() => deleteItem(item.id)}
-                                  className="rounded-lg bg-red-500 px-2.5 py-1 text-[11px] font-bold text-white">Hapus</button>
+                                  className="rounded-lg bg-red-500 px-2.5 py-1 text-[11px] font-bold text-white">Delete</button>
                                 <button onClick={() => setConfirmDeleteId(null)}
-                                  className="text-[11px] text-ink-muted">Batal</button>
+                                  className="text-[11px] text-ink-muted">Cancel</button>
                               </div>
                             )}
                           </div>
                           <div className="flex gap-1">
-                            <button onClick={() => startEdit(item)} aria-label={`Ubah ${item.name}`} className="p-1 text-ink-muted hover:text-ink"><Edit2 className="h-3.5 w-3.5" /></button>
-                            <button onClick={() => setConfirmDeleteId(item.id)} aria-label={`Hapus ${item.name}`} className="p-1 text-ink-muted hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                            <button onClick={() => startEdit(item)} aria-label={`Edit ${item.name}`} className="p-1 text-ink-muted hover:text-ink"><Edit2 className="h-3.5 w-3.5" /></button>
+                            <button onClick={() => setConfirmDeleteId(item.id)} aria-label={`Delete ${item.name}`} className="p-1 text-ink-muted hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
                           </div>
                         </div>
                       )}
@@ -347,51 +347,51 @@ export default function WeddingPlannerPage() {
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-rose/10">
               <Heart className="h-6 w-6 text-rose" />
             </div>
-            <p className="text-sm font-semibold text-ink">Belum ada item budget</p>
-            <p className="mt-1 text-xs text-ink-muted">Mulai tambahkan item-item biaya nikah kalian</p>
+            <p className="text-sm font-semibold text-ink">No budget items yet</p>
+            <p className="mt-1 text-xs text-ink-muted">Add the costs for your wedding, one item at a time</p>
           </div>
         )}
 
         {/* Add item form */}
         {showAdd ? (
           <form onSubmit={handleAdd} className="rounded-2xl border-2 border-rose/30 bg-rose/5 p-4 space-y-3">
-            <p className="text-sm font-bold text-ink">Tambah Item</p>
-            <select value={addCategory} onChange={e => setAddCategory(e.target.value)} aria-label="Kategori"
+            <p className="text-sm font-bold text-ink">Add item</p>
+            <select value={addCategory} onChange={e => setAddCategory(e.target.value)} aria-label="Category"
               className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:border-rose focus:outline-none">
               {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
-            <input value={addName} onChange={e => setAddName(e.target.value)} placeholder="Nama item (mis. Gedung resepsi)" aria-label="Nama item"
+            <input value={addName} onChange={e => setAddName(e.target.value)} placeholder="Item name (e.g. reception venue)" aria-label="Item name"
               className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:border-rose focus:outline-none" required />
             <div className="grid grid-cols-2 gap-2">
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted">Rp</span>
                 <input value={addEstimated} onChange={e => setAddEstimated(fmtInput(e.target.value))}
-                  placeholder="Estimasi" aria-label="Biaya estimasi" inputMode="numeric"
+                  placeholder="Estimate" aria-label="Estimated cost" inputMode="numeric"
                   className="w-full rounded-xl border border-border bg-white py-2.5 pl-9 pr-3 text-sm focus:border-rose focus:outline-none" required />
               </div>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted">Rp</span>
                 <input value={addActual} onChange={e => setAddActual(fmtInput(e.target.value))}
-                  placeholder="Aktual (opsional)" aria-label="Biaya aktual" inputMode="numeric"
+                  placeholder="Actual (optional)" aria-label="Actual cost" inputMode="numeric"
                   className="w-full rounded-xl border border-border bg-white py-2.5 pl-9 pr-3 text-sm focus:border-rose focus:outline-none" />
               </div>
             </div>
-            <input value={addNotes} onChange={e => setAddNotes(e.target.value)} placeholder="Catatan (opsional)" aria-label="Catatan"
+            <input value={addNotes} onChange={e => setAddNotes(e.target.value)} placeholder="Notes (optional)" aria-label="Notes"
               className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-xs focus:border-rose focus:outline-none" />
             {addError && <p className="text-xs font-medium text-red-500">{addError}</p>}
             <div className="flex gap-2">
               <button type="submit" disabled={saving}
                 className="flex-1 rounded-xl bg-rose py-2.5 text-sm font-bold text-white disabled:opacity-50">
-                {saving ? 'Menyimpan...' : 'Tambah'}
+                {saving ? 'Saving...' : 'Add'}
               </button>
               <button type="button" onClick={() => setShowAdd(false)}
-                className="rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-ink-muted">Batal</button>
+                className="rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-ink-muted">Cancel</button>
             </div>
           </form>
         ) : (
           <button onClick={() => setShowAdd(true)}
             className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-rose/30 bg-white py-3.5 text-sm font-bold text-rose transition-all hover:bg-rose/5 active:scale-[0.98]">
-            <Plus className="h-4 w-4" /> Tambah Item
+            <Plus className="h-4 w-4" /> Add item
           </button>
         )}
       </div>

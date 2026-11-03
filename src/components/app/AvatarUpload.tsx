@@ -46,14 +46,14 @@ export default function AvatarUpload({
     const path = `${userId}/avatar.${ext}`
 
     const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
-    if (error) { setUploadError('Gagal upload foto. Coba lagi ya.'); setUploading(false); return }
+    if (error) { setUploadError("Couldn't upload the photo. Try again."); setUploading(false); return }
 
     const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
     const url = `${publicUrl}?t=${Date.now()}`
 
     const { error: saveError } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', userId)
     setUploading(false)
-    if (saveError) { setUploadError('Foto belum tersimpan. Coba lagi ya.'); return }
+    if (saveError) { setUploadError("Your photo wasn't saved. Try again."); return }
     setAvatarUrl(url)
     onUploaded?.(url)
   }

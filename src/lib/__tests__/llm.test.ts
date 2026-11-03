@@ -8,7 +8,7 @@ import { AI_NOT_CONFIGURED, providerFailure } from '@/lib/ai-errors'
 import { generateDailyQuestion } from '@/lib/daily-question'
 import { DateIdeasError, generateDateIdeas, validateIdeas } from '@/lib/date-ideas'
 
-const IDEA_CTX = { todayLabel: 'Selasa, 27 Oktober 2026', bucketTitles: ['Naik gunung bareng'] }
+const IDEA_CTX = { todayLabel: 'Tuesday, 27 October 2026', bucketTitles: ['Hike a volcano together'] }
 
 let fake: FakeOpenAI
 const llmFor = (overrides: Partial<LlmSettings> = {}) =>
@@ -61,9 +61,9 @@ describe('wiring (src/lib/llm.ts)', () => {
 
 describe('daily question', () => {
   it('returns the model text and sends GPT Luna with low reasoning effort', async () => {
-    fake.reply(chatCompletion('"Kalau bisa liburan berdua minggu depan, kalian mau ke mana?"'))
+    fake.reply(chatCompletion('"If you could take a trip together next week, where would you go?"'))
     const q = await generateDailyQuestion(llmFor(), QUESTION_CONTEXT)
-    expect(q).toBe('Kalau bisa liburan berdua minggu depan, kalian mau ke mana?')
+    expect(q).toBe('If you could take a trip together next week, where would you go?')
 
     expect(fake.requests).toHaveLength(1)
     const req = fake.requests[0]
@@ -75,10 +75,12 @@ describe('daily question', () => {
     expect(body().response_format).toBeUndefined()
     const messages = body().messages ?? []
     expect(messages[0].role).toBe('system')
-    expect(String(messages[0].content)).toContain('Generate SATU pertanyaan')
+    expect(String(messages[0].content)).toContain('Write exactly ONE question in casual, warm English')
+    expect(String(messages[0].content)).toContain('Never write in Indonesian')
+    expect(String(messages[0].content)).not.toContain('\u2014')
     const user = JSON.stringify(messages[1].content)
-    expect(user).toContain('Raka (cowok, 27 tahun, MBTI: INFP)')
-    expect(user).toContain('Apa momen paling lucu minggu ini?')
+    expect(user).toContain('Raka (male, 27 years old, MBTI: INFP)')
+    expect(user).toContain('What was the funniest moment of your week?')
   })
 
   it('rejects an empty answer', async () => {
@@ -115,8 +117,12 @@ describe('date ideas', () => {
       ['petualangan', 'kuliner', 'traveling', 'romantis', 'belajar', 'rumah', 'lainnya'],
     )
     const user = JSON.stringify((body().messages ?? [])[1].content)
-    expect(user).toContain('Kota: Bandung')
-    expect(user).toContain('Naik gunung bareng')
+    expect(user).toContain('City: Bandung')
+    expect(user).toContain('Hike a volcano together')
+    const system = String((body().messages ?? [])[0].content)
+    expect(system).toContain('Write in relaxed, warm English')
+    expect(system).toContain('petualangan (adventure)')
+    expect(system).not.toContain('\u2014')
   })
 
   const withFirst = (patch: Record<string, unknown>) =>
@@ -124,7 +130,7 @@ describe('date ideas', () => {
   const bad: Array<[string, string]> = [
     ['only 2 ideas', JSON.stringify({ ideas: IDEAS.ideas.slice(0, 2) })],
     ['4 ideas', JSON.stringify({ ideas: [...IDEAS.ideas, IDEAS.ideas[0]] })],
-    ['not JSON', 'Maaf, aku tidak bisa membantu itu.'],
+    ['not JSON', 'Sorry, I can\'t help with that.'],
     ['truncated JSON', JSON.stringify(IDEAS).slice(0, 120)],
     ['unknown category', withFirst({ category: 'olahraga' })],
     ['fractional cost', withFirst({ estimated_cost_idr: 12.5 })],
@@ -138,8 +144,8 @@ describe('date ideas', () => {
   })
 
   it('validateIdeas trims and collapses whitespace', () => {
-    const [first] = validateIdeas(JSON.parse(withFirst({ title: '  Piknik   sore  ' })))
-    expect(first.title).toBe('Piknik sore')
+    const [first] = validateIdeas(JSON.parse(withFirst({ title: '  Afternoon   picnic  ' })))
+    expect(first.title).toBe('Afternoon picnic')
   })
 })
 
@@ -152,47 +158,47 @@ describe('missing key', () => {
     ])
     for (const e of errors) {
       expect(e).toBeInstanceOf(LlmNotConfiguredError)
-      expect(providerFailure(e, 'x')).toEqual({ status: 503, error: 'Fitur AI belum diaktifkan' })
+      expect(providerFailure(e, 'x')).toEqual({ status: 503, error: 'AI features aren\'t turned on yet' })
     }
-    expect(AI_NOT_CONFIGURED.error).toBe('Fitur AI belum diaktifkan')
+    expect(AI_NOT_CONFIGURED.error).toBe('AI features aren\'t turned on yet')
     expect(fake.requests).toHaveLength(0)
   })
 })
 
 describe('provider errors → status and message', () => {
   const cases: Array<[number, number, string]> = [
-    [401, 503, 'AI belum dikonfigurasi dengan benar'],
-    [403, 503, 'AI belum dikonfigurasi dengan benar'],
-    [402, 503, 'Kuota AI sedang habis'],
-    [429, 429, 'AI sedang sibuk, coba lagi sebentar'],
-    [500, 502, 'Gagal, coba lagi'],
-    [503, 502, 'Gagal, coba lagi'],
-    [400, 502, 'Gagal, coba lagi'],
+    [401, 503, 'The AI isn\'t set up correctly yet'],
+    [403, 503, 'The AI isn\'t set up correctly yet'],
+    [402, 503, 'The AI has run out of credits for now'],
+    [429, 429, 'The AI is busy. Try again in a moment.'],
+    [500, 502, 'Something went wrong. Try again.'],
+    [503, 502, 'Something went wrong. Try again.'],
+    [400, 502, 'Something went wrong. Try again.'],
   ]
   it.each(cases)('HTTP %i → %i', async (upstream, status, error) => {
     fake.always(apiError(upstream, 'upstream says no'))
     const e = await generateDailyQuestion(llmFor(), QUESTION_CONTEXT).catch((x: unknown) => x)
-    expect(providerFailure(e, 'Gagal, coba lagi')).toEqual({ status, error })
+    expect(providerFailure(e, 'Something went wrong. Try again.')).toEqual({ status, error })
   })
 
   it('unwraps the RetryError after retries (429 retried, then mapped)', async () => {
     fake.always(apiError(429, 'rate limited'))
     const e = await generateDateIdeas(llmFor({ maxRetries: 2 }), IDEA_INPUT, IDEA_CTX).catch((x: unknown) => x)
     expect(fake.requests).toHaveLength(3)
-    expect(providerFailure(e, 'x')).toEqual({ status: 429, error: 'AI sedang sibuk, coba lagi sebentar' })
+    expect(providerFailure(e, 'x')).toEqual({ status: 429, error: 'The AI is busy. Try again in a moment.' })
   })
 
   it('does not retry a 402', async () => {
     fake.always(apiError(402, 'Insufficient credits'))
     const e = await generateDateIdeas(llmFor({ maxRetries: 2 }), IDEA_INPUT, IDEA_CTX).catch((x: unknown) => x)
     expect(fake.requests).toHaveLength(1)
-    expect(providerFailure(e, 'x')).toEqual({ status: 503, error: 'Kuota AI sedang habis' })
+    expect(providerFailure(e, 'x')).toEqual({ status: 503, error: 'The AI has run out of credits for now' })
   })
 
   it('maps a timeout to 502', async () => {
-    fake.reply({ ...chatCompletion('terlambat'), delayMs: 1_000 })
+    fake.reply({ ...chatCompletion('too late'), delayMs: 1_000 })
     const e = await generateDailyQuestion(llmFor(), QUESTION_CONTEXT, { timeoutMs: 50 }).catch((x: unknown) => x)
-    expect(providerFailure(e, 'Gagal, coba lagi')).toEqual({ status: 502, error: 'Gagal, coba lagi' })
+    expect(providerFailure(e, 'Something went wrong. Try again.')).toEqual({ status: 502, error: 'Something went wrong. Try again.' })
   })
 
   it('maps an unreachable server to 502', async () => {
@@ -200,7 +206,7 @@ describe('provider errors → status and message', () => {
     const baseUrl = down.baseUrl
     await down.close()
     const e = await generateDailyQuestion(llmFor({ baseUrl }), QUESTION_CONTEXT).catch((x: unknown) => x)
-    expect(providerFailure(e, 'Gagal, coba lagi')).toEqual({ status: 502, error: 'Gagal, coba lagi' })
+    expect(providerFailure(e, 'Something went wrong. Try again.')).toEqual({ status: 502, error: 'Something went wrong. Try again.' })
   })
 
   it('leaves non-provider errors to the caller', () => {

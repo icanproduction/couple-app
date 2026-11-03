@@ -54,7 +54,7 @@ export default function OnboardingProfilePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!userId || loading) return
-    if (!name.trim()) { setError('Nama tidak boleh kosong'); return }
+    if (!name.trim()) { setError('Please enter your name'); return }
     setError('')
     setLoading(true)
 
@@ -97,15 +97,15 @@ export default function OnboardingProfilePage() {
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50">
           <Smile className="h-7 w-7 text-rose" strokeWidth={2} />
         </div>
-        <h1 className="text-2xl font-bold text-ink">Kenalan dulu, yuk!</h1>
-        <p className="mt-1 text-sm text-ink-muted">Nama apa yang biasa dipanggil pasanganmu?</p>
+        <h1 className="text-2xl font-bold text-ink">First, a little about you</h1>
+        <p className="mt-1 text-sm text-ink-muted">What does your partner usually call you?</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <Input
-          label="Nama Panggilan"
+          label="Nickname"
           type="text"
-          placeholder="Contoh: Budi, Sayang, B"
+          placeholder="e.g. Budi, Babe, B"
           value={name}
           onChange={e => setName(e.target.value)}
           required
@@ -115,7 +115,7 @@ export default function OnboardingProfilePage() {
 
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">
-            Kamu...
+            I&apos;m a...
           </label>
           <div className="flex gap-3">
             <button
@@ -127,7 +127,7 @@ export default function OnboardingProfilePage() {
                   : 'border-border bg-white text-ink-muted hover:border-rose'
               }`}
             >
-              Cowok
+              Guy
             </button>
             <button
               type="button"
@@ -138,14 +138,14 @@ export default function OnboardingProfilePage() {
                   : 'border-border bg-white text-ink-muted hover:border-rose'
               }`}
             >
-              Cewek
+              Girl
             </button>
           </div>
         </div>
 
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">
-            Kapan ulang tahunmu?
+            When&apos;s your birthday?
           </label>
           <input
             type="date"
@@ -154,13 +154,13 @@ export default function OnboardingProfilePage() {
             className="w-full rounded-2xl border border-border bg-white px-4 py-3.5 text-sm text-ink focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
           />
           <p className="text-xs text-ink-muted">
-            Kami akan ingatkan pasanganmu nanti
+            We&apos;ll remind your partner when it&apos;s close
           </p>
         </div>
 
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">
-            Kapan kalian mulai bersama?
+            When did you two get together?
           </label>
           <input
             type="date"
@@ -169,13 +169,13 @@ export default function OnboardingProfilePage() {
             className="w-full rounded-2xl border border-border bg-white px-4 py-3.5 text-sm text-ink focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
           />
           <p className="text-xs text-ink-muted">
-            Buat hitung hari bersama &amp; pengingat anniversary
+            Used to count your days together and remind you of anniversaries
           </p>
         </div>
 
         <div className="pt-2">
           <Button type="submit" loading={loading} disabled={!userId} size="lg">
-            Lanjut
+            Continue
           </Button>
         </div>
       </form>

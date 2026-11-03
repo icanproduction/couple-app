@@ -3,18 +3,18 @@
 
 export type TxType = 'deposit' | 'withdrawal'
 
-/** Categories a withdrawal can have (deposits are always "tabungan"). */
+/** Categories a withdrawal can have (deposits are always "tabungan"). Values are stored. */
 export const WITHDRAWAL_CATEGORIES: ReadonlyArray<{ value: string; label: string }> = [
-  { value: 'date_night', label: 'Date Night' },
+  { value: 'date_night', label: 'Date night' },
   { value: 'anniversary', label: 'Anniversary' },
-  { value: 'belanja', label: 'Belanja' },
-  { value: 'persiapan_nikah', label: 'Persiapan Nikah' },
-  { value: 'lainnya', label: 'Lainnya' },
+  { value: 'belanja', label: 'Shopping' },
+  { value: 'persiapan_nikah', label: 'Wedding prep' },
+  { value: 'lainnya', label: 'Other' }, // copy-ok: stored value
 ]
 
 export function categoryLabel(category: string | null): string {
-  if (category === 'tabungan') return 'Tabungan'
-  return WITHDRAWAL_CATEGORIES.find((c) => c.value === category)?.label ?? 'Lainnya'
+  if (category === 'tabungan') return 'Savings'
+  return WITHDRAWAL_CATEGORIES.find((c) => c.value === category)?.label ?? 'Other'
 }
 
 /** Deposits are stored positive, withdrawals negative (a DB check enforces it). */
@@ -34,13 +34,13 @@ export function formatRupiahInput(val: string): string {
   return num ? parseInt(num, 10).toLocaleString('id-ID') : ''
 }
 
-/** Compact amount keeping the sign: -1500000 → "-Rp1.5jt" */
+/** Compact amount keeping the sign: -1500000 → "-Rp1.5M" (K = thousand, M = million, B = billion) */
 export function fmtRpShort(n: number): string {
   const sign = n < 0 ? '-' : ''
   const abs = Math.abs(n)
-  if (abs >= 1_000_000_000) return `${sign}Rp${(abs / 1_000_000_000).toFixed(1)}M`
-  if (abs >= 1_000_000) return `${sign}Rp${(abs / 1_000_000).toFixed(1)}jt`
-  if (abs >= 1_000) return `${sign}Rp${(abs / 1_000).toFixed(0)}rb`
+  if (abs >= 1_000_000_000) return `${sign}Rp${(abs / 1_000_000_000).toFixed(1)}B`
+  if (abs >= 1_000_000) return `${sign}Rp${(abs / 1_000_000).toFixed(1)}M`
+  if (abs >= 1_000) return `${sign}Rp${(abs / 1_000).toFixed(0)}K`
   return `${sign}Rp${abs.toLocaleString('id-ID')}`
 }
 
@@ -51,8 +51,8 @@ export function fmtRpFull(n: number): string {
 
 // ---------- Months (Asia/Jakarta) ----------
 
-const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December']
 
 /** "YYYY-MM" of a timestamp in Jakarta time. */
 export function jakartaMonthKey(at: string | Date = new Date()): string {
@@ -68,7 +68,7 @@ export function shiftMonth(key: string, delta: number): string {
   return `${Math.floor(idx / 12)}-${String((idx % 12) + 1).padStart(2, '0')}`
 }
 
-/** "2026-10" → "Oktober 2026" */
+/** "2026-10" → "October 2026" */
 export function monthLabel(key: string): string {
   const [y, m] = key.split('-').map(Number)
   return `${MONTH_NAMES[m - 1]} ${y}`
@@ -107,7 +107,7 @@ export function summarizeMonth(txs: SummaryTx[], monthKey: string): MonthSummary
     if (tx.type === 'deposit') totalIn += amt
     else if (tx.type === 'withdrawal') {
       totalOut += amt
-      const cat = tx.category ?? 'lainnya'
+      const cat = tx.category ?? 'lainnya' // copy-ok: stored value
       cats.set(cat, (cats.get(cat) ?? 0) + amt)
     } else continue
     count++
@@ -122,22 +122,28 @@ export function summarizeMonth(txs: SummaryTx[], monthKey: string): MonthSummary
 // ---------- Errors ----------
 
 /** The goal being edited or saved into no longer exists (deleted elsewhere). */
-export const GOAL_GONE_MESSAGE = 'Target ini sudah dihapus. Mungkin baru dihapus pasanganmu.'
+export const GOAL_GONE_MESSAGE = 'This savings goal was deleted. Your partner may have just removed it.'
+
+/** English for the old Indonesian balance-trigger texts, while a deploy is mixed. */
+const BALANCE_NEGATIVE = 'The savings balance would drop below zero. Edit or delete the withdrawal first.'
+const BALANCE_SHORT = 'The savings balance is too low for this withdrawal.'
 
 /**
- * Indonesian message for a failed transaction write. The balance triggers
- * already raise Indonesian text ("Saldo tabungan jadi minus…"); everything
- * else gets a friendly fallback.
+ * English message for a failed transaction write. The balance triggers raise
+ * their own English text ("The savings balance…"), which is passed through;
+ * the old Indonesian text ("Saldo tabungan…") is mapped to the same English.
+ * Everything else gets a friendly fallback.
  */
 export function transactionErrorMessage(
   err: { message?: string; code?: string } | null | undefined,
-  fallback = 'Gagal menyimpan perubahan. Coba lagi ya.',
+  fallback = 'Couldn\'t save your changes. Try again.',
 ): string {
   if (!err) return fallback
   const msg = err.message ?? ''
-  if (/Saldo tabungan/i.test(msg)) return msg
-  if (err.code === '23514') return 'Jumlah tidak cocok dengan jenis transaksi.'
-  if (err.code === '42501') return 'Kamu tidak punya izin untuk mengubah transaksi ini.'
-  if (/fetch|network/i.test(msg)) return 'Koneksi bermasalah. Cek internet kamu lalu coba lagi.'
+  if (/savings balance/i.test(msg)) return msg
+  if (/Saldo tabungan/i.test(msg)) return /minus/i.test(msg) ? BALANCE_NEGATIVE : BALANCE_SHORT
+  if (err.code === '23514') return 'The amount doesn\'t match the transaction type.'
+  if (err.code === '42501') return 'You don\'t have permission to change this transaction.'
+  if (/fetch|network/i.test(msg)) return 'Connection problem. Check your internet and try again.'
   return fallback
 }

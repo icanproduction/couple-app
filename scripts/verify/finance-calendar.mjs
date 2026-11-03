@@ -91,10 +91,10 @@ function reminderUnits() {
   eq('scope: couple and my own events unchanged', [R.flipScopeForViewer('couple', true), R.flipScopeForViewer('personal', false), R.flipScopeForViewer('partner', false)], ['couple', 'personal', 'partner'])
   ok('scope: edit round-trip keeps the stored value', ['personal', 'partner', 'couple'].every((s) => R.flipScopeForViewer(R.flipScopeForViewer(s, true), true) === s))
   // copy + recipients
-  eq('title H-1', R.reminderTitle('Ulang Tahun Nadia', 1), 'Besok: Ulang Tahun Nadia')
-  eq('title H-0', R.reminderTitle('Anniversary', 0), 'Hari ini: Anniversary')
-  eq('title H-3', R.reminderTitle('Dinner', 3), '3 hari lagi: Dinner')
-  eq('body with location', R.reminderBody('2026-10-30', 'Monas'), 'Jumat, 30 Oktober 2026 · Monas')
+  eq('title H-1', R.reminderTitle('Ulang Tahun Nadia', 1), 'Tomorrow: Ulang Tahun Nadia')
+  eq('title H-0', R.reminderTitle('Anniversary', 0), 'Today: Anniversary')
+  eq('title H-3', R.reminderTitle('Dinner', 3), 'In 3 days: Dinner')
+  eq('body with location', R.reminderBody('2026-10-30', 'Monas'), 'Friday, 30 October 2026 · Monas')
   eq('personal → creator only', R.reminderRecipients('personal', 'a', ['a', 'b']), ['a'])
   eq('personal, creator left → nobody', R.reminderRecipients('personal', null, ['a', 'b']), [])
   eq('couple → both', R.reminderRecipients('couple', 'a', ['a', 'b']), ['a', 'b'])
@@ -119,8 +119,8 @@ function financeUnits() {
   eq('summary by category (largest first)', s.byCategory, [{ category: 'belanja', total: 35000 }, { category: 'date_night', total: 10000 }])
   eq('summary per person', s.countByPerson, { a: 2, b: 1, '': 1 })
   eq('summary next month picks the Jakarta-boundary row', F.summarizeMonth(txs, '2026-11').totalIn, 999)
-  eq('error: balance message passed through', F.transactionErrorMessage({ message: 'Saldo tabungan jadi minus. Ubah atau hapus penarikannya dulu.' }), 'Saldo tabungan jadi minus. Ubah atau hapus penarikannya dulu.')
-  ok('error: check violation in Indonesian', /tidak cocok/.test(F.transactionErrorMessage({ code: '23514', message: 'violates check' })))
+  eq('error: balance message passed through', F.transactionErrorMessage({ message: 'The savings balance would drop below zero. Edit or delete the withdrawal first.' }), 'The savings balance would drop below zero. Edit or delete the withdrawal first.')
+  ok('error: check violation is the English message', /doesn't match the transaction type/.test(F.transactionErrorMessage({ code: '23514', message: 'violates check' })))
 }
 
 // ---------------------------------------------------------------- DB: finance
@@ -147,12 +147,12 @@ async function financeDb(a, b, c, aid, bid, cid) {
 
   // Balance can never go negative through an edit or a delete
   const { error: delNegE } = await a.from('couple_transactions').delete().eq('id', depA.id)
-  ok('delete deposit that makes balance negative refused', /Saldo tabungan jadi minus/.test(delNegE?.message ?? ''), delNegE?.message)
+  ok('delete deposit that makes balance negative refused', /savings balance would drop below zero/.test(delNegE?.message ?? ''), delNegE?.message)
   // 110k + 5k − 120k = −5k (lowering to exactly 0 would be allowed)
   const { error: lowerE } = await a.from('couple_transactions').update({ amount: 5_000 }).eq('id', depB.id)
-  ok('lowering a deposit below the spending refused', /Saldo tabungan jadi minus/.test(lowerE?.message ?? ''), lowerE?.message)
+  ok('lowering a deposit below the spending refused', /savings balance would drop below zero/.test(lowerE?.message ?? ''), lowerE?.message)
   const { error: bigWdE } = await a.from('couple_transactions').update({ amount: -200_000 }).eq('id', wd.id)
-  ok('raising a withdrawal past the balance refused', /Saldo tabungan jadi minus/.test(bigWdE?.message ?? ''), bigWdE?.message)
+  ok('raising a withdrawal past the balance refused', /savings balance would drop below zero/.test(bigWdE?.message ?? ''), bigWdE?.message)
   eq('refused changes left the balance as is', await balanceOf(g1.id), 40_000)
   eq('refused delete kept the row', (await admin.from('couple_transactions').select('amount').eq('id', depA.id).single()).data?.amount, 110_000)
 
@@ -180,7 +180,7 @@ async function financeDb(a, b, c, aid, bid, cid) {
   // F07 goals stay isolated
   eq('goal 2 untouched by goal 1 changes', await balanceOf(g2.id), 70_000)
   const { error: crossE } = await tx(a, aid, g2.id, -100_000, 'withdrawal', 'lainnya', 'lebih dari saldo goal 2')
-  ok('withdrawal limited by its own goal (not the couple total)', /Saldo tabungan tidak cukup/.test(crossE?.message ?? ''), crossE?.message)
+  ok('withdrawal limited by its own goal (not the couple total)', /savings balance is too low/.test(crossE?.message ?? ''), crossE?.message)
   const { data: g2Txs } = await a.from('couple_transactions').select('id').eq('goal_id', g2.id)
   eq('filter by goal_id returns only that goal', (g2Txs ?? []).map((t) => t.id), [depG2.id])
 
@@ -210,7 +210,7 @@ async function financeDb(a, b, c, aid, bid, cid) {
   const { error: staleDepE } = await tx(b, bid, g3.id, 5_000, 'deposit', 'tabungan', 'telat')
   const { data: staleGoal, error: staleGoalE } = await b.from('savings_goals').select('id').eq('id', g3.id).maybeSingle()
   ok('deposit into a deleted goal refused, goal lookup empty', !!staleDepE && !staleGoalE && staleGoal === null, staleDepE?.message ?? 'no error')
-  ok('goal-gone message in Indonesian', /Target ini sudah dihapus/.test(F.GOAL_GONE_MESSAGE ?? ''))
+  ok('goal-gone message is the English message', /This savings goal was deleted/.test(F.GOAL_GONE_MESSAGE ?? ''))
 }
 
 // ---------------------------------------------------------------- DB: calendar edit

@@ -29,7 +29,7 @@ function CouplePage() {
   // Someone already waiting alone in their own couple may still join their
   // partner's — but only when they came here to join.
   const wantsJoin = !!prefilledCode || searchParams.get('join') === '1'
-  // Arrived here right after "Keluar dari pasangan" on the profile page.
+  // Arrived here right after "Leave this couple" on the profile page.
   const justLeft = searchParams.get('left') === '1'
 
   const [me, setMe] = useState<Me | null>(null)
@@ -84,7 +84,7 @@ function CouplePage() {
         })
       } catch (e: unknown) {
         if (cancelled) return
-        setLoadError(e instanceof Error && e.message ? e.message : 'Gagal memuat data')
+        setLoadError(e instanceof Error && e.message ? e.message : 'Couldn\'t load your data')
       }
     }
     check()
@@ -99,7 +99,7 @@ function CouplePage() {
       await createCouple(me.id)
       router.push('/onboarding/invite')
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Gagal membuat pasangan')
+      setError(e instanceof Error ? e.message : 'Couldn\'t create your couple space')
       setLoading(false)
     }
   }
@@ -108,13 +108,13 @@ function CouplePage() {
     e.preventDefault()
     if (!me || loading) return
     const code = cleanInviteCode(inviteCode)
-    if (!code) { setError('Masukkan kode undangan'); return }
+    if (!code) { setError('Enter an invite code'); return }
     setLoading(true)
     setError('')
     try {
       const coupleId = await joinCouple(code, me.id)
       if (coupleId === me.coupleId) {
-        setError('Ini kode undangan kamu sendiri. Masukkan kode dari pasanganmu.')
+        setError('That\'s your own invite code. Enter the code from your partner.')
         setLoading(false)
         return
       }
@@ -124,7 +124,7 @@ function CouplePage() {
         setDiscardError('')
         setDiscardCode(code)
       } else {
-        setError(e instanceof Error ? e.message : 'Gagal bergabung')
+        setError(e instanceof Error ? e.message : 'Couldn\'t join')
       }
       setLoading(false)
     }
@@ -138,7 +138,7 @@ function CouplePage() {
       await joinCouple(discardCode, me.id, { discard: true })
       afterJoin()
     } catch (e: unknown) {
-      setDiscardError(e instanceof Error ? e.message : 'Gagal bergabung')
+      setDiscardError(e instanceof Error ? e.message : 'Couldn\'t join')
       setLoading(false)
     }
   }
@@ -152,9 +152,9 @@ function CouplePage() {
   if (loadError) {
     return (
       <div className="animate-fade-in py-10 text-center">
-        <p className="mb-6 text-sm text-danger">Gagal memuat datamu: {loadError}</p>
+        <p className="mb-6 text-sm text-danger">Couldn&apos;t load your data: {loadError}</p>
         <Button onClick={() => setAttempt((n) => n + 1)} variant="secondary" size="lg">
-          Coba Lagi
+          Try again
         </Button>
       </div>
     )
@@ -172,15 +172,15 @@ function CouplePage() {
     return (
       <div className="animate-fade-in">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-ink">Hubungkan Pasangan</h1>
+          <h1 className="text-2xl font-bold text-ink">Connect with your partner</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            Buat akun bersama atau bergabung dengan undangan
+            Start a shared space, or join one with an invite
           </p>
         </div>
 
         {justLeft && (
           <div className="mb-4 rounded-2xl border border-border bg-cream px-4 py-3 text-xs leading-relaxed text-ink-muted">
-            Kamu sudah keluar dari pasangan sebelumnya. Buat pasangan baru atau gabung dengan kode undangan.
+            You&apos;ve left your previous couple. Start a new one, or join with an invite code.
           </div>
         )}
 
@@ -195,8 +195,8 @@ function CouplePage() {
               <Heart className="h-5 w-5 text-rose" strokeWidth={2} />
             </div>
             <div>
-              <p className="font-semibold text-ink">Buat Pasangan Baru</p>
-              <p className="text-sm text-ink-muted">Undang pasanganmu dengan kode</p>
+              <p className="font-semibold text-ink">Start a new couple</p>
+              <p className="text-sm text-ink-muted">Invite your partner with a code</p>
             </div>
           </button>
 
@@ -208,8 +208,8 @@ function CouplePage() {
               <Link2 className="h-5 w-5 text-sage-dark" strokeWidth={2} />
             </div>
             <div>
-              <p className="font-semibold text-ink">Gabung dengan Kode</p>
-              <p className="text-sm text-ink-muted">Sudah punya kode undangan</p>
+              <p className="font-semibold text-ink">Join with a code</p>
+              <p className="text-sm text-ink-muted">I already have an invite code</p>
             </div>
           </button>
         </div>
@@ -224,17 +224,17 @@ function CouplePage() {
           onClick={() => { setError(''); setMode('choose') }}
           className="mb-6 text-sm font-medium text-ink-muted hover:text-ink"
         >
-          ← Kembali
+          ← Back
         </button>
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-ink">Buat Pasangan Baru</h1>
+          <h1 className="text-2xl font-bold text-ink">Start a new couple</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            Kamu akan mendapat kode undangan untuk dibagikan ke pasangan
+            You&apos;ll get an invite code to send to your partner
           </p>
         </div>
         {error && <p className="mb-4 text-sm text-danger">{error}</p>}
         <Button onClick={handleCreate} loading={loading} size="lg">
-          Buat Sekarang
+          Create
         </Button>
       </div>
     )
@@ -247,20 +247,20 @@ function CouplePage() {
         onClick={() => { setError(''); setMode('choose') }}
         className="mb-6 text-sm font-medium text-ink-muted hover:text-ink"
       >
-        ← Kembali
+        ← Back
       </button>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-ink">Masukkan Kode</h1>
+        <h1 className="text-2xl font-bold text-ink">Enter the code</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Masukkan kode undangan dari pasanganmu
+          Type the invite code your partner sent you
         </p>
       </div>
 
       <form onSubmit={handleJoin} className="space-y-4">
         <Input
-          label="Kode Undangan"
+          label="Invite code"
           type="text"
-          placeholder="Contoh: ABCD1234"
+          placeholder="e.g. ABCD1234"
           value={inviteCode}
           onChange={e => setInviteCode(e.target.value.toUpperCase())}
           required
@@ -270,7 +270,7 @@ function CouplePage() {
         {isExpiredInviteError(error) && <ExpiredInviteNotice />}
         <div className="pt-2">
           <Button type="submit" loading={loading} size="lg">
-            Gabung
+            Join
           </Button>
         </div>
       </form>

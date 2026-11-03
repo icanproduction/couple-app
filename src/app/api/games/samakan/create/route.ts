@@ -28,17 +28,17 @@ export async function POST(req: Request) {
   try {
     const supabase = await createServerSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Kamu perlu masuk dulu' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Log in first' }, { status: 401 })
 
     const body = await req.json().catch(() => null)
     const chapterId = typeof body?.chapterId === 'string' ? body.chapterId : ''
     const chapter = getChapter(chapterId)
-    if (!chapter) return NextResponse.json({ error: 'Chapter tidak ditemukan' }, { status: 400 })
+    if (!chapter) return NextResponse.json({ error: 'Chapter not found' }, { status: 400 })
 
     const { data: membership } = await supabase
       .from('couple_members').select('couple_id').eq('profile_id', user.id).maybeSingle()
     if (!membership?.couple_id) {
-      return NextResponse.json({ error: 'Kamu belum terhubung dengan pasangan' }, { status: 400 })
+      return NextResponse.json({ error: 'You\'re not connected with a partner yet' }, { status: 400 })
     }
     const coupleId = membership.couple_id
 
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       .eq('couple_id', coupleId).neq('profile_id', user.id)
     const partnerId = partners?.[0]?.profile_id
     if (!partnerId) {
-      return NextResponse.json({ error: 'Pasanganmu belum bergabung. Undang dulu ya.' }, { status: 400 })
+      return NextResponse.json({ error: 'Your partner hasn\'t joined yet. Invite them first.' }, { status: 400 })
     }
 
     // Expire abandoned sessions so they cannot block the couple forever.
@@ -101,7 +101,7 @@ export async function POST(req: Request) {
         if (winner) return NextResponse.json({ sessionId: winner.id, existing: true, chapterId: winner.chapter_id })
       }
       console.error('[samakan/create] insert failed:', error?.message)
-      return NextResponse.json({ error: 'Gagal membuat permainan. Coba lagi ya.' }, { status: 500 })
+      return NextResponse.json({ error: 'Couldn\'t start the game. Try again.' }, { status: 500 })
     }
 
     // Push notify partner (optional; never blocks the game)
@@ -109,7 +109,7 @@ export async function POST(req: Request) {
       const { data: profile } = await supabase.from('profiles').select('name').eq('id', user.id).maybeSingle()
       await sendPushToProfile(partnerId, {
         title: 'Nanti Kita',
-        body: `${profile?.name ?? 'Pasanganmu'} ngajak main Sinkronisasi!`,
+        body: `${profile?.name ?? 'Your partner'} wants to play Samakan with you`,
         url: `/app/games/samakan/${session.id}`,
       }, 'activity')
     } catch (err) {
@@ -119,6 +119,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ sessionId: session.id, chapterId })
   } catch (err) {
     console.error('[samakan/create] unhandled:', err)
-    return NextResponse.json({ error: 'Gagal membuat permainan. Coba lagi ya.' }, { status: 500 })
+    return NextResponse.json({ error: 'Couldn\'t start the game. Try again.' }, { status: 500 })
   }
 }

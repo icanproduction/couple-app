@@ -14,28 +14,28 @@ import {
 const PILLARS = [
   {
     icon: Heart,
-    title: 'Hubungan',
-    desc: 'Assessment kesiapan, pertanyaan harian, dan tips untuk pasangan',
+    title: 'Your relationship',
+    desc: 'A question to answer every day, Deep Talk question packs, games for two, and a readiness check',
     color: 'bg-rose/10 text-rose',
   },
   {
     icon: Wallet,
-    title: 'Keuangan',
-    desc: 'Target tabungan bersama, catatan bulanan, dan wishlist',
+    title: 'Money',
+    desc: 'Savings goals you share, a monthly log of money in and out, and a wishlist',
     color: 'bg-gold/20 text-yellow-700',
   },
   {
     icon: CalendarDays,
-    title: 'Kalender',
-    desc: 'Tanggal penting, pengingat anniversary & ulang tahun',
+    title: 'Calendar',
+    desc: 'Your important dates, with reminders before anniversaries and birthdays',
     color: 'bg-sage/20 text-sage-dark',
   },
 ]
 
 const TRUST_POINTS = [
-  { icon: Shield, text: 'Privat & aman' },
-  { icon: Smartphone, text: 'Bisa dipasang di homescreen' },
-  { icon: Sparkles, text: 'Gratis untuk memulai' },
+  { icon: Shield, text: 'Private and secure' },
+  { icon: Smartphone, text: 'Add it to your home screen' },
+  { icon: Sparkles, text: 'Free to start' },
 ]
 
 export default function LandingPage() {
@@ -54,16 +54,17 @@ export default function LandingPage() {
             className="mx-auto mb-4 h-24 w-24"
           />
           <h1 className="mb-2 text-4xl font-extrabold tracking-tight text-ink">
+            {/* copy-ok: lowercase wordmark of the app name Nanti Kita */}
             nanti kita
           </h1>
           <p className="text-lg font-semibold text-rose">
-            Bucin tapi realistis.
+            Head over heels, feet on the ground.
           </p>
         </div>
 
         <p className="animate-fade-in mx-auto mb-8 max-w-xs text-sm leading-relaxed text-ink-muted">
-          Persiapkan masa depan bersama pasanganmu. Dari hubungan yang sehat,
-          tabungan yang terencana, sampai hari spesial yang tak terlupa.
+          Plan your future with your partner. Answer a question a day, save
+          toward the same goals, and keep your important dates in one calendar.
         </p>
 
         {/* CTAs */}
@@ -72,14 +73,14 @@ export default function LandingPage() {
             href="/auth/signup"
             className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-rose px-6 py-4 text-base font-bold text-white shadow-elevated transition-all hover:shadow-glow active:scale-[0.98]"
           >
-            Mulai Gratis
+            Start free
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
           <Link
             href="/auth/login"
             className="flex w-full items-center justify-center rounded-2xl border border-border bg-white px-6 py-3.5 text-sm font-semibold text-ink transition-colors hover:border-rose hover:text-rose"
           >
-            Sudah punya akun? Masuk
+            Have an account? Log in
           </Link>
         </div>
       </div>
@@ -87,7 +88,7 @@ export default function LandingPage() {
       {/* ===== 3 Pillars ===== */}
       <div className="bg-white px-6 py-10">
         <h2 className="mb-6 text-center text-xs font-bold uppercase tracking-widest text-ink-muted">
-          Satu Aplikasi, Tiga Kekuatan
+          What&apos;s inside
         </h2>
         <div className="space-y-3">
           {PILLARS.map(p => (
@@ -124,7 +125,7 @@ export default function LandingPage() {
       {/* Footer */}
       <div className="px-6 py-4 text-center">
         <p className="text-[11px] text-ink-muted/50">
-          Nanti Kita &copy; 2026. Dibuat dengan cinta di Indonesia.
+          Nanti Kita &copy; 2026. Made with love in Indonesia.
         </p>
       </div>
     </div>

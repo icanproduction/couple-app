@@ -33,7 +33,7 @@ export default function OnboardingInvitePage() {
         if (!couple) { router.replace('/onboarding/couple'); return }
         if (couple.memberCount >= 2) { router.replace('/onboarding/install'); return }
         // Partner left: the couple is a closed archive with no invite code.
-        // Profile explains it and offers "Mulai lembaran baru".
+        // Profile explains it and offers a fresh start.
         if (couple.closedAt) { router.replace('/app/profile'); return }
         setInviteCode(couple.inviteCode)
         setExpiresAt(couple.inviteExpiresAt)
@@ -41,7 +41,7 @@ export default function OnboardingInvitePage() {
         setInviteLink(`${window.location.origin}/invite/${couple.inviteCode}`)
       } catch (e: unknown) {
         if (cancelled) return
-        setError(e instanceof Error ? e.message : 'Gagal memuat kode undangan')
+        setError(e instanceof Error ? e.message : 'Couldn\'t load your invite code')
       }
       setLoading(false)
     }
@@ -55,13 +55,13 @@ export default function OnboardingInvitePage() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      setError('Gagal menyalin. Salin link di atas secara manual, ya.')
+      setError('Couldn\'t copy it. Copy the link above by hand.')
     }
   }
 
   function shareWhatsApp() {
     const text = encodeURIComponent(
-      `Hei! Aku undang kamu bergabung di Nanti Kita bersama aku 💕\n\nKlik link ini untuk langsung bergabung:\n${inviteLink}\n\nAtau masukkan kode: *${inviteCode}*`
+      `Hey, join me on Nanti Kita.\n\nTap this link to join right away:\n${inviteLink}\n\nOr enter the code: *${inviteCode}*`
     )
     window.open(`https://wa.me/?text=${text}`, '_blank')
   }
@@ -77,9 +77,9 @@ export default function OnboardingInvitePage() {
   if (!inviteCode) {
     return (
       <div className="animate-fade-in py-10 text-center">
-        <p className="mb-6 text-sm text-danger">{error || 'Kode undangan belum tersedia.'}</p>
+        <p className="mb-6 text-sm text-danger">{error || 'Your invite code isn\'t ready yet.'}</p>
         <Button onClick={() => window.location.reload()} variant="secondary" size="lg">
-          Coba Lagi
+          Try again
         </Button>
       </div>
     )
@@ -88,16 +88,16 @@ export default function OnboardingInvitePage() {
   return (
     <div className="animate-fade-in">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-ink">Undang Pasangan</h1>
+        <h1 className="text-2xl font-bold text-ink">Invite your partner</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Bagikan kode ini ke pasanganmu agar bisa bergabung
+          Send this code to your partner so they can join
         </p>
       </div>
 
       {/* Invite code display */}
       <div className="mb-6 rounded-2xl border border-rose/20 bg-rose-50 p-6 text-center">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">
-          Kode Undangan
+          Invite code
         </p>
         <p className="font-mono text-4xl font-bold tracking-[0.3em] text-rose">
           {inviteCode}
@@ -127,12 +127,12 @@ export default function OnboardingInvitePage() {
           {copied ? (
             <>
               <Check className="h-4 w-4 text-sage-dark" />
-              Link tersalin!
+              Link copied
             </>
           ) : (
             <>
               <Copy className="h-4 w-4" />
-              Salin Link Undangan
+              Copy invite link
             </>
           )}
         </button>
@@ -142,20 +142,20 @@ export default function OnboardingInvitePage() {
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
         >
           <MessageCircle className="h-4 w-4" />
-          Kirim via WhatsApp
+          Send on WhatsApp
         </button>
       </div>
 
       <p className="mt-5 text-center text-xs text-ink-muted">
-        Pasanganmu yang buat kode duluan?{' '}
+        Did your partner make a code first?{' '}
         <Link href="/onboarding/couple?join=1" className="font-semibold text-rose hover:text-rose-dark">
-          Masukkan kodenya
+          Enter their code
         </Link>
       </p>
 
       <div className="mt-8">
         <Button onClick={() => router.push('/onboarding/install')} variant="secondary" size="lg">
-          Lanjut Tanpa Menunggu
+          Continue without waiting
         </Button>
       </div>
     </div>

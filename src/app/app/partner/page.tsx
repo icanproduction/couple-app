@@ -32,6 +32,14 @@ interface WishlistItem {
   owner_type: string | null; owner_id: string | null; link: string | null; image_url: string | null
 }
 
+/** English labels for the relationship level values (the values stay as they are) */
+const LEVEL_LABELS: Record<string, string> = {
+  Benih: 'Seed',
+  Tumbuh: 'Growing',
+  Mekar: 'Blooming',
+  Abadi: 'Forever',
+}
+
 function getZodiac(birthday: string): { sign: string; emoji: string } {
   const [, m, d] = birthday.split('-').map(Number)
   const zodiacs = [
@@ -130,7 +138,7 @@ export default function PartnerPage() {
             size="lg"
             editable={false}
           />
-          <h1 className="mt-3 text-xl font-bold">{partner?.name ?? 'Pasanganmu'}</h1>
+          <h1 className="mt-3 text-xl font-bold">{partner?.name ?? 'Your partner'}</h1>
           {zodiac && (
             <span className="mt-1 rounded-full bg-white/15 px-3 py-0.5 text-xs font-medium backdrop-blur-sm">
               {zodiac.emoji} {zodiac.sign}
@@ -145,7 +153,7 @@ export default function PartnerPage() {
             )}
             <div className="flex items-center gap-1.5 text-xs text-white/70">
               <Clock className="h-3.5 w-3.5" />
-              {daysTogether} hari bersama
+              {daysTogether} {daysTogether === 1 ? 'day' : 'days'} together
             </div>
           </div>
         </div>
@@ -158,24 +166,24 @@ export default function PartnerPage() {
             <Heart className="h-5 w-5 text-rose" fill="currentColor" />
           </div>
           <div className="flex-1">
-            <p className="text-xs text-ink-muted">Level Hubungan</p>
-            <p className="text-sm font-bold text-ink">{level}</p>
+            <p className="text-xs text-ink-muted">Relationship level</p>
+            <p className="text-sm font-bold text-ink">{LEVEL_LABELS[level] ?? level}</p>
           </div>
-          <span className="rounded-full bg-rose/10 px-3 py-1 text-xs font-bold text-rose">{daysTogether}h</span>
+          <span className="rounded-full bg-rose/10 px-3 py-1 text-xs font-bold text-rose">{daysTogether}d</span>
         </div>
 
         {/* ===== PARTNER MBTI ===== */}
         <div>
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">
-            Kepribadian {partner?.name ?? 'Pasangan'}
+            {partner?.name ? `${partner.name}'s personality` : "Your partner's personality"}
           </h2>
           {partnerMbti ? (
             <MbtiCard mbtiType={partnerMbti.mbti_type} scores={partnerMbti.scores as MbtiScores} />
           ) : (
             <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/30 p-6 text-center">
               <Brain className="mx-auto mb-3 h-10 w-10 text-purple-300" strokeWidth={1.5} />
-              <p className="text-sm font-semibold text-ink">{partner?.name ?? 'Pasangan'} belum tes MBTI</p>
-              <p className="mt-1 text-xs text-ink-muted">Ajak mereka ambil tes di menu About Me!</p>
+              <p className="text-sm font-semibold text-ink">{partner?.name ?? 'Your partner'} hasn&apos;t taken the MBTI test yet</p>
+              <p className="mt-1 text-xs text-ink-muted">They can take it from About Me.</p>
             </div>
           )}
         </div>

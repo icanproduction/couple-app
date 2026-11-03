@@ -6,7 +6,7 @@ import {
   MessageCircle, Compass, Wallet, Users, Heart,
   ArrowRight, RotateCcw, TrendingUp, Sprout, Share2,
 } from 'lucide-react'
-import { questions, DIMENSION_LABELS, type Dimension } from '@/data/questions'
+import { questions, DIMENSION_LABELS, DIMENSION_SCORE_KEYS, type Dimension } from '@/data/questions'
 import { createClient } from '@/lib/supabase'
 import { getMyCouplePremium } from '@/lib/premium'
 import { PremiumGate } from '@/components/app/PremiumGate'
@@ -27,7 +27,7 @@ interface DimensionScore {
 }
 
 function calculateScores(answers: Record<number, number | string>): DimensionScore[] {
-  const dimensions: Dimension[] = ['komunikasi', 'nilai_visi', 'keuangan', 'keluarga', 'komitmen']
+  const dimensions = Object.keys(DIMENSION_SCORE_KEYS) as Dimension[]
 
   return dimensions.map((dim) => {
     const dimQuestions = questions.filter((q) => q.dimension === dim)
@@ -56,10 +56,10 @@ function getOverallScore(scores: DimensionScore[]): number {
 }
 
 function getScoreLabel(percentage: number): string {
-  if (percentage >= 80) return 'Sangat Siap!'
-  if (percentage >= 60) return 'Cukup Siap'
-  if (percentage >= 40) return 'Perlu Diskusi'
-  return 'Masih Perlu Waktu'
+  if (percentage >= 80) return 'Very ready'
+  if (percentage >= 60) return 'Fairly ready'
+  if (percentage >= 40) return 'Worth talking through'
+  return 'Needs more time'
 }
 
 function getScoreStyle(percentage: number) {
@@ -97,10 +97,10 @@ async function saveAnswers(answers: Answers): Promise<SaveResult> {
       .eq('profile_id', user.id)
       .maybeSingle()
 
-    // Build scores object: { "Komunikasi": 4.2, "Nilai & Visi": 3.8, ... }
+    // Stored keys stay the pre-English labels so old and new rows match.
     const scoresObj: Record<string, number> = {}
     calculateScores(answers).forEach(s => {
-      scoresObj[DIMENSION_LABELS[s.dimension]] = Number((s.score / s.maxScore * 5).toFixed(1))
+      scoresObj[DIMENSION_SCORE_KEYS[s.dimension]] =Number((s.score / s.maxScore * 5).toFixed(1))
     })
 
     const { error } = await supabase.from('assessment_results').insert({
@@ -111,7 +111,7 @@ async function saveAnswers(answers: Answers): Promise<SaveResult> {
     })
     return error ? { ok: false, message: error.message } : { ok: true }
   } catch (e: unknown) {
-    return { ok: false, message: e instanceof Error ? e.message : 'Koneksi bermasalah' }
+    return { ok: false, message: e instanceof Error ? e.message : 'Connection problem' }
   }
 }
 
@@ -204,10 +204,10 @@ export default function ResultsPage() {
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50">
           <Heart className="h-6 w-6 text-rose" strokeWidth={1.5} />
         </div>
-        <p className="mb-6 text-sm text-ink-muted">Belum ada hasil assessment.</p>
+        <p className="mb-6 text-sm text-ink-muted">No assessment results yet.</p>
         <Link href="/assessment"
           className="inline-flex items-center gap-2 rounded-2xl bg-rose px-6 py-3 text-sm font-semibold text-white shadow-elevated">
-          Mulai Assessment <ArrowRight className="h-4 w-4" />
+          Start the assessment <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
     )
@@ -222,20 +222,20 @@ export default function ResultsPage() {
       {/* Save status */}
       {saveState === 'saved' && (
         <div className="mb-4 rounded-xl bg-sage/10 px-4 py-2 text-center text-xs font-medium text-sage-dark">
-          Hasil tersimpan di profilmu
+          Saved to your profile
         </div>
       )}
       {saveState === 'history' && (
         <div className="mb-4 rounded-xl bg-cream px-4 py-2 text-center text-xs font-medium text-ink-muted">
-          Hasil assessment terakhirmu
+          Your latest assessment results
         </div>
       )}
       {saveState === 'error' && (
         <div className="mb-4 rounded-xl border border-danger/20 bg-danger/10 px-4 py-3 text-xs text-danger">
-          <p>Hasil belum tersimpan: {saveError}</p>
+          <p>Your results weren&apos;t saved: {saveError}</p>
           {pending && (
             <button onClick={() => save(pending)} className="mt-1.5 font-semibold underline">
-              Coba simpan lagi
+              Try saving again
             </button>
           )}
         </div>
@@ -243,7 +243,7 @@ export default function ResultsPage() {
 
       {/* Overall score */}
       <div className="animate-scale-in mb-8 rounded-2xl border border-border bg-surface p-8 text-center shadow-card">
-        <p className="mb-1 text-xs font-medium uppercase tracking-wider text-ink-muted">Skor Kesiapan</p>
+        <p className="mb-1 text-xs font-medium uppercase tracking-wider text-ink-muted">Readiness score</p>
         <p className={`text-5xl font-bold ${style.text}`}>{overall}%</p>
         <p className={`mt-2 text-sm font-semibold ${style.text}`}>{getScoreLabel(overall)}</p>
       </div>
@@ -252,9 +252,9 @@ export default function ResultsPage() {
       {!isPremium && (
         <div className="mb-8">
           <PremiumGate
-            title="Lihat Hasil Lengkap"
-            subtitle="Buka breakdown per dimensi, area bertumbuh, dan kartu hasil."
-            perks={['Breakdown skor per dimensi', 'Area untuk bertumbuh', 'Kartu hasil siap dibagikan', 'Semua level Deep Talk']}
+            title="See your full results"
+            subtitle="Your score in each area, where you can grow, and a results card you can share."
+            perks={['Your score in each area', 'Where you two can grow', 'A results card to share', 'Every Deep Talk level']}
             onUnlocked={() => setIsPremium(true)}
           />
         </div>
@@ -270,12 +270,12 @@ export default function ResultsPage() {
             rel="noopener noreferrer"
             className="mb-8 flex w-full items-center justify-center gap-2 rounded-2xl border border-rose/20 bg-rose/5 px-6 py-3.5 text-sm font-semibold text-rose shadow-card transition-all active:scale-[0.98]"
           >
-            <Share2 className="h-4 w-4" /> Bagikan Kartu Hasil
+            <Share2 className="h-4 w-4" /> Share results card
           </a>
 
       {/* Per-dimension breakdown */}
       <div className="animate-slide-up mb-8">
-        <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-ink-muted">Breakdown per Dimensi</h3>
+        <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-ink-muted">Score by area</h3>
         <div className="space-y-3">
           {scores.map((s) => {
             const Icon = DIMENSION_ICON_MAP[s.dimension]
@@ -305,7 +305,7 @@ export default function ResultsPage() {
         <div className="mb-6">
           <div className="mb-3 flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-sage" strokeWidth={1.5} />
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Kekuatan Kalian</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Your strengths</h3>
           </div>
           <div className="space-y-2">
             {strengths.map((s) => {
@@ -314,7 +314,7 @@ export default function ResultsPage() {
                 <div key={s.dimension} className="flex items-center gap-3 rounded-2xl border border-sage/20 bg-sage/5 px-4 py-3">
                   <Icon className="h-4 w-4 shrink-0 text-sage" strokeWidth={1.5} />
                   <p className="text-sm text-sage-dark">
-                    <span className="font-semibold">{DIMENSION_LABELS[s.dimension]}</span> — kalian sudah di jalur yang tepat!
+                    <span className="font-semibold">{DIMENSION_LABELS[s.dimension]}</span>: you two are on the right track.
                   </p>
                 </div>
               )
@@ -328,7 +328,7 @@ export default function ResultsPage() {
         <div className="mb-8">
           <div className="mb-3 flex items-center gap-2">
             <Sprout className="h-4 w-4 text-gold-dark" strokeWidth={1.5} />
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Area untuk Bertumbuh</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Room to grow</h3>
           </div>
           <div className="space-y-2">
             {growthAreas.map((s) => {
@@ -337,7 +337,7 @@ export default function ResultsPage() {
                 <div key={s.dimension} className="flex items-center gap-3 rounded-2xl border border-gold/20 bg-gold/5 px-4 py-3">
                   <Icon className="h-4 w-4 shrink-0 text-gold-dark" strokeWidth={1.5} />
                   <p className="text-sm text-gold-dark">
-                    <span className="font-semibold">{DIMENSION_LABELS[s.dimension]}</span> — coba diskusikan lebih dalam bersama pasangan.
+                    <span className="font-semibold">{DIMENSION_LABELS[s.dimension]}</span>: worth a longer talk with your partner.
                   </p>
                 </div>
               )
@@ -352,11 +352,11 @@ export default function ResultsPage() {
       <div className="space-y-3 pb-8">
         <Link href="/app/home"
           className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-rose px-6 py-3.5 text-sm font-semibold text-white shadow-elevated transition-all hover:bg-rose-dark active:scale-[0.98]">
-          Kembali ke Beranda <ArrowRight className="h-4 w-4" />
+          Back to Home <ArrowRight className="h-4 w-4" />
         </Link>
         <Link href="/assessment"
           className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface px-6 py-3.5 text-sm font-semibold text-ink-light shadow-card transition-all active:scale-[0.98]">
-          <RotateCcw className="h-4 w-4" /> Ulangi Assessment
+          <RotateCcw className="h-4 w-4" /> Retake assessment
         </Link>
       </div>
     </div>

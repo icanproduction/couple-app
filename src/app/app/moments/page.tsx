@@ -61,8 +61,8 @@ export default function MomentsPage() {
     } catch {
       if (!alive.current) return
       // Only the first load may replace the page; a failed refresh keeps what's shown.
-      if (loaded.current) setRefreshError('Gagal memperbarui moment. Yang tampil mungkin belum yang terbaru.')
-      else setError('Gagal memuat moment. Coba buka ulang halaman ini.')
+      if (loaded.current) setRefreshError("Couldn't refresh your moments. What you see may be out of date.")
+      else setError("Couldn't load your moments. Try opening this page again.")
     }
   }, [])
 
@@ -76,7 +76,7 @@ export default function MomentsPage() {
         setCoupleId(info.coupleId)
         await load(info.coupleId)
       } catch {
-        if (alive.current) setError('Gagal memuat moment. Coba buka ulang halaman ini.')
+        if (alive.current) setError("Couldn't load your moments. Try opening this page again.")
       } finally {
         if (alive.current) setLoading(false)
       }
@@ -97,7 +97,7 @@ export default function MomentsPage() {
       await setMomentFavorite(m.id, next)
     } catch {
       setMoments((prev) => prev.map((x) => (x.id === m.id ? { ...x, is_favorite: !next } : x)))
-      setActionError('Gagal mengubah favorit. Coba lagi.')
+      setActionError("Couldn't update your favorites. Try again.")
     }
   }
 
@@ -107,7 +107,7 @@ export default function MomentsPage() {
   )
   const favoriteCount = moments.filter((m) => m.is_favorite).length
 
-  // A year chip can vanish after an edit; fall back to "Semua".
+  // A year chip can vanish after an edit; fall back to "All".
   useEffect(() => {
     if (typeof filter === 'number' && !years.includes(filter)) setFilter('all')
   }, [filter, years])
@@ -138,9 +138,11 @@ export default function MomentsPage() {
       <div className="border-b border-border bg-white px-6 pb-5 pt-6">
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-xl font-bold text-ink">Moment Kita</h1>
+            <h1 className="text-xl font-bold text-ink">Moments</h1>
             <p className="text-sm text-ink-muted">
-              {moments.length > 0 ? `${moments.length} moment · ${photoCount} foto` : 'Setiap date, tersimpan di sini'}
+              {moments.length > 0
+                ? `${moments.length} ${moments.length === 1 ? 'moment' : 'moments'} · ${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}`
+                : 'Every date, saved in one place'}
             </p>
           </div>
           {hasCouple && (
@@ -148,7 +150,7 @@ export default function MomentsPage() {
               href="/app/moments/baru"
               className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-2xl bg-rose px-4 py-2.5 text-xs font-bold text-white shadow-elevated active:scale-[0.98]"
             >
-              <Plus className="h-4 w-4" /> Moment Baru
+              <Plus className="h-4 w-4" /> New moment
             </Link>
           )}
         </div>
@@ -169,23 +171,23 @@ export default function MomentsPage() {
         <p className="mx-6 mt-5 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
       ) : !hasCouple ? (
         <div className="px-8 pt-16 text-center">
-          <p className="text-sm text-ink-muted">Hubungkan akunmu dengan pasangan dulu untuk mulai menyimpan moment.</p>
-          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Ke Profil</Link>
+          <p className="text-sm text-ink-muted">Connect with your partner first to start saving moments.</p>
+          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Go to Profile</Link>
         </div>
       ) : moments.length === 0 ? (
         <div className="flex flex-col items-center px-8 pt-16 text-center">
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose/10">
             <Camera className="h-8 w-8 text-rose" />
           </div>
-          <h2 className="text-lg font-bold text-ink">Belum ada moment</h2>
+          <h2 className="text-lg font-bold text-ink">No moments yet</h2>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-muted">
-            Simpan foto, tempat, dan cerita dari setiap date. Nanti semuanya bisa jadi scrapbook kalian.
+            Save the photos, places and stories from every date. Later you can turn them into your scrapbook.
           </p>
           <Link
             href="/app/moments/baru"
             className="mt-6 w-full max-w-xs rounded-2xl bg-rose py-3.5 text-sm font-bold text-white shadow-elevated"
           >
-            Simpan Moment Pertama
+            Save your first moment
           </Link>
         </div>
       ) : (
@@ -201,7 +203,7 @@ export default function MomentsPage() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-bold text-ink">Scrapbook</span>
-                <span className="block text-[11px] leading-tight text-ink-muted">Cetak jadi album</span>
+                <span className="block text-[11px] leading-tight text-ink-muted">Print it as an album</span>
               </span>
             </Link>
             <Link
@@ -212,8 +214,8 @@ export default function MomentsPage() {
                 <MapIcon className="h-[18px] w-[18px] text-sage-dark" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold text-ink">Peta</span>
-                <span className="block text-[11px] leading-tight text-ink-muted">Jejak date kalian</span>
+                <span className="block truncate text-sm font-bold text-ink">Map</span>
+                <span className="block text-[11px] leading-tight text-ink-muted">Your date spots</span>
               </span>
             </Link>
           </div>
@@ -226,15 +228,15 @@ export default function MomentsPage() {
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Cari judul, tempat, atau cerita"
-                aria-label="Cari moment"
+                placeholder="Search titles, places or stories"
+                aria-label="Search moments"
                 className="w-full rounded-2xl border border-border bg-white py-3 pl-10 pr-10 text-sm text-ink outline-none placeholder:text-ink-muted/60 focus:border-rose focus:ring-2 focus:ring-rose/10 [&::-webkit-search-cancel-button]:hidden"
               />
               {query && (
                 <button
                   type="button"
                   onClick={() => setQuery('')}
-                  aria-label="Hapus pencarian"
+                  aria-label="Clear search"
                   className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-rose-50 text-ink-muted"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -242,9 +244,9 @@ export default function MomentsPage() {
               )}
             </div>
           </div>
-          <div className="mt-3 flex gap-2 overflow-x-auto px-6 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filter moment">
+          <div className="mt-3 flex gap-2 overflow-x-auto px-6 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filter moments">
             <button type="button" onClick={() => setFilter('all')} aria-pressed={filter === 'all'} className={chipClass(filter === 'all')}>
-              Semua
+              All
             </button>
             <button
               type="button"
@@ -253,7 +255,7 @@ export default function MomentsPage() {
               className={cn(chipClass(filter === 'favorite'), 'flex items-center gap-1')}
             >
               <Star className={cn('h-3.5 w-3.5', filter === 'favorite' ? 'fill-white' : 'fill-gold text-gold')} />
-              Favorit{favoriteCount > 0 ? ` · ${favoriteCount}` : ''}
+              Favorites{favoriteCount > 0 ? ` · ${favoriteCount}` : ''}
             </button>
             {years.map((y) => (
               <button key={y} type="button" onClick={() => setFilter(y)} aria-pressed={filter === y} className={chipClass(filter === y)}>
@@ -269,21 +271,21 @@ export default function MomentsPage() {
               {filter === 'favorite' && !query.trim() ? (
                 <>
                   <Star className="h-8 w-8 text-gold" />
-                  <p className="mt-3 text-sm font-semibold text-ink">Belum ada moment favorit</p>
+                  <p className="mt-3 text-sm font-semibold text-ink">No favorite moments yet</p>
                   <p className="mt-1 max-w-xs text-xs leading-relaxed text-ink-muted">
-                    Ketuk bintang di moment yang paling berkesan buat kalian.
+                    Tap the star on the moments you two love most.
                   </p>
                 </>
               ) : (
                 <>
                   <SearchX className="h-8 w-8 text-ink-muted" />
-                  <p className="mt-3 text-sm font-semibold text-ink">Tidak ada moment yang cocok</p>
+                  <p className="mt-3 text-sm font-semibold text-ink">No moments match</p>
                   <button
                     type="button"
                     onClick={() => { setQuery(''); setFilter('all') }}
                     className="mt-3 text-xs font-semibold text-rose"
                   >
-                    Tampilkan semua moment
+                    Show all moments
                   </button>
                 </>
               )}
@@ -291,7 +293,7 @@ export default function MomentsPage() {
           ) : (
             <div className="space-y-7 px-6 pt-5">
               {filtering && (
-                <p className="-mb-3 text-xs text-ink-muted">{visible.length} moment ditemukan</p>
+                <p className="-mb-3 text-xs text-ink-muted">{visible.length === 1 ? '1 moment found' : `${visible.length} moments found`}</p>
               )}
               {groups.map((group) => (
                 <section key={group.label}>
@@ -329,7 +331,7 @@ export default function MomentsPage() {
                           <button
                             type="button"
                             onClick={() => toggleFavorite(m)}
-                            aria-label={m.is_favorite ? `Hapus "${m.title}" dari favorit` : `Tandai "${m.title}" sebagai favorit`}
+                            aria-label={m.is_favorite ? `Remove "${m.title}" from favorites` : `Add "${m.title}" to favorites`}
                             aria-pressed={m.is_favorite}
                             className="absolute left-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-transform active:scale-90"
                           >

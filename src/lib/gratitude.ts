@@ -30,8 +30,8 @@ export interface SendNoteInput {
 
 export async function sendNote(client: Client, input: SendNoteInput): Promise<GratitudeNote> {
   const body = input.body.trim()
-  if (!body) throw new Error('Tulis apresiasinya dulu ya')
-  if (body.length > GRATITUDE_MAX) throw new Error(`Maksimal ${GRATITUDE_MAX} karakter`)
+  if (!body) throw new Error('Write your note first')
+  if (body.length > GRATITUDE_MAX) throw new Error(`Notes can be up to ${GRATITUDE_MAX} characters`)
   const { data, error } = await client
     .from('gratitude_notes')
     .insert({ couple_id: input.coupleId, from_id: input.fromId, to_id: input.toId, body })

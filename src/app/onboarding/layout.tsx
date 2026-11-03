@@ -3,11 +3,11 @@
 import { usePathname } from 'next/navigation'
 
 const STEPS = [
-  { path: '/onboarding/welcome', label: 'Mulai' },
-  { path: '/onboarding/profile', label: 'Profil' },
-  { path: '/onboarding/couple', label: 'Pasangan' },
-  { path: '/onboarding/invite', label: 'Undang' },
-  { path: '/onboarding/install', label: 'Pasang' },
+  { path: '/onboarding/welcome', label: 'Start' },
+  { path: '/onboarding/profile', label: 'Profile' },
+  { path: '/onboarding/couple', label: 'Partner' },
+  { path: '/onboarding/invite', label: 'Invite' },
+  { path: '/onboarding/install', label: 'Install' },
 ]
 
 function StepIndicator() {

@@ -18,13 +18,13 @@ export function createServiceRoleClient() {
 
 /**
  * The signed-in user for a server page. When the auth server is unreachable
- * (timeout, 5xx) it throws so the error boundary offers "Coba lagi", instead
+ * (timeout, 5xx) it throws so the error boundary offers "Try again", instead
  * of returning null and logging the user out.
  */
 export async function getServerUser(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>) {
   const { data: { user }, error } = await supabase.auth.getUser()
   if (!user && error && isAuthRetryableFetchError(error)) {
-    throw new Error('Layanan sedang lambat. Coba lagi sebentar ya.')
+    throw new Error('The service is slow right now. Try again in a moment.')
   }
   return user
 }

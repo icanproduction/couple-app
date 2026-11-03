@@ -65,7 +65,7 @@ export default function AktivitasPage() {
         // Counts as seen for the bell at once; the list doesn't wait for the write.
         void markSeen(i.userId, page.items[0]?.created_at ?? null).catch(() => {})
       } catch {
-        if (!cancelled) setError('Gagal memuat aktivitas. Coba buka ulang halaman ini.')
+        if (!cancelled) setError("Couldn't load your activity. Try reopening this page.")
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -112,7 +112,7 @@ export default function AktivitasPage() {
       })
       setHasMore(page.hasMore)
     } catch {
-      setMoreError('Gagal memuat lagi, coba sekali lagi')
+      setMoreError("Couldn't load more. Try again.")
     } finally {
       setLoadingMore(false)
     }
@@ -125,10 +125,10 @@ export default function AktivitasPage() {
     <div className="animate-fade-in pb-8">
       <div className="border-b border-border bg-white px-6 pb-5 pt-6">
         <Link href="/app/home" className="mb-3 flex w-fit items-center gap-1 text-sm text-ink-muted">
-          <ArrowLeft className="h-4 w-4" /> Beranda
+          <ArrowLeft className="h-4 w-4" /> Home
         </Link>
-        <h1 className="text-xl font-bold text-ink">Aktivitas</h1>
-        <p className="text-sm text-ink-muted">Apa saja yang kalian lakukan di Nanti Kita</p>
+        <h1 className="text-xl font-bold text-ink">Activity</h1>
+        <p className="text-sm text-ink-muted">Everything you two do in Nanti Kita</p>
       </div>
 
       {loading ? (
@@ -139,17 +139,17 @@ export default function AktivitasPage() {
         <p className="mx-6 mt-5 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
       ) : !info?.coupleId ? (
         <div className="px-8 pt-16 text-center">
-          <p className="text-sm text-ink-muted">Hubungkan akunmu dengan pasangan dulu untuk melihat aktivitas kalian.</p>
-          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Ke Profil</Link>
+          <p className="text-sm text-ink-muted">Connect with your partner first to see your activity.</p>
+          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Go to Profile</Link>
         </div>
       ) : items.length === 0 ? (
         <div className="flex flex-col items-center px-8 pt-16 text-center">
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose/10">
             <Bell className="h-8 w-8 text-rose" />
           </div>
-          <h2 className="text-lg font-bold text-ink">Belum ada aktivitas</h2>
+          <h2 className="text-lg font-bold text-ink">No activity yet</h2>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-muted">
-            Moment, mood, tabungan, dan surat yang kalian buat akan muncul di sini.
+            Moments, moods, savings and letters you add will show up here.
           </p>
         </div>
       ) : (
@@ -174,7 +174,7 @@ export default function AktivitasPage() {
                   {fresh && (
                     <>
                       <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-rose" aria-hidden="true" />
-                      <span className="sr-only">(baru)</span>
+                      <span className="sr-only">(new)</span>
                     </>
                   )}
                 </>
@@ -194,7 +194,7 @@ export default function AktivitasPage() {
           {moreError && <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{moreError}</p>}
           {hasMore && (
             <Button variant="secondary" size="sm" className="mt-5" loading={loadingMore} onClick={loadMore}>
-              Muat lagi
+              Load more
             </Button>
           )}
         </div>

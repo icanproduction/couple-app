@@ -1,7 +1,7 @@
 // Relationship milestones (F20, also used by the timeline F22). Pure and
 // import-free so scripts/verify can load it with plain node.
 //
-// "N hari" matches the home counter: day N is reached when daysSince(start)
+// "N days" matches the home counter: day N is reached when daysSince(start)
 // equals N, i.e. start + N days. Year milestones fall on the calendar
 // anniversary; a 29 Feb start rolls to 1 Mar in common years, the same rule
 // as the calendar and the reminder cron (Date.UTC overflow).
@@ -41,10 +41,18 @@ function anniversary(start: string, years: number): string {
 }
 
 function dayCaption(days: number): string {
-  if (days === 7) return 'Seminggu pertama'
-  if (days === 30) return 'Sebulan bareng'
-  if (days === 1000) return 'Seribu hari!'
-  return `${days.toLocaleString('id-ID')} hari bareng`
+  if (days === 7) return 'Your first week'
+  if (days === 30) return 'One month together'
+  if (days === 1000) return 'A thousand days!'
+  return `${days.toLocaleString('en-GB')} days together`
+}
+
+/** 1 → "1st", 2 → "2nd", 11 → "11th", 23 → "23rd" */
+function ordinal(n: number): string {
+  const tens = n % 100
+  if (tens >= 11 && tens <= 13) return `${n}th`
+  const suffix = ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'
+  return `${n}${suffix}`
 }
 
 /**
@@ -65,7 +73,7 @@ export function milestonesFor(startDate: string, untilYears = 10): Milestone[] {
       kind: 'days',
       days,
       date: toKey(toUTC(startDate) + days * DAY_MS),
-      label: `${days.toLocaleString('id-ID')} hari`,
+      label: `${days.toLocaleString('en-GB')} days`,
       caption: dayCaption(days),
     })
   }
@@ -77,8 +85,8 @@ export function milestonesFor(startDate: string, untilYears = 10): Milestone[] {
       kind: 'years',
       days: diffDays(startDate, date),
       date,
-      label: `${y} tahun`,
-      caption: y === 1 ? 'Anniversary pertama' : `Anniversary ke-${y}`,
+      label: `${y} ${y === 1 ? 'year' : 'years'}`,
+      caption: y === 1 ? 'First anniversary' : `${ordinal(y)} anniversary`,
     })
   }
 

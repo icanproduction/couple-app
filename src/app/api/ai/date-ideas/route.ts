@@ -7,9 +7,9 @@ import { AI_NOT_CONFIGURED, describeProviderError, providerFailure } from '@/lib
 import { DateIdeasError, generateDateIdeas } from '@/lib/date-ideas'
 import { DATE_IDEA_DAILY_LIMIT, parseDateIdeaInput } from '@/app/app/ide-date/options'
 
-const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
-const QUOTA_MESSAGE = 'Kuota ide hari ini sudah habis, coba lagi besok'
-const RETRY_MESSAGE = 'Gagal membuat ide, coba lagi'
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const QUOTA_MESSAGE = 'You\'ve used up today\'s ideas. Try again tomorrow.'
+const RETRY_MESSAGE = 'Couldn\'t make ideas. Try again.'
 
 function todayLabel(): string {
   const today = todayJakarta()
@@ -44,13 +44,13 @@ export async function POST(request: Request) {
     const { data: membership } = await supabase
       .from('couple_members').select('couple_id').eq('profile_id', user.id).maybeSingle()
     const coupleId = membership?.couple_id ?? null
-    if (!coupleId) return NextResponse.json({ error: 'Belum punya pasangan' }, { status: 400 })
+    if (!coupleId) return NextResponse.json({ error: 'You\'re not connected with a partner yet' }, { status: 400 })
 
     let body: unknown
     try {
       body = await request.json()
     } catch {
-      return NextResponse.json({ error: 'Data tidak valid' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid data' }, { status: 400 })
     }
     const parsed = parseDateIdeaInput(body)
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
     // malformed provider response the SDK could not use.
     if (error instanceof DateIdeasError || AISDKError.isInstance(error)) {
       console.error('[ai/date-ideas] unusable answer:', error.message)
-      return NextResponse.json({ error: 'Idenya kurang pas, coba minta lagi ya' }, { status: 502 })
+      return NextResponse.json({ error: 'Those ideas didn\'t come out right. Ask again.' }, { status: 502 })
     }
     console.error('[ai/date-ideas] error:', error)
     return NextResponse.json({ error: RETRY_MESSAGE }, { status: 500 })

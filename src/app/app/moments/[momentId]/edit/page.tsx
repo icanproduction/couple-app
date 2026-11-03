@@ -23,7 +23,7 @@ export default function EditMomentPage() {
         const m = await getMoment(momentId)
         if (!cancelled) { setInfo(i); setMoment(m) }
       } catch {
-        if (!cancelled) setError('Gagal memuat moment. Cek koneksimu, lalu buka ulang halaman ini.')
+        if (!cancelled) setError("Couldn't load this moment. Check your connection and open it again.")
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -37,8 +37,8 @@ export default function EditMomentPage() {
   if (!info?.coupleId || !moment) {
     return (
       <div className="px-8 pt-16 text-center">
-        <p className={error ? 'text-sm text-red-600' : 'text-sm text-ink-muted'}>{error || 'Moment ini tidak ditemukan.'}</p>
-        <Link href="/app/moments" className="mt-4 inline-block text-sm font-semibold text-rose">Ke Moment Kita</Link>
+        <p className={error ? 'text-sm text-red-600' : 'text-sm text-ink-muted'}>{error || "We couldn't find this moment."}</p>
+        <Link href="/app/moments" className="mt-4 inline-block text-sm font-semibold text-rose">Back to Moments</Link>
       </div>
     )
   }

@@ -1,7 +1,7 @@
 {
   "name": "Nanti Kita",
   "short_name": "Nanti Kita",
-  "description": "Persiapkan masa depan bersama pasanganmu",
+  "description": "Plan your future with your partner",
   "start_url": "/app/home",
   "display": "standalone",
   "background_color": "#FFFFFF",

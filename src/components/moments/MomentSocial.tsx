@@ -20,7 +20,7 @@ interface Props {
   info: CoupleInfo & { coupleId: string }
 }
 
-const timeFormat = new Intl.DateTimeFormat('id-ID', {
+const timeFormat = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
 })
 
@@ -46,7 +46,7 @@ export default function MomentSocial({ momentId, momentTitle, info }: Props) {
       setComments(c)
       setLoadError('')
     } catch {
-      if (alive.current) setLoadError('Gagal memuat reaksi dan komentar.')
+      if (alive.current) setLoadError("Couldn't load reactions and comments.")
     } finally {
       if (alive.current) setLoading(false)
     }
@@ -66,9 +66,9 @@ export default function MomentSocial({ momentId, momentTitle, info }: Props) {
   useCoupleRealtime(info.coupleId, ['moment_comments', 'moment_reactions'], load)
 
   const nameOf = (profileId: string | null) => {
-    if (!profileId) return 'Akun terhapus'
-    if (profileId === info.userId) return 'Kamu'
-    return info.names[profileId] ?? 'Pasanganmu'
+    if (!profileId) return 'Deleted account'
+    if (profileId === info.userId) return 'You'
+    return info.names[profileId] ?? 'Your partner'
   }
 
   const mine = reactions.find((r) => r.profile_id === info.userId)?.emoji ?? null
@@ -97,7 +97,7 @@ export default function MomentSocial({ momentId, momentTitle, info }: Props) {
     } catch {
       if (alive.current) {
         setReactions(before)
-        setActionError('Gagal menyimpan reaksi. Coba lagi.')
+        setActionError("Couldn't save your reaction. Try again.")
       }
     } finally {
       if (alive.current) setReacting(false)
@@ -123,15 +123,15 @@ export default function MomentSocial({ momentId, momentTitle, info }: Props) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             recipientId: info.partnerId,
-            title: `Komentar di "${momentTitle}"`.slice(0, 80),
-            body: `${info.names[info.userId] ?? 'Pasanganmu'}: ${snippet}`,
+            title: `New comment on "${momentTitle}"`.slice(0, 80),
+            body: `${info.names[info.userId] ?? 'Your partner'}: ${snippet}`,
             url: `/app/moments/${momentId}`,
             kind: 'moments',
           }),
         }).catch(() => undefined)
       }
     } catch (err) {
-      if (alive.current) setActionError(err instanceof Error && err.message ? err.message : 'Gagal mengirim komentar. Coba lagi.')
+      if (alive.current) setActionError(err instanceof Error && err.message ? err.message : "Couldn't send your comment. Try again.")
     } finally {
       if (alive.current) setSending(false)
     }
@@ -147,7 +147,7 @@ export default function MomentSocial({ momentId, momentTitle, info }: Props) {
       setConfirmDelete(null)
     } catch {
       if (alive.current) {
-        setActionError('Gagal menghapus komentar. Coba lagi.')
+        setActionError("Couldn't delete the comment. Try again.")
         setConfirmDelete(null)
       }
     } finally {
@@ -157,15 +157,15 @@ export default function MomentSocial({ momentId, momentTitle, info }: Props) {
 
   const tooLong = draft.trim().length > MAX_COMMENT
   const reactionSummary = [
-    mine ? `Kamu ${mine}` : null,
+    mine ? `You ${mine}` : null,
     partnerReaction ? `${nameOf(partnerReaction.profile_id)} ${partnerReaction.emoji}` : null,
   ].filter(Boolean).join(' · ')
 
   return (
-    <section aria-label="Reaksi dan komentar" className="space-y-5">
+    <section aria-label="Reactions and comments" className="space-y-5">
       {/* Reactions */}
       <div className="rounded-2xl border border-border bg-white p-4 shadow-card">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-muted">Reaksi</p>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-muted">Reactions</p>
         {loading ? (
           <div className="flex justify-between gap-2">
             {MOMENT_REACTIONS.map((e) => <div key={e} className="h-11 flex-1 animate-pulse rounded-xl bg-rose-50" />)}
@@ -183,7 +183,7 @@ export default function MomentSocial({ momentId, momentTitle, info }: Props) {
                     onClick={() => react(emoji)}
                     disabled={reacting}
                     aria-pressed={isMine}
-                    aria-label={isMine ? `Hapus reaksi ${emoji}` : `Beri reaksi ${emoji}`}
+                    aria-label={isMine ? `Remove reaction ${emoji}` : `React with ${emoji}`}
                     className={cn(
                       'relative flex h-11 flex-1 items-center justify-center rounded-xl border text-xl transition-all active:scale-90 disabled:opacity-70',
                       isMine ? 'border-rose bg-rose-50 shadow-card' : 'border-transparent bg-cream'
@@ -203,7 +203,7 @@ export default function MomentSocial({ momentId, momentTitle, info }: Props) {
               })}
             </div>
             <p className="mt-3 text-center text-xs text-ink-muted" aria-live="polite">
-              {reactionSummary || 'Belum ada reaksi. Ketuk salah satu, ketuk lagi untuk batal.'}
+              {reactionSummary || 'No reactions yet. Tap one, tap again to undo.'}
             </p>
           </>
         )}
@@ -212,7 +212,7 @@ export default function MomentSocial({ momentId, momentTitle, info }: Props) {
       {/* Comments */}
       <div className="rounded-2xl border border-border bg-white p-4 shadow-card">
         <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-muted">
-          <MessageCircle className="h-3.5 w-3.5" /> Komentar{comments.length > 0 ? ` · ${comments.length}` : ''}
+          <MessageCircle className="h-3.5 w-3.5" /> Comments{comments.length > 0 ? ` · ${comments.length}` : ''}
         </p>
 
         {loading ? (
@@ -223,11 +223,11 @@ export default function MomentSocial({ momentId, momentTitle, info }: Props) {
           <div className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
             {loadError}{' '}
             <button type="button" onClick={() => { setLoading(true); load() }} className="font-semibold underline">
-              Coba lagi
+              Try again
             </button>
           </div>
         ) : comments.length === 0 ? (
-          <p className="py-2 text-center text-xs text-ink-muted">Belum ada komentar. Ceritain bagian favoritmu dari date ini.</p>
+          <p className="py-2 text-center text-xs text-ink-muted">No comments yet. Share your favorite part of this date.</p>
         ) : (
           <ul className="space-y-3">
             {comments.map((c) => {
@@ -257,7 +257,7 @@ export default function MomentSocial({ momentId, momentTitle, info }: Props) {
                     <button
                       type="button"
                       onClick={() => setConfirmDelete(c)}
-                      aria-label="Hapus komentar"
+                      aria-label="Delete comment"
                       className="flex h-8 w-8 shrink-0 items-center justify-center self-center rounded-xl text-ink-muted hover:text-danger"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -272,7 +272,7 @@ export default function MomentSocial({ momentId, momentTitle, info }: Props) {
 
         <form onSubmit={send} className="mt-4">
           <div className="flex items-end gap-2">
-            <label htmlFor="moment-comment" className="sr-only">Tulis komentar</label>
+            <label htmlFor="moment-comment" className="sr-only">Write a comment</label>
             <textarea
               id="moment-comment"
               value={draft}
@@ -282,14 +282,14 @@ export default function MomentSocial({ momentId, momentTitle, info }: Props) {
               }}
               maxLength={MAX_COMMENT + 50}
               rows={2}
-              placeholder="Tulis komentar..."
+              placeholder="Write a comment..."
               disabled={loading || !!loadError}
               className="min-h-[44px] flex-1 resize-none rounded-2xl border border-border bg-white px-4 py-2.5 text-sm text-ink outline-none placeholder:text-ink-muted/60 focus:border-rose focus:ring-2 focus:ring-rose/10 disabled:opacity-60"
             />
             <button
               type="submit"
               disabled={sending || !draft.trim() || tooLong}
-              aria-label="Kirim komentar"
+              aria-label="Send comment"
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-rose text-white shadow-elevated transition-all active:scale-95 disabled:opacity-50"
             >
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
@@ -305,7 +305,7 @@ export default function MomentSocial({ momentId, momentTitle, info }: Props) {
         {actionError && <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{actionError}</p>}
       </div>
 
-      <Modal open={!!confirmDelete} onClose={() => !deleting && setConfirmDelete(null)} title="Hapus komentar ini?">
+      <Modal open={!!confirmDelete} onClose={() => !deleting && setConfirmDelete(null)} title="Delete this comment?">
         <p className="line-clamp-3 rounded-xl bg-cream px-3 py-2 text-sm text-ink-light">{confirmDelete?.body}</p>
         <div className="mt-6 flex gap-3">
           <button
@@ -314,7 +314,7 @@ export default function MomentSocial({ momentId, momentTitle, info }: Props) {
             disabled={deleting}
             className="flex-1 rounded-2xl border border-border bg-white py-3 text-sm font-semibold text-ink-light"
           >
-            Batal
+            Cancel
           </button>
           <button
             type="button"
@@ -322,7 +322,7 @@ export default function MomentSocial({ momentId, momentTitle, info }: Props) {
             disabled={deleting}
             className="flex-1 rounded-2xl bg-danger py-3 text-sm font-bold text-white disabled:opacity-60"
           >
-            {deleting ? 'Menghapus...' : 'Hapus'}
+            {deleting ? 'Deleting...' : 'Delete'}
           </button>
         </div>
       </Modal>

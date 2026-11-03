@@ -25,7 +25,7 @@ export default function RoundTebakAngka({ config, onSubmit, disabled }: RoundTeb
         {config.question}
       </p>
       <p className="mb-8 text-center text-sm text-white/50">
-        Coba pilih angka yang sama dengan pasanganmu!
+        Try to pick the same number as your partner.
       </p>
 
       {/* Number grid — fluid cells so 5 columns fit 320–375px screens */}
@@ -52,12 +52,12 @@ export default function RoundTebakAngka({ config, onSubmit, disabled }: RoundTeb
           onClick={handleSubmit}
           className="rounded-full bg-white/20 px-10 py-3 text-base font-bold text-white backdrop-blur-sm transition-all active:scale-95 hover:bg-white/30"
         >
-          Pilih {value}!
+          Pick {value}
         </button>
       ) : (
         <div className="flex flex-col items-center gap-2">
           <div className="h-8 w-8 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-          <p className="text-sm text-white/50">Menunggu pasangan...</p>
+          <p className="text-sm text-white/50">Waiting for your partner...</p>
         </div>
       )}
     </div>

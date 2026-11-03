@@ -77,7 +77,7 @@ self.addEventListener('fetch', (event) => {
 
 // ===== Push Notifications =====
 self.addEventListener('push', (event) => {
-  let data = { title: 'Nanti Kita', body: 'Ada yang baru!', url: '/app/home' }
+  let data = { title: 'Nanti Kita', body: 'Something new just came in.', url: '/app/home' }
 
   if (event.data) {
     try {
@@ -93,7 +93,7 @@ self.addEventListener('push', (event) => {
     badge: '/icons/icon-192.png',
     vibrate: [200, 100, 200],
     data: { url: data.url },
-    actions: [{ action: 'open', title: 'Buka' }],
+    actions: [{ action: 'open', title: 'Open' }],
   }
 
   event.waitUntil(self.registration.showNotification(data.title, options))

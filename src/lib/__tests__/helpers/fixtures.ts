@@ -5,25 +5,25 @@ import type { DateIdeaInput } from '@/app/app/ide-date/options'
 export const IDEAS = {
   ideas: [
     {
-      title: 'Piknik sore di taman kota',
-      description: 'Bawa tikar dan camilan, lalu ngobrol santai sambil menunggu matahari terbenam.',
+      title: 'Afternoon picnic in a city park',
+      description: 'Bring a mat and some snacks, then chat while you wait for the sunset.',
       estimated_cost_idr: 50000,
       category: 'romantis',
-      tips: 'Datang sebelum jam empat biar dapat tempat yang teduh.',
+      tips: 'Get there before four to grab a shady spot.',
     },
     {
-      title: 'Masak resep baru bareng',
-      description: 'Pilih satu resep yang belum pernah kalian coba dan masak berdua dari awal.',
+      title: 'Cook a new recipe together',
+      description: 'Pick a recipe neither of you has tried and cook it from scratch together.',
       estimated_cost_idr: 80000,
       category: 'rumah',
-      tips: 'Belanja bahannya bareng juga biar makin seru.',
+      tips: 'Shop for the ingredients together too, it makes it more fun.',
     },
     {
-      title: 'Jelajah kedai kopi lokal',
-      description: 'Datangi dua kedai kopi lokal yang belum pernah kalian kunjungi.',
+      title: 'Local coffee shop crawl',
+      description: 'Visit two local coffee shops you have never been to.',
       estimated_cost_idr: 90000,
       category: 'kuliner',
-      tips: 'Pesan menu andalan di tiap kedai lalu bandingkan.',
+      tips: 'Order the signature drink at each one and compare.',
     },
   ],
 }
@@ -38,9 +38,9 @@ export const QUESTION_CONTEXT: DailyQuestionContext = {
   partnerAge: 26,
   partnerMbti: null,
   daysTogether: 420,
-  dayOfWeek: 'Selasa',
-  upcomingEvents: ['Ulang tahun Dita (2026-11-02)'],
-  recentQuestions: ['Apa momen paling lucu minggu ini?'],
+  dayOfWeek: 'Tuesday',
+  upcomingEvents: ["Dita's birthday (2026-11-02)"],
+  recentQuestions: ['What was the funniest moment of your week?'],
 }
 
 export const IDEA_INPUT: DateIdeaInput = { budget: 'hemat', vibe: 'santai', setting: 'bebas', city: 'Bandung' }

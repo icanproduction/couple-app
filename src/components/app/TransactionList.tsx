@@ -25,12 +25,12 @@ interface TransactionListProps {
 }
 
 export const CATEGORY_META: Record<string, { icon: typeof Heart; label: string; color: string }> = {
-  tabungan: { icon: ArrowDownLeft, label: 'Tabungan', color: 'bg-sage/10 text-sage-dark' },
-  date_night: { icon: Utensils, label: 'Date Night', color: 'bg-purple-50 text-purple-600' },
+  tabungan: { icon: ArrowDownLeft, label: 'Savings', color: 'bg-sage/10 text-sage-dark' },
+  date_night: { icon: Utensils, label: 'Date night', color: 'bg-purple-50 text-purple-600' },
   anniversary: { icon: Heart, label: 'Anniversary', color: 'bg-rose/10 text-rose' },
-  belanja: { icon: ShoppingBag, label: 'Belanja', color: 'bg-gold/20 text-yellow-700' },
-  persiapan_nikah: { icon: Gift, label: 'Persiapan Nikah', color: 'bg-blue-50 text-blue-600' },
-  lainnya: { icon: HelpCircle, label: 'Lainnya', color: 'bg-ink/5 text-ink-muted' },
+  belanja: { icon: ShoppingBag, label: 'Shopping', color: 'bg-gold/20 text-yellow-700' },
+  persiapan_nikah: { icon: Gift, label: 'Wedding prep', color: 'bg-blue-50 text-blue-600' },
+  lainnya: { icon: HelpCircle, label: 'Other', color: 'bg-ink/5 text-ink-muted' },
 }
 
 /** Relative label by Jakarta calendar day (not a rolling 24h window) */
@@ -40,19 +40,19 @@ function formatDate(dateStr: string | null): string {
   if (Number.isNaN(d.getTime())) return ''
   const diffDays = daysSince(todayJakarta(d))
 
-  if (diffDays <= 0) return 'Hari ini'
-  if (diffDays === 1) return 'Kemarin'
-  if (diffDays < 7) return `${diffDays} hari lalu`
+  if (diffDays <= 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays < 7) return `${diffDays} days ago`
 
-  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' })
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' })
 }
 
 export default function TransactionList({ transactions, userId, partnerName, userName, onSelect }: TransactionListProps) {
   if (transactions.length === 0) {
     return (
       <div className="py-8 text-center">
-        <p className="text-sm text-ink-muted">Belum ada transaksi</p>
-        <p className="mt-0.5 text-xs text-ink-muted/60">Catat uang masuk pertama kalian di atas</p>
+        <p className="text-sm text-ink-muted">No transactions yet</p>
+        <p className="mt-0.5 text-xs text-ink-muted/60">Log your first money in above</p>
       </div>
     )
   }
@@ -61,14 +61,14 @@ export default function TransactionList({ transactions, userId, partnerName, use
     <div className="divide-y divide-border">
       {transactions.map(tx => {
         const isDeposit = tx.type === 'deposit'
-        const meta = CATEGORY_META[tx.category ?? 'lainnya'] ?? CATEGORY_META.lainnya
+        const meta = CATEGORY_META[tx.category ?? 'lainnya'] ?? CATEGORY_META.lainnya // copy-ok: stored value
         const Icon = isDeposit ? ArrowDownLeft : meta.icon
         const iconColor = isDeposit ? 'bg-sage/10 text-sage-dark' : meta.color
         const isMe = tx.created_by === userId
         // First names keep the pill short; the full name doesn't fit a phone row.
         const firstName = (name: string | null) => name?.trim().split(/\s+/)[0] || null
-        const whoLabel = isMe ? (firstName(userName) ?? 'Kamu') : tx.created_by ? (firstName(partnerName) ?? 'Pasangan') : 'Akun dihapus'
-        const title = tx.note ?? (isDeposit ? 'Tabungan' : meta.label)
+        const whoLabel = isMe ? (firstName(userName) ?? 'You') : tx.created_by ? (firstName(partnerName) ?? 'Your partner') : 'Deleted account'
+        const title = tx.note ?? (isDeposit ? 'Savings' : meta.label)
         const editable = !!onSelect && (tx.type === 'deposit' || tx.type === 'withdrawal')
 
         const content = (
@@ -102,7 +102,7 @@ export default function TransactionList({ transactions, userId, partnerName, use
             key={tx.id}
             type="button"
             onClick={() => onSelect?.(tx)}
-            aria-label={`Ubah transaksi ${title}`}
+            aria-label={`Edit transaction: ${title}`}
             className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-cream active:bg-cream"
           >
             {content}

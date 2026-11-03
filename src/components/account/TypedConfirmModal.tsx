@@ -10,7 +10,7 @@ interface TypedConfirmModalProps {
   title: string
   /** What happens, shown above the input. */
   children: React.ReactNode
-  /** The exact text the user must type, e.g. "KELUAR". */
+  /** The exact text the user must type, e.g. "LEAVE". */
   phrase: string
   confirmLabel: string
   loading: boolean
@@ -35,7 +35,7 @@ export function TypedConfirmModal({
         <div className="max-h-[40vh] space-y-2 overflow-y-auto text-sm leading-relaxed text-ink-muted">{children}</div>
         <div className="space-y-1">
           <label htmlFor="typed-confirm" className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">
-            Ketik <span className="font-mono text-danger">{phrase}</span> untuk lanjut
+            Type <span className="font-mono text-danger">{phrase}</span> to continue
           </label>
           <input
             id="typed-confirm"
@@ -51,7 +51,7 @@ export function TypedConfirmModal({
         </div>
         {error && <p role="alert" className="text-xs text-danger">{error}</p>}
         <div className="flex gap-2">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>Batal</Button>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>Cancel</Button>
           <Button type="submit" variant="danger" loading={loading} disabled={!matches}>{confirmLabel}</Button>
         </div>
       </form>

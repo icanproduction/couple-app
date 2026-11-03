@@ -1,7 +1,7 @@
 'use client'
 
 // The printable scrapbook: a cover page, then one page per moment with all
-// of its photos. Two templates share the same data: Polaroid and Majalah.
+// of its photos. Two templates share the same data: Polaroid and Magazine.
 import { createContext, forwardRef, useContext, type CSSProperties } from 'react'
 import { MapPin } from 'lucide-react'
 import { formatDateID, formatDateShortID } from '@/lib/dates'
@@ -76,7 +76,7 @@ function PolaroidPage({ m, n, urls }: { m: ScrapbookMoment; n: number; urls: Rec
                 style={{ '--cols': layout.cols, '--rot': `${ROTATIONS[i % ROTATIONS.length]}deg`, '--aspect': layout.aspect } as Vars}
               >
                 {i === 0 && <span className="pl-tape" aria-hidden="true" />}
-                <Photo photo={p} urls={urls} alt={`${m.title} — foto ${i + 1}`} />
+                <Photo photo={p} urls={urls} alt={`${m.title}, photo ${i + 1}`} />
                 {i === 0 && <figcaption className="sb-hand">{formatDateShortID(m.moment_date)} {m.moment_date.slice(0, 4)}</figcaption>}
               </figure>
             ))}
@@ -111,20 +111,20 @@ function MagazinePage({ m, n, total, urls }: { m: ScrapbookMoment; n: number; to
       <div className={`sb-inner ${descClass(m.description)}`}>
         <div className="mj-top">
           <span className="sb-serif">Nanti Kita</span>
-          <span>Cerita {n - 1} dari {total}</span>
+          <span>Story {n - 1} of {total}</span>
         </div>
         <p className="mj-kicker">{kicker}</p>
         <h2 className="mj-title sb-serif">{m.title}</h2>
         <div className="mj-rule" />
         {layout.hero && first && (
           <div className="mj-hero" style={{ '--aspect': layout.hero } as Vars}>
-            <Photo photo={first} urls={urls} alt={`${m.title} — foto 1`} />
+            <Photo photo={first} urls={urls} alt={`${m.title}, photo 1`} />
           </div>
         )}
         {gridPhotos.length > 0 && (
           <div className="mj-grid" style={{ '--cols': layout.cols, '--aspect': layout.aspect } as Vars}>
             {gridPhotos.map((p, i) => (
-              <Photo key={p.id} photo={p} urls={urls} alt={`${m.title} — foto ${i + (layout.hero ? 2 : 1)}`} />
+              <Photo key={p.id} photo={p} urls={urls} alt={`${m.title}, photo ${i + (layout.hero ? 2 : 1)}`} />
             ))}
           </div>
         )}
@@ -161,7 +161,7 @@ function PolaroidCover({ title, names, range, moments, urls, photoCount }: Props
   const photos = collagePhotos(moments)
   const spots = COLLAGE_SPOTS[photos.length] ?? []
   return (
-    <section className="sb-page sb-polaroid" aria-label="Sampul">
+    <section className="sb-page sb-polaroid" aria-label="Cover">
       <div className="sb-inner">
         <div className="pc-wrap">
           <p className="pc-eyebrow">Scrapbook</p>
@@ -185,7 +185,7 @@ function PolaroidCover({ title, names, range, moments, urls, photoCount }: Props
             </div>
           )}
           <p className="pc-range">{range}</p>
-          <p className="pc-stats">{moments.length} date · {photoCount} foto</p>
+          <p className="pc-stats">{moments.length} {moments.length === 1 ? 'date' : 'dates'} · {photoCount} {photoCount === 1 ? 'photo' : 'photos'}</p>
         </div>
       </div>
     </section>
@@ -197,7 +197,7 @@ function MagazineCover({ title, names, range, moments, urls, photoCount }: Props
   const hero = coverPhoto(moments)
   const heroUrl = hero ? urls[hero.storage_path] : undefined
   return (
-    <section className="sb-page sb-majalah" aria-label="Sampul">
+    <section className="sb-page sb-majalah" aria-label="Cover">
       <div className="mc">
         {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL from private storage */}
         {hero && heroUrl && <img className="mc-bg" src={heroUrl} alt="" decoding="async" onError={() => onError(hero.storage_path)} />}
@@ -205,16 +205,16 @@ function MagazineCover({ title, names, range, moments, urls, photoCount }: Props
         <div className="mc-content">
           <p className="mc-mast sb-serif">Nanti Kita</p>
           <div className="mc-issue">
-            <span>Edisi {range}</span>
+            <span>Issue {range}</span>
             <span>Scrapbook</span>
           </div>
           <div className="mc-bottom">
-            <p className="mc-kicker">Edisi Spesial</p>
+            <p className="mc-kicker">Special edition</p>
             <h1 className="mc-title sb-serif">{title}</h1>
             {names && <p className="mc-names">{names}</p>}
             <div className="mc-stats">
-              <div className="mc-stat"><b className="sb-serif">{moments.length}</b><span>date</span></div>
-              <div className="mc-stat"><b className="sb-serif">{photoCount}</b><span>foto</span></div>
+              <div className="mc-stat"><b className="sb-serif">{moments.length}</b><span>{moments.length === 1 ? 'date' : 'dates'}</span></div>
+              <div className="mc-stat"><b className="sb-serif">{photoCount}</b><span>{photoCount === 1 ? 'photo' : 'photos'}</span></div>
             </div>
           </div>
         </div>

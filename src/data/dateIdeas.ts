@@ -5,34 +5,146 @@ export interface DateIdea {
   estimatedBudget: string
 }
 
+// `category` is a code key (gratis = free, murah = cheap, spesial = special),
+// never shown as text, so it stays as is.
 export const DATE_IDEAS: DateIdea[] = [
-  // Gratis
-  { title: 'Piknik di taman', category: 'gratis', description: 'Bawa bekal dan tikar, nikmati sore bersama', estimatedBudget: 'Rp 0' },
-  { title: 'Masak bareng di rumah', category: 'gratis', description: 'Pilih resep baru dan coba masak bersama', estimatedBudget: 'Rp 0' },
-  { title: 'Marathon film', category: 'gratis', description: 'Pilih series atau film yang belum ditonton', estimatedBudget: 'Rp 0' },
-  { title: 'Jalan sore / sunset', category: 'gratis', description: 'Jalan kaki keliling komplek sambil ngobrol', estimatedBudget: 'Rp 0' },
-  { title: 'Main board game', category: 'gratis', description: 'UNO, kartu, atau game HP bareng', estimatedBudget: 'Rp 0' },
-  { title: 'Stargazing malam', category: 'gratis', description: 'Cari tempat yang gelap dan lihat bintang', estimatedBudget: 'Rp 0' },
-  { title: 'Foto-foto bareng', category: 'gratis', description: 'Mini photoshoot pakai HP di spot unik', estimatedBudget: 'Rp 0' },
-  { title: 'Belajar hal baru bareng', category: 'gratis', description: 'Tutorial YouTube: origami, menggambar, dll', estimatedBudget: 'Rp 0' },
+  // Free
+  {
+    title: 'Picnic in the park',
+    description: 'Pack some food and a mat, and spend the afternoon outside',
+    estimatedBudget: 'Rp 0',
+    category: 'gratis',
+  },
+  {
+    title: 'Cook together at home',
+    description: 'Pick a recipe neither of you has tried and make it together',
+    estimatedBudget: 'Rp 0',
+    category: 'gratis',
+  },
+  {
+    title: 'Movie marathon',
+    description: "Line up a series or films you haven't seen yet",
+    estimatedBudget: 'Rp 0',
+    category: 'gratis',
+  },
+  {
+    title: 'Sunset walk',
+    description: 'Stroll around the neighborhood and talk',
+    estimatedBudget: 'Rp 0',
+    category: 'gratis',
+  },
+  {
+    title: 'Game night',
+    description: 'UNO, a deck of cards or a mobile game together',
+    estimatedBudget: 'Rp 0',
+    category: 'gratis',
+  },
+  {
+    title: 'Stargazing',
+    description: 'Find a dark spot and look up at the stars',
+    estimatedBudget: 'Rp 0',
+    category: 'gratis',
+  },
+  {
+    title: 'Photo date',
+    description: 'A mini photoshoot on your phones at a fun spot',
+    estimatedBudget: 'Rp 0',
+    category: 'gratis',
+  },
+  {
+    title: 'Learn something new',
+    description: 'Follow a YouTube tutorial together, like origami or drawing',
+    estimatedBudget: 'Rp 0',
+    category: 'gratis',
+  },
 
-  // Murah
-  { title: 'Ngopi di cafe baru', category: 'murah', description: 'Explore cafe yang belum pernah dicoba', estimatedBudget: 'Rp 50-100rb' },
-  { title: 'Street food hunting', category: 'murah', description: 'Jalan-jalan cari jajanan kaki lima', estimatedBudget: 'Rp 30-80rb' },
-  { title: 'Nonton bioskop', category: 'murah', description: 'Film baru + popcorn berdua', estimatedBudget: 'Rp 100-150rb' },
-  { title: 'Karaoke', category: 'murah', description: 'Sewa room 1-2 jam, nyanyi sepuasnya', estimatedBudget: 'Rp 80-150rb' },
-  { title: 'Naik angkot / KRL adventure', category: 'murah', description: 'Turun di stasiun random dan explore', estimatedBudget: 'Rp 20-50rb' },
-  { title: 'Ke toko buku / perpustakaan', category: 'murah', description: 'Baca bareng, pilihkan buku untuk satu sama lain', estimatedBudget: 'Rp 0-100rb' },
-  { title: 'Ice cream date', category: 'murah', description: 'Coba semua rasa di tempat es krim favorit', estimatedBudget: 'Rp 30-60rb' },
-  { title: 'Ke pasar malam', category: 'murah', description: 'Main games, makan jajanan, naik bianglala', estimatedBudget: 'Rp 50-100rb' },
+  // Cheap
+  {
+    title: 'Try a new cafe',
+    description: "Find a coffee place you haven't been to yet",
+    estimatedBudget: 'Rp 50.000–100.000',
+    category: 'murah',
+  },
+  {
+    title: 'Street food hunt',
+    description: 'Wander around and snack your way through the kaki lima stalls',
+    estimatedBudget: 'Rp 30.000–80.000',
+    category: 'murah',
+  },
+  {
+    title: 'Cinema date',
+    description: 'A new release and a bucket of popcorn for two',
+    estimatedBudget: 'Rp 100.000–150.000',
+    category: 'murah',
+  },
+  {
+    title: 'Karaoke',
+    description: 'Book a room for 1–2 hours and sing your hearts out',
+    estimatedBudget: 'Rp 80.000–150.000',
+    category: 'murah',
+  },
+  {
+    title: 'Angkot or KRL adventure',
+    description: 'Get off at a random stop and explore',
+    estimatedBudget: 'Rp 20.000–50.000',
+    category: 'murah',
+  },
+  {
+    title: 'Bookstore or library date',
+    description: 'Read side by side and pick a book for each other',
+    estimatedBudget: 'Rp 0–100.000',
+    category: 'murah',
+  },
+  {
+    title: 'Ice cream date',
+    description: 'Work through the flavors at your favorite ice cream place',
+    estimatedBudget: 'Rp 30.000–60.000',
+    category: 'murah',
+  },
+  {
+    title: 'Night market',
+    description: 'Play the games, share some snacks and ride the Ferris wheel',
+    estimatedBudget: 'Rp 50.000–100.000',
+    category: 'murah',
+  },
 
-  // Spesial
-  { title: 'Staycation hotel', category: 'spesial', description: 'Menginap di hotel, breakfast berdua', estimatedBudget: 'Rp 300-800rb' },
-  { title: 'Fine dining', category: 'spesial', description: 'Dinner romantis di restoran bagus', estimatedBudget: 'Rp 300-600rb' },
-  { title: 'Day trip ke luar kota', category: 'spesial', description: 'Naik kereta/mobil ke kota terdekat', estimatedBudget: 'Rp 200-500rb' },
-  { title: 'Kelas bareng', category: 'spesial', description: 'Pottery class, cooking class, atau painting', estimatedBudget: 'Rp 200-400rb' },
-  { title: 'Spa / massage couple', category: 'spesial', description: 'Relax bareng di spa pasangan', estimatedBudget: 'Rp 300-600rb' },
-  { title: 'Adventure date', category: 'spesial', description: 'Hiking, snorkeling, atau flying fox', estimatedBudget: 'Rp 100-400rb' },
+  // Special
+  {
+    title: 'Hotel staycation',
+    description: 'Stay the night somewhere nice and have breakfast together',
+    estimatedBudget: 'Rp 300.000–800.000',
+    category: 'spesial',
+  },
+  {
+    title: 'Fine dining',
+    description: 'A romantic dinner at a good restaurant',
+    estimatedBudget: 'Rp 300.000–600.000',
+    category: 'spesial',
+  },
+  {
+    title: 'Day trip out of town',
+    description: 'Take the train or drive to a nearby city',
+    estimatedBudget: 'Rp 200.000–500.000',
+    category: 'spesial',
+  },
+  {
+    title: 'Take a class together',
+    description: 'A pottery, cooking or painting class',
+    estimatedBudget: 'Rp 200.000–400.000',
+    category: 'spesial',
+  },
+  {
+    title: 'Couples spa',
+    description: 'Unwind together with a couples massage',
+    estimatedBudget: 'Rp 300.000–600.000',
+    category: 'spesial',
+  },
+  {
+    title: 'Adventure date',
+    description: 'Go hiking, snorkeling or try a flying fox',
+    estimatedBudget: 'Rp 100.000–400.000',
+    category: 'spesial',
+  },
 ]
 
 export function getRandomDateIdea(): DateIdea {

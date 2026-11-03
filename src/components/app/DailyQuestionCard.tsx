@@ -112,7 +112,7 @@ export default function DailyQuestionCard({
 
     if (error) {
       // Keep what was typed
-      setSubmitError('Jawabanmu belum terkirim. Coba lagi ya.')
+      setSubmitError("Your answer didn't go through. Try again.")
       setSubmitting(false)
       return
     }
@@ -131,7 +131,7 @@ export default function DailyQuestionCard({
           body: JSON.stringify({
             recipientId: partnerId,
             title: 'Nanti Kita',
-            body: `${userName ?? 'Pasanganmu'} sudah jawab pertanyaan hari ini! Giliranmu`,
+            body: `${userName ?? 'Your partner'} answered today's question. Your turn.`,
             url: '/app/home',
             kind: 'activity',
           }),
@@ -151,13 +151,13 @@ export default function DailyQuestionCard({
             <MessageCircle className="h-3.5 w-3.5 text-rose" strokeWidth={2} />
           </div>
           <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
-            Pertanyaan Hari Ini
+            Daily Question
           </span>
         </div>
         <div className="flex items-center gap-2">
           {streak > 0 && (
             <span className="flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-bold text-orange-500">
-              <Flame className="h-3 w-3" /> {streak} hari
+              <Flame className="h-3 w-3" /> {streak} {streak === 1 ? 'day' : 'days'}
             </span>
           )}
           <span className="text-xs text-ink-muted/60">#{questionIndex + 1}</span>
@@ -179,14 +179,14 @@ export default function DailyQuestionCard({
                 <textarea
                   value={myAnswer}
                   onChange={e => setMyAnswer(e.target.value)}
-                  placeholder="Tulis jawabanmu..."
+                  placeholder="Write your answer..."
                   rows={2}
                   className="flex-1 resize-none rounded-xl border border-border bg-cream px-3 py-2 text-sm text-ink placeholder:text-ink-muted/50 focus:border-rose focus:outline-none focus:ring-1 focus:ring-rose/20"
                 />
                 <button
                   onClick={handleSubmit}
                   disabled={!myAnswer.trim() || submitting}
-                  aria-label="Kirim jawaban"
+                  aria-label="Send answer"
                   className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-rose text-white disabled:opacity-40 transition-all"
                 >
                   <Send className="h-4 w-4" />
@@ -196,7 +196,7 @@ export default function DailyQuestionCard({
               {partnerId && (
                 <p className="mt-2 flex items-center gap-1.5 text-[11px] text-ink-muted">
                   <Lock className="h-3 w-3 flex-shrink-0" />
-                  Jawab dulu untuk lihat jawaban {partnerName ?? 'pasangan'}
+                  Answer first to see {partnerName ? `${partnerName}'s` : "your partner's"} answer
                 </p>
               )}
             </div>
@@ -206,11 +206,11 @@ export default function DailyQuestionCard({
               <div className="flex items-start gap-2">
                 <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-rose/10 mt-0.5">
                   <span className="text-[10px] font-bold text-rose">
-                    {(userName || 'K')[0].toUpperCase()}
+                    {(userName || 'Y')[0].toUpperCase()}
                   </span>
                 </div>
                 <div className="flex-1 rounded-xl rounded-tl-sm bg-rose-50 px-3 py-2">
-                  <p className="text-xs font-semibold text-rose">{userName ?? 'Kamu'}</p>
+                  <p className="text-xs font-semibold text-rose">{userName ?? 'You'}</p>
                   <p className="mt-0.5 text-sm text-ink">{myResponse.answer}</p>
                 </div>
               </div>
@@ -224,7 +224,7 @@ export default function DailyQuestionCard({
                     </span>
                   </div>
                   <div className="flex-1 rounded-xl rounded-tl-sm bg-sage/10 px-3 py-2">
-                    <p className="text-xs font-semibold text-sage-dark">{partnerName ?? 'Pasangan'}</p>
+                    <p className="text-xs font-semibold text-sage-dark">{partnerName ?? 'Your partner'}</p>
                     <p className="mt-0.5 text-sm text-ink">{partnerResponse.answer}</p>
                   </div>
                 </div>
@@ -232,7 +232,7 @@ export default function DailyQuestionCard({
                 <div className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2.5">
                   <div className="h-2 w-2 animate-pulse rounded-full bg-gold" />
                   <p className="text-xs text-ink-muted">
-                    Menunggu jawaban {partnerName ?? 'pasangan'}...
+                    Waiting for {partnerName ? `${partnerName}'s` : "your partner's"} answer...
                   </p>
                 </div>
               ) : null}
@@ -242,7 +242,7 @@ export default function DailyQuestionCard({
                 <div className="flex items-center justify-center gap-1.5 rounded-xl bg-rose-50 py-2">
                   <Heart className="h-3.5 w-3.5 text-rose" fill="currentColor" />
                   <span className="text-xs font-semibold text-rose">
-                    Kalian sudah menjawab hari ini!
+                    You&apos;ve both answered today
                   </span>
                   <Check className="h-3.5 w-3.5 text-rose" />
                 </div>
@@ -254,7 +254,7 @@ export default function DailyQuestionCard({
         /* Not logged in / no couple — show discuss prompt */
         <div className="border-t border-border bg-cream/50 px-4 py-3">
           <p className="text-xs text-ink-muted">
-            Diskusikan pertanyaan ini bersama pasanganmu
+            Talk this one through with your partner
           </p>
         </div>
       )}

@@ -20,9 +20,9 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => null)
     const code = cleanInviteCode(typeof body?.code === 'string' ? body.code : '')
-    if (!code) return NextResponse.json({ error: 'Masukkan kode undangan' }, { status: 400 })
+    if (!code) return NextResponse.json({ error: 'Enter an invite code' }, { status: 400 })
     if (body.discard !== undefined && typeof body.discard !== 'boolean') {
-      return NextResponse.json({ error: 'Permintaan tidak valid' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
 
     try {
@@ -32,10 +32,10 @@ export async function POST(req: NextRequest) {
       if (e instanceof JoinError && e.code === COUPLE_HAS_DATA) {
         return NextResponse.json({ error: e.message, code: COUPLE_HAS_DATA }, { status: 409 })
       }
-      return NextResponse.json({ error: e instanceof Error ? e.message : 'Gagal bergabung' }, { status: 400 })
+      return NextResponse.json({ error: e instanceof Error ? e.message : 'Couldn\'t join' }, { status: 400 })
     }
   } catch (err) {
     console.error('[couple/join] unhandled:', err)
-    return NextResponse.json({ error: 'Gagal bergabung, coba lagi' }, { status: 500 })
+    return NextResponse.json({ error: 'Couldn\'t join. Try again.' }, { status: 500 })
   }
 }

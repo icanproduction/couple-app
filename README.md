@@ -52,7 +52,21 @@ node scripts/verify/exif.mjs              # EXIF date/GPS reader on fixtures
 node scripts/verify/pet-rules.mjs
 node scripts/verify/env-coverage.mjs
 node scripts/verify/layout-audit.mjs      # every page at 360 + 390 px (long names/amounts, empty, no partner): overlaps, clipped or spilling text, horizontal scroll, content under the bottom nav, sheets
+node scripts/verify/game-truth-or-dare.mjs    # deck rules, custom cards RLS, closed couple
+node scripts/verify/game-love-languages.mjs   # question bank rules, DB-recomputed scores, answers never readable, RLS
+node scripts/verify/game-two-truths.mjs       # the lie stays hidden until the guess, one guess, RPC-only access
+node scripts/verify/run-all.mjs               # builds with the local env, starts :3030, runs every suite above, stops the server
 ```
+
+Copy checks (the app is English, see `docs/COPY-GUIDE.md`):
+
+```bash
+node scripts/verify/copy-audit.mjs                 # Indonesian leftovers + em dashes in src and public (AST based)
+node scripts/verify/copy-audit.mjs --db            # Deep Talk content + every string in public SQL functions
+node scripts/verify/slop-gate.mjs --paths src --name app   # SlopMonster score of all UI copy, must be 5/5
+```
+
+A string that the audit misreads (a stored Indonesian value, a matcher for old SQL text) gets a `// copy-ok: <reason>` comment on its line or the line above.
 
 The `verify` scripts refuse to run unless Supabase points at localhost; they create and delete their own test users. Some call API routes, so keep the app running on :3030. The layout audit (Playwright) is most reliable against a production build: `set -a; . ./.env.development.local; set +a; npx next build && npx next start -p 3030`. It writes `report.md` and screenshots to `.unlazy/layout-audit/`.
 

@@ -50,7 +50,7 @@ export const WEDDING_COSTS: WeddingEstimate[] = [
     },
   },
   {
-    city: 'Kota Lainnya',
+    city: 'Other cities',
     scales: {
       intimate: { guests: 50, low: 20_000_000, high: 50_000_000 },
       medium: { guests: 150, low: 45_000_000, high: 120_000_000 },
@@ -62,9 +62,9 @@ export const WEDDING_COSTS: WeddingEstimate[] = [
 export type WeddingScale = 'intimate' | 'medium' | 'large'
 
 export const SCALE_LABELS: Record<WeddingScale, { label: string; desc: string }> = {
-  intimate: { label: 'Intimate', desc: '~50 tamu, akrab & hangat' },
-  medium: { label: 'Medium', desc: '~150 tamu, keluarga & sahabat' },
-  large: { label: 'Besar', desc: '300+ tamu, meriah & ramai' },
+  intimate: { label: 'Intimate', desc: '~50 guests, close and cozy' },
+  medium: { label: 'Medium', desc: '~150 guests, family and close friends' },
+  large: { label: 'Large', desc: '300+ guests, big and festive' },
 }
 
 export function getEstimate(city: string, scale: WeddingScale) {

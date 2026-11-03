@@ -63,26 +63,26 @@ export default function MonthlySummary({
     const count = summary.countByPerson[key] ?? 0
     if (count > 0) people.push({ key, label, count })
   }
-  pushPerson(userId, userName ? `${userName} (kamu)` : 'Kamu')
-  if (partnerId) pushPerson(partnerId, partnerName ?? 'Pasangan')
+  pushPerson(userId, userName ? `${userName} (you)` : 'You')
+  if (partnerId) pushPerson(partnerId, partnerName ?? 'Your partner')
   const others = Object.entries(summary.countByPerson)
     .filter(([k]) => !seen.has(k))
     .reduce((s, [, n]) => s + n, 0)
-  if (others > 0) people.push({ key: 'others', label: 'Akun lain / dihapus', count: others })
+  if (others > 0) people.push({ key: 'others', label: 'Other or deleted accounts', count: others })
 
   return (
     <section className="rounded-2xl border border-border bg-white p-4 shadow-card" aria-labelledby="ringkasan-title">
       <div className="flex items-center justify-between">
-        <h2 id="ringkasan-title" className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Ringkasan</h2>
+        <h2 id="ringkasan-title" className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Summary</h2>
         <div className="flex items-center gap-1">
           <button type="button" onClick={() => setMonth(m => shiftMonth(m, -1))} disabled={month <= earliest}
-            aria-label="Bulan sebelumnya"
+            aria-label="Previous month"
             className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-muted hover:bg-cream disabled:opacity-30">
             <ChevronLeft className="h-4 w-4" />
           </button>
           <span className="min-w-[7.5rem] text-center text-sm font-bold text-ink">{monthLabel(month)}</span>
           <button type="button" onClick={() => setMonth(m => shiftMonth(m, 1))} disabled={month >= currentMonth}
-            aria-label="Bulan berikutnya"
+            aria-label="Next month"
             className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-muted hover:bg-cream disabled:opacity-30">
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -91,7 +91,7 @@ export default function MonthlySummary({
 
       {goalCount > 1 && selectedGoal && (
         <div className="mt-3 flex rounded-xl border border-border bg-cream p-0.5 text-xs font-semibold">
-          {([['goal', selectedGoal.name], ['all', 'Semua target']] as const).map(([key, label]) => (
+          {([['goal', selectedGoal.name], ['all', 'All goals']] as const).map(([key, label]) => (
             <button key={key} type="button" onClick={() => setScope(key)} aria-pressed={scope === key}
               className={cn('flex-1 truncate rounded-lg px-2 py-1.5 transition-colors',
                 scope === key ? 'bg-white text-ink shadow-sm' : 'text-ink-muted hover:text-ink')}>
@@ -102,23 +102,23 @@ export default function MonthlySummary({
       )}
 
       <div className="mt-3 grid grid-cols-3 gap-2">
-        <Total label="Masuk" value={fmtRpShort(summary.totalIn)} icon={<ArrowDownLeft className="h-3.5 w-3.5 text-sage-dark" />} />
-        <Total label="Keluar" value={fmtRpShort(summary.totalOut)} icon={<ArrowUpRight className="h-3.5 w-3.5 text-rose" />} />
-        <Total label="Bersih" value={`${summary.net > 0 ? '+' : ''}${fmtRpShort(summary.net)}`}
+        <Total label="In" value={fmtRpShort(summary.totalIn)} icon={<ArrowDownLeft className="h-3.5 w-3.5 text-sage-dark" />} />
+        <Total label="Out" value={fmtRpShort(summary.totalOut)} icon={<ArrowUpRight className="h-3.5 w-3.5 text-rose" />} />
+        <Total label="Net" value={`${summary.net > 0 ? '+' : ''}${fmtRpShort(summary.net)}`}
           icon={<Scale className="h-3.5 w-3.5 text-ink-muted" />}
           tone={summary.net < 0 ? 'text-rose' : summary.net > 0 ? 'text-sage-dark' : 'text-ink'} />
       </div>
 
       {summary.count === 0 ? (
         <p className="mt-4 rounded-xl bg-cream px-3 py-3 text-center text-xs text-ink-muted">
-          Belum ada transaksi di {monthLabel(month)}.
+          No transactions in {monthLabel(month)} yet.
         </p>
       ) : (
         <>
           <div className="mt-4">
-            <p className="mb-2 text-xs font-semibold text-ink">Pengeluaran per kategori</p>
+            <p className="mb-2 text-xs font-semibold text-ink">Money out by category</p>
             {summary.byCategory.length === 0 ? (
-              <p className="text-xs text-ink-muted">Tidak ada pengeluaran bulan ini. Mantap!</p>
+              <p className="text-xs text-ink-muted">Nothing spent this month. Nice!</p>
             ) : (
               <ul className="space-y-2">
                 {summary.byCategory.map(c => (
@@ -138,12 +138,12 @@ export default function MonthlySummary({
           </div>
 
           <div className="mt-4 border-t border-border pt-3">
-            <p className="mb-1.5 text-xs font-semibold text-ink">Yang mencatat</p>
+            <p className="mb-1.5 text-xs font-semibold text-ink">Logged by</p>
             <ul className="space-y-1">
               {people.map(p => (
                 <li key={p.key} className="flex items-center justify-between gap-3 text-xs">
                   <span className="min-w-0 truncate text-ink-muted">{p.label}</span>
-                  <span className="shrink-0 whitespace-nowrap font-semibold text-ink">{p.count} transaksi</span>
+                  <span className="shrink-0 whitespace-nowrap font-semibold text-ink">{p.count} {p.count === 1 ? 'transaction' : 'transactions'}</span>
                 </li>
               ))}
             </ul>

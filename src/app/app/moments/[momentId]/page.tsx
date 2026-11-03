@@ -38,7 +38,7 @@ export default function MomentDetailPage() {
         const m = await getMoment(momentId)
         if (!cancelled) { setInfo(i); setMoment(m) }
       } catch {
-        if (!cancelled) setError('Gagal memuat moment. Coba buka ulang halaman ini.')
+        if (!cancelled) setError("Couldn't load this moment. Try opening this page again.")
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -46,7 +46,7 @@ export default function MomentDetailPage() {
     return () => { cancelled = true }
   }, [momentId, router])
 
-  // Partner edits / favourites show up live (signed URLs are reused, so photos don't reload).
+  // Partner edits / favorites show up live (signed URLs are reused, so photos don't reload).
   const refresh = useCallback(() => {
     if (deleting) return
     getMoment(momentId).then((m) => { if (m) setMoment(m) }).catch(() => undefined)
@@ -63,7 +63,7 @@ export default function MomentDetailPage() {
       await setMomentFavorite(moment.id, next)
     } catch {
       setMoment((m) => (m ? { ...m, is_favorite: !next } : m))
-      setError('Gagal mengubah favorit. Coba lagi.')
+      setError("Couldn't update your favorites. Try again.")
     } finally {
       setSavingFavorite(false)
     }
@@ -79,7 +79,7 @@ export default function MomentDetailPage() {
     } catch {
       setDeleting(false)
       setConfirmDelete(false)
-      setError('Gagal menghapus moment. Coba lagi.')
+      setError("Couldn't delete the moment. Try again.")
     }
   }
 
@@ -95,8 +95,8 @@ export default function MomentDetailPage() {
   if (!moment) {
     return (
       <div className="px-8 pt-16 text-center">
-        <p className="text-sm text-ink-muted">{error || 'Moment ini tidak ditemukan atau sudah dihapus.'}</p>
-        <Link href="/app/moments" className="mt-4 inline-block text-sm font-semibold text-rose">Ke Moment Kita</Link>
+        <p className="text-sm text-ink-muted">{error || "We couldn't find this moment. It may have been deleted."}</p>
+        <Link href="/app/moments" className="mt-4 inline-block text-sm font-semibold text-rose">Back to Moments</Link>
       </div>
     )
   }
@@ -111,14 +111,14 @@ export default function MomentDetailPage() {
     <div className="animate-fade-in pb-10">
       <div className="flex items-center justify-between px-6 pb-3 pt-5">
         <Link href="/app/moments" className="flex items-center gap-1 text-sm text-ink-muted">
-          <ArrowLeft className="h-4 w-4" /> Moment Kita
+          <ArrowLeft className="h-4 w-4" /> Moments
         </Link>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={toggleFavorite}
             disabled={savingFavorite}
-            aria-label={moment.is_favorite ? 'Hapus dari favorit' : 'Tandai sebagai favorit'}
+            aria-label={moment.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
             aria-pressed={moment.is_favorite}
             className={cn(
               'flex h-9 w-9 items-center justify-center rounded-xl border bg-white transition-transform active:scale-90',
@@ -136,7 +136,7 @@ export default function MomentDetailPage() {
           </Link>
           <button
             onClick={() => setConfirmDelete(true)}
-            aria-label="Hapus moment"
+            aria-label="Delete moment"
             className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-white text-danger"
           >
             <Trash2 className="h-4 w-4" />
@@ -157,7 +157,7 @@ export default function MomentDetailPage() {
                   <SignedPhoto
                     src={p.url}
                     path={p.storage_path}
-                    alt={`Foto ${i + 2}`}
+                    alt={`Photo ${i + 2}`}
                     loading="lazy"
                     className="aspect-square w-full object-cover"
                   />
@@ -190,7 +190,7 @@ export default function MomentDetailPage() {
         {coords && (
           <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-card">
             <iframe
-              title="Peta lokasi moment"
+              title="Map of this moment's location"
               src={osmEmbedUrl(coords)}
               loading="lazy"
               className="h-48 w-full border-0"
@@ -204,7 +204,7 @@ export default function MomentDetailPage() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 text-xs font-semibold text-rose"
               >
-                Buka di Maps <ExternalLink className="h-3.5 w-3.5" />
+                Open in Maps <ExternalLink className="h-3.5 w-3.5" />
               </a>
             </div>
           </div>
@@ -222,7 +222,7 @@ export default function MomentDetailPage() {
 
         {author && (
           <p className="text-center text-xs text-ink-muted">
-            Disimpan oleh {moment.created_by === info?.userId ? 'kamu' : author}
+            Saved by {moment.created_by === info?.userId ? 'you' : author}
           </p>
         )}
       </div>
@@ -231,9 +231,15 @@ export default function MomentDetailPage() {
         <PhotoLightbox photos={shown} startIndex={lightbox} onClose={() => setLightbox(null)} />
       )}
 
-      <Modal open={confirmDelete} onClose={() => !deleting && setConfirmDelete(false)} title="Hapus moment ini?">
+      <Modal open={confirmDelete} onClose={() => !deleting && setConfirmDelete(false)} title="Delete this moment?">
         <p className="text-sm leading-relaxed text-ink-muted">
-          &ldquo;{moment.title}&rdquo; dan {moment.photos.length} fotonya akan dihapus untuk kalian berdua. Ini tidak bisa dibatalkan.
+          &ldquo;{moment.title}&rdquo;
+          {moment.photos.length === 0
+            ? ' will be deleted for both of you.'
+            : moment.photos.length === 1
+              ? ' and its photo will be deleted for both of you.'
+              : ` and its ${moment.photos.length} photos will be deleted for both of you.`}
+          {' '}This can&apos;t be undone.
         </p>
         <div className="mt-6 flex gap-3">
           <button
@@ -241,14 +247,14 @@ export default function MomentDetailPage() {
             disabled={deleting}
             className="flex-1 rounded-2xl border border-border bg-white py-3 text-sm font-semibold text-ink-light"
           >
-            Batal
+            Cancel
           </button>
           <button
             onClick={handleDelete}
             disabled={deleting}
             className="flex-1 rounded-2xl bg-danger py-3 text-sm font-bold text-white disabled:opacity-60"
           >
-            {deleting ? 'Menghapus...' : 'Hapus'}
+            {deleting ? 'Deleting...' : 'Delete'}
           </button>
         </div>
       </Modal>

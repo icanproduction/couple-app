@@ -49,13 +49,15 @@ export async function GET() {
     const cid = membership?.couple_id ?? null
 
     // Mine, couple or not.
-    const [profile, notificationPrefs, dailyAnswers, assessments, mbti, spending] = await Promise.all([
+    const [profile, notificationPrefs, dailyAnswers, assessments, mbti, spending, loveLanguages] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', uid).maybeSingle().then(single),
       supabase.from('notification_prefs').select('*').eq('profile_id', uid).maybeSingle().then(single),
       all((f, t) => supabase.from('daily_responses').select('*').eq('profile_id', uid).order('created_at').order('id').range(f, t)),
       all((f, t) => supabase.from('assessment_results').select('*').eq('profile_id', uid).order('taken_at').order('id').range(f, t)),
       all((f, t) => supabase.from('mbti_results').select('*').eq('profile_id', uid).order('taken_at').order('id').range(f, t)),
       all((f, t) => supabase.from('spending_results').select('*').eq('profile_id', uid).order('created_at').order('id').range(f, t)),
+      // Scores only: the per-question answers are not readable through the API, not even by their owner.
+      supabase.from('love_language_results').select('profile_id, couple_id, scores, taken_at').eq('profile_id', uid).maybeSingle().then(single),
     ])
 
     let couple: Record<string, unknown> | null = null
@@ -118,7 +120,7 @@ export async function GET() {
       const letters = (letterMeta as { id: string }[]).map((l) => ({
         ...l,
         content: contentOf.get(l.id) ?? null,
-        ...(contentOf.has(l.id) ? {} : { content_hidden: 'Isi surat tidak ikut diekspor: belum kamu buka, atau bukan surat dari/untukmu.' }),
+        ...(contentOf.has(l.id) ? {} : { content_hidden: 'Letter text not exported: you haven\'t opened it yet, or it isn\'t a letter from or to you.' }),
       }))
 
       // Toples notes: a note to me that I haven't opened stays a surprise —
@@ -126,7 +128,7 @@ export async function GET() {
       type Note = { id: string; from_id: string; to_id: string; body: string | null; opened_at: string | null }
       const gratitudeNotes = (gratitude as Note[]).map((n) =>
         n.to_id === uid && n.from_id !== uid && !n.opened_at
-          ? { ...n, body: null, body_hidden: 'Isi catatan tidak ikut diekspor: belum kamu buka di Toples.' }
+          ? { ...n, body: null, body_hidden: 'Note text not exported: you haven\'t opened it in the Toples yet.' }
           : n)
 
       shared = {
@@ -156,10 +158,10 @@ export async function GET() {
       couple,
       ...shared,
       daily_answers: dailyAnswers,
-      results: { assessment: assessments, mbti, spending },
+      results: { assessment: assessments, mbti, spending, love_languages: loveLanguages },
       notes: {
-        photos: 'Foto Moment disimpan privat; storage_path menunjuk file di bucket "moments".',
-        scope: 'Berisi data yang bisa kamu lihat di aplikasi. Jawaban pasanganmu, serta isi surat dan catatan Toples yang belum kamu buka, tidak ikut.',
+        photos: 'Moment photos are stored privately. storage_path points to a file in the "moments" bucket.',
+        scope: 'Contains the data you can see in the app. Your partner\'s answers are not included, and neither is the text of letters or Toples notes you haven\'t opened.',
       },
     }
 
@@ -167,12 +169,12 @@ export async function GET() {
       status: 200,
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
-        'Content-Disposition': `attachment; filename="nanti-kita-${todayJakarta()}.json"`,
+        'Content-Disposition': `attachment; filename="nanti-kita-${todayJakarta()}.json"`, // copy-ok: download file name
         'Cache-Control': 'no-store',
       },
     })
   } catch (err) {
     console.error('[account/export] failed:', err instanceof Error ? err.message : err)
-    return NextResponse.json({ error: 'Gagal menyiapkan datamu, coba lagi' }, { status: 500 })
+    return NextResponse.json({ error: 'Couldn\'t prepare your data. Try again.' }, { status: 500 })
   }
 }

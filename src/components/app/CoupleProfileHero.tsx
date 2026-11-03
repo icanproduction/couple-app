@@ -1,4 +1,4 @@
-import { getRelationshipLevel } from '@/lib/dates'
+import { getRelationshipLevel, relationshipLevelLabel } from '@/lib/dates'
 
 interface CoupleProfileHeroProps {
   myName: string | null
@@ -7,7 +7,7 @@ interface CoupleProfileHeroProps {
   partnerAvatarUrl?: string | null
   daysTogether: number
   relationshipStartDate: string | null
-  children?: React.ReactNode  // slot for kangen button
+  children?: React.ReactNode  // slot for the Kangen button
 }
 
 const LEVEL_STYLES: Record<string, { bg: string; text: string }> = {
@@ -60,19 +60,19 @@ export default function CoupleProfileHero({
 
         {/* Names */}
         <h1 className="text-lg font-extrabold text-ink">
-          {myName ?? 'Kamu'} <span className="font-normal text-ink-muted">&amp;</span> {partnerName ?? 'Pasangan'}
+          {myName ?? 'You'} <span className="font-normal text-ink-muted">&amp;</span> {partnerName ?? 'Your partner'}
         </h1>
 
         {/* Stats row */}
         <div className="mt-1.5 flex items-center gap-3">
           {relationshipStartDate && (
             <span className="text-xs text-ink-muted">
-              {daysTogether.toLocaleString('id-ID')} hari bersama
+              {daysTogether.toLocaleString('en-GB')} {daysTogether === 1 ? 'day' : 'days'} together
             </span>
           )}
           {level && levelStyle && (
             <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${levelStyle.bg} ${levelStyle.text}`}>
-              {level}
+              {relationshipLevelLabel(level)}
             </span>
           )}
         </div>

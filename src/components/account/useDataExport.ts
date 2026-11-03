@@ -37,7 +37,7 @@ async function shareOrDownload(file: File): Promise<ExportOutcome> {
     return 'downloaded'
   }
   try {
-    await navigator.share({ files: [file], title: 'Data Nanti Kita' })
+    await navigator.share({ files: [file], title: 'Nanti Kita data' })
     return 'shared'
   } catch (e) {
     const name = e instanceof DOMException ? e.name : ''
@@ -50,7 +50,7 @@ async function shareOrDownload(file: File): Promise<ExportOutcome> {
   }
 }
 
-/** "Unduh data saya": fetches /api/account/export and saves it the way this device can. */
+/** "Export my data": fetches /api/account/export and saves it the way this device can. */
 export function useDataExport() {
   const [exporting, setExporting] = useState(false)
   const [ready, setReady] = useState<File | null>(null)
@@ -62,7 +62,7 @@ export function useDataExport() {
       const res = await fetch('/api/account/export', { cache: 'no-store' })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(typeof data.error === 'string' ? data.error : 'Gagal mengunduh data')
+        throw new Error(typeof data.error === 'string' ? data.error : "Couldn't export your data")
       }
       const name = res.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1] ?? 'nanti-kita.json'
       const file = new File([await res.blob()], name, { type: 'application/json' })
@@ -88,9 +88,9 @@ export function useDataExport() {
 /** The message to show for an outcome, or null when there is nothing to say. */
 export function exportOutcomeMessage(outcome: ExportOutcome): string | null {
   switch (outcome) {
-    case 'shared': return 'Datamu sudah dikirim lewat menu bagikan. Pastikan file-nya tersimpan di tempat aman, ya.'
-    case 'downloaded': return 'Datamu sudah diunduh. Simpan file-nya di tempat aman, ya.'
-    case 'needs-tap': return 'Datamu sudah siap. Ketuk "Simpan file" untuk menyimpannya.'
+    case 'shared': return 'Your data went to the share menu. Make sure the file ends up somewhere safe.'
+    case 'downloaded': return 'Your data is downloaded. Keep the file somewhere safe.'
+    case 'needs-tap': return 'Your data is ready. Tap "Save file" to keep it.'
     case 'cancelled': return null
   }
 }

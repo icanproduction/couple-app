@@ -113,33 +113,33 @@ export async function markSeen(userId: string, seenAt?: string | null): Promise<
   }
 }
 
-/** "Kamu", the partner's name, or a fallback. */
+/** "You", the partner's name, or a fallback. */
 export function activityActor(activity: Pick<Activity, 'actor_id'>, userId: string, names: Record<string, string>): string {
-  if (activity.actor_id === userId) return 'Kamu'
+  if (activity.actor_id === userId) return 'You'
   if (activity.actor_id && names[activity.actor_id]) return names[activity.actor_id]
-  return 'Pasanganmu'
+  return 'Your partner'
 }
 
-const SHORT_DATE = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short' })
-const SHORT_DATE_YEAR = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', year: 'numeric' })
+const SHORT_DATE = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short' })
+const SHORT_DATE_YEAR = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', year: 'numeric' })
 
 function dayIndex(key: string): number {
   const [y, m, d] = key.split('-').map(Number)
   return Math.round(Date.UTC(y, m - 1, d) / 86_400_000)
 }
 
-/** "baru saja", "5 menit lalu", "3 jam lalu", "kemarin", "4 hari lalu", "12 Okt" */
+/** "just now", "5 min ago", "3 h ago", "yesterday", "4 days ago", "12 Oct" (Jakarta days) */
 export function relativeTimeID(iso: string, now: number = Date.now()): string {
   const then = Date.parse(iso)
   if (Number.isNaN(then)) return ''
   const minutes = Math.floor(Math.max(0, now - then) / 60_000)
-  if (minutes < 1) return 'baru saja'
-  if (minutes < 60) return `${minutes} menit lalu`
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes} min ago`
   const today = todayJakarta(new Date(now))
   const day = todayJakarta(new Date(then))
   const days = dayIndex(today) - dayIndex(day)
-  if (days === 0) return `${Math.floor(minutes / 60)} jam lalu`
-  if (days === 1) return 'kemarin'
-  if (days < 7) return `${days} hari lalu`
+  if (days === 0) return `${Math.floor(minutes / 60)} h ago`
+  if (days === 1) return 'yesterday'
+  if (days < 7) return `${days} days ago`
   return (day.slice(0, 4) === today.slice(0, 4) ? SHORT_DATE : SHORT_DATE_YEAR).format(new Date(then))
 }

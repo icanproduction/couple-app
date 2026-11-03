@@ -19,11 +19,11 @@ interface Letter {
 
 const OCCASION_LABELS: Record<string, string> = {
   anniversary: 'Anniversary',
-  birthday: 'Ulang Tahun',
-  wedding_day: 'Hari Nikah',
+  birthday: 'Birthday',
+  wedding_day: 'Wedding day',
   milestone: 'Milestone',
-  new_year: 'Tahun Baru',
-  custom: 'Surat Spesial',
+  new_year: 'New Year',
+  custom: 'Special letter',
 }
 
 function msUntil(isoStr: string): number {
@@ -31,7 +31,7 @@ function msUntil(isoStr: string): number {
 }
 
 function formatWIB(isoStr: string): string {
-  return new Date(isoStr).toLocaleString('id-ID', {
+  return new Date(isoStr).toLocaleString('en-GB', {
     timeZone: 'Asia/Jakarta',
     day: 'numeric',
     month: 'long',
@@ -43,19 +43,19 @@ function formatWIB(isoStr: string): string {
 
 function countdownLabel(isoStr: string): string {
   const ms = msUntil(isoStr)
-  if (ms <= 0) return 'Sudah terbuka'
+  if (ms <= 0) return 'Open now'
   const days = Math.floor(ms / 86400000)
   const hours = Math.floor((ms % 86400000) / 3600000)
-  if (days > 0) return `${days} hari ${hours} jam lagi`
+  if (days > 0) return `${days} ${days === 1 ? 'day' : 'days'}, ${hours} h left`
   const mins = Math.floor((ms % 3600000) / 60000)
-  if (hours > 0) return `${hours} jam ${mins} menit lagi`
-  return `${mins} menit lagi`
+  if (hours > 0) return `${hours} h ${mins} min left`
+  return `${mins} min left`
 }
 
 export default function LettersPage() {
   const router = useRouter()
   const [myId, setMyId] = useState<string | null>(null)
-  const [partnerName, setPartnerName] = useState<string>('Pasangan')
+  const [partnerName, setPartnerName] = useState<string>('your partner')
   const [letters, setLetters] = useState<Letter[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'diterima' | 'dikirim'>('diterima')
@@ -90,7 +90,7 @@ export default function LettersPage() {
       .eq('couple_id', membership.couple_id)
       .order('unlock_date', { ascending: true })
 
-    if (error) setLoadError('Gagal memuat surat. Coba muat ulang halaman.')
+    if (error) setLoadError("Couldn't load your letters. Try reloading the page.")
     setLetters((data ?? []) as Letter[])
     setLoading(false)
   }, [router])
@@ -118,7 +118,7 @@ export default function LettersPage() {
     const isReady = isUnlocked && !isOpened && !isMine
     const daysLeft = Math.ceil(ms / 86400000)
 
-    const occasion = letter.occasion ? (OCCASION_LABELS[letter.occasion] ?? 'Surat') : 'Surat Rahasia'
+    const occasion = letter.occasion ? (OCCASION_LABELS[letter.occasion] ?? 'Letter') : 'Letter'
 
     return (
       <button
@@ -148,22 +148,22 @@ export default function LettersPage() {
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
             <p className="text-xs font-semibold text-ink-muted">{occasion}</p>
             {isReady && (
-              <span className="rounded-full bg-rose px-2 py-0.5 text-[10px] font-bold text-white">BUKA!</span>
+              <span className="rounded-full bg-rose px-2 py-0.5 text-[10px] font-bold text-white">READY</span>
             )}
             {!isUnlocked && !isMine && daysLeft <= 7 && (
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">{countdownLabel(letter.unlock_date)}</span>
             )}
           </div>
           <p className="text-sm font-bold text-ink">
-            {isMine ? `Untuk ${partnerName}` : `Dari ${partnerName}`}
+            {isMine ? `To ${partnerName}` : `From ${partnerName}`}
           </p>
           <p className="mt-0.5 text-xs text-ink-muted">
             {isUnlocked ? (
               isOpened
                 ? (letter.opened_at
-                    ? `${isMine ? `Dibaca ${partnerName}` : 'Dibuka'} ${formatWIB(letter.opened_at)}`
-                    : isMine ? `Sudah dibaca ${partnerName}` : 'Sudah dibuka')
-                : isMine ? `Sudah terbuka · belum dibaca ${partnerName}` : 'Bisa dibuka sekarang!'
+                    ? `${isMine ? `Read by ${partnerName}` : 'Opened'} on ${formatWIB(letter.opened_at)}`
+                    : isMine ? `Read by ${partnerName}` : 'Opened')
+                : isMine ? `Open now · ${partnerName} hasn't read it yet` : 'Ready to open'
             ) : (
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3 flex-shrink-0" />
@@ -185,14 +185,14 @@ export default function LettersPage() {
       <div className="border-b border-border bg-white px-6 py-5">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-xl font-bold text-ink">Surat Rahasia</h1>
-            <p className="text-sm text-ink-muted">Pesan terkunci untuk momen spesial</p>
+            <h1 className="text-xl font-bold text-ink">Letters</h1>
+            <p className="text-sm text-ink-muted">Notes that stay locked until the day you pick</p>
           </div>
           <button
             onClick={() => router.push('/app/letters/tulis')}
             className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl bg-rose px-3 py-2 text-xs font-bold text-white shadow-sm"
           >
-            <Plus className="h-4 w-4" /> Tulis
+            <Plus className="h-4 w-4" /> Write
           </button>
         </div>
       </div>
@@ -208,7 +208,7 @@ export default function LettersPage() {
             }`}
           >
             {t === 'diterima' ? <MailOpen className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
-            {t === 'diterima' ? 'Untukku' : 'Dariku'}
+            {t === 'diterima' ? 'For me' : 'From me'}
             {t === 'diterima' && badgeCount > 0 && (
               <span className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose text-[10px] font-bold text-white">{badgeCount}</span>
             )}
@@ -228,19 +228,19 @@ export default function LettersPage() {
               {tab === 'diterima' ? <Inbox className="h-6 w-6 text-ink-muted" /> : <PenLine className="h-6 w-6 text-ink-muted" />}
             </div>
             <p className="text-sm font-semibold text-ink">
-              {tab === 'diterima' ? 'Belum ada surat untukmu' : 'Belum ada surat yang kamu tulis'}
+              {tab === 'diterima' ? 'No letters for you yet' : "You haven't written a letter yet"}
             </p>
             <p className="mt-1 text-xs text-ink-muted">
               {tab === 'diterima'
-                ? 'Minta pasangan menulis surat rahasia untukmu!'
-                : 'Tulis surat pertama untuk pasanganmu sekarang'}
+                ? `Ask ${partnerName} to write you one.`
+                : `Write your first letter to ${partnerName}.`}
             </p>
             {tab === 'dikirim' && (
               <button
                 onClick={() => router.push('/app/letters/tulis')}
                 className="mt-4 rounded-xl bg-rose px-4 py-2 text-sm font-bold text-white"
               >
-                Tulis Surat
+                Write a letter
               </button>
             )}
           </div>

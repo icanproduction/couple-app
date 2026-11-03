@@ -50,18 +50,18 @@ export async function getLlm(): Promise<Llm> {
 export type LlmCheck = { ok: boolean; message: string; latencyMs: number }
 
 /**
- * "Tes koneksi": one tiny request with the given settings. Never throws; the
+ * "Test connection": one tiny request with the given settings. Never throws; the
  * message is safe to show an admin (no key in it).
  */
 export async function checkLlmConnection(llm: Llm, { timeoutMs = 30_000 } = {}): Promise<LlmCheck> {
   const started = Date.now()
   if (!llm.configured) {
-    return { ok: false, message: 'Belum ada API key. Tempel key OpenRouter dulu.', latencyMs: 0 }
+    return { ok: false, message: 'No API key yet. Paste an OpenRouter key first.', latencyMs: 0 }
   }
   try {
     const result = await generateText({
       model: llm.model(),
-      prompt: 'Balas hanya dengan satu kata: OK',
+      prompt: 'Reply with one word only: OK',
       maxOutputTokens: 512,
       maxRetries: 0,
       abortSignal: AbortSignal.timeout(timeoutMs),
@@ -70,12 +70,12 @@ export async function checkLlmConnection(llm: Llm, { timeoutMs = 30_000 } = {}):
     const latencyMs = Date.now() - started
     return {
       ok: true,
-      message: `Terhubung ke ${llm.modelId} (${(latencyMs / 1000).toFixed(1)} dtk). Jawaban: "${result.text.trim().slice(0, 40)}"`,
+      message: `Connected to ${llm.modelId} (${(latencyMs / 1000).toFixed(1)} s). Reply: "${result.text.trim().slice(0, 40)}"`,
       latencyMs,
     }
   } catch (err) {
-    const failure = providerFailure(err, 'Tidak bisa menghubungi OpenRouter')
+    const failure = providerFailure(err, 'Couldn\'t reach OpenRouter')
     console.error('[llm] connection check failed:', describeProviderError(err))
-    return { ok: false, message: failure?.error ?? 'Tidak bisa menghubungi OpenRouter', latencyMs: Date.now() - started }
+    return { ok: false, message: failure?.error ?? 'Couldn\'t reach OpenRouter', latencyMs: Date.now() - started }
   }
 }

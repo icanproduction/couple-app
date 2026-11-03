@@ -1,7 +1,7 @@
 'use client'
 
-// "Kenangan hari ini" (F13): moments from this calendar day in earlier years,
-// or — when there are none — from exactly one month ago. Renders nothing when
+// "On This Day" (F13): moments from this calendar day in earlier years,
+// or (when there are none) from exactly one month ago. Renders nothing when
 // there's nothing to remember (and while loading, so the home page doesn't jump).
 // Self-padded (px-4) like the other home cards.
 import { useEffect, useState } from 'react'
@@ -13,9 +13,9 @@ import { getOnThisDay, type MomentWithPhotos, type OnThisDay } from '@/lib/momen
 import SignedPhoto from './SignedPhoto'
 
 function agoLabel(kind: OnThisDay['kind'], m: MomentWithPhotos, today: string): string {
-  if (kind === 'month') return '1 bulan lalu hari ini'
+  if (kind === 'month') return 'A month ago today'
   const years = Number(today.slice(0, 4)) - Number(m.moment_date.slice(0, 4))
-  return `${years} tahun lalu hari ini`
+  return years === 1 ? 'A year ago today' : `${years} years ago today`
 }
 
 export default function OnThisDayCard({ coupleId }: { coupleId: string | null }) {
@@ -35,10 +35,10 @@ export default function OnThisDayCard({ coupleId }: { coupleId: string | null })
   const many = memory.moments.length > 1
 
   return (
-    <section aria-label="Kenangan hari ini" className="animate-fade-in px-6">
+    <section aria-label="On This Day" className="animate-fade-in px-6">
       <div className="mb-2 flex items-center gap-1.5">
         <History className="h-4 w-4 text-rose" />
-        <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Kenangan hari ini</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">On This Day</p>
       </div>
       <div
         className={cn(

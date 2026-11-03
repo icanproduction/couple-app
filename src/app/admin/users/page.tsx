@@ -28,7 +28,7 @@ export default function AdminUsersPage() {
       supabase.from('profiles').select('id, name, role, created_at').order('created_at', { ascending: false }),
     ])
     setMe(user?.id ?? null)
-    if (loadError) setError(`Gagal memuat pengguna: ${loadError.message}`)
+    if (loadError) setError(`Couldn't load users: ${loadError.message}`)
     else setUsers((data ?? []) as UserRow[])
     setLoading(false)
   }, [])
@@ -53,28 +53,28 @@ export default function AdminUsersPage() {
       .update({ role: newRole })
       .eq('id', user.id)
       .select('id')
-    if (updateError) setError(`Gagal mengubah role ${user.name ?? 'pengguna'}: ${updateError.message}`)
-    else if (!data?.length) setError(`Role ${user.name ?? 'pengguna'} tidak berubah — pastikan akunmu masih admin.`)
+    if (updateError) setError(`Couldn't change the role for ${user.name ?? 'this user'}: ${updateError.message}`)
+    else if (!data?.length) setError(`The role for ${user.name ?? 'this user'} didn't change. Check that your account is still an admin.`)
     await loadUsers()
     setToggling(null)
   }
 
   function formatDate(s: string) {
-    return new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+    return new Date(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-ink">Pengguna</h1>
-        <p className="mt-1 text-sm text-ink-muted">{users.length} pengguna terdaftar</p>
+        <h1 className="text-2xl font-bold text-ink">Users</h1>
+        <p className="mt-1 text-sm text-ink-muted">{users.length} {users.length === 1 ? 'registered user' : 'registered users'}</p>
       </div>
 
       {error && (
         <div className="mb-4 flex items-start gap-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
           <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <span className="flex-1">{error}</span>
-          <button onClick={() => setError('')} className="text-xs font-semibold">Tutup</button>
+          <button onClick={() => setError('')} className="text-xs font-semibold">Dismiss</button>
         </div>
       )}
 
@@ -84,7 +84,7 @@ export default function AdminUsersPage() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Cari nama atau ID pengguna..."
+          placeholder="Search by name or user ID…"
           className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-ink-muted"
         />
       </div>
@@ -97,9 +97,9 @@ export default function AdminUsersPage() {
           <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="px-5 py-3 text-left text-xs font-semibold text-ink-muted">Nama</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-ink-muted">Name</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-ink-muted">ID</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-ink-muted">Bergabung</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-ink-muted">Joined</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-ink-muted">Role</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-ink-muted"></th>
               </tr>
@@ -115,7 +115,7 @@ export default function AdminUsersPage() {
                         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-rose/10 text-xs font-bold text-rose">
                           {(user.name || '?')[0].toUpperCase()}
                         </div>
-                        <span className="whitespace-nowrap font-medium text-ink">{user.name ?? '—'}</span>
+                        <span className="whitespace-nowrap font-medium text-ink">{user.name ?? 'No name'}</span>
                       </div>
                     </td>
                     <td className="px-5 py-3.5 font-mono text-xs text-ink-muted">{user.id.slice(0, 8)}…</td>
@@ -132,19 +132,19 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="whitespace-nowrap px-5 py-3.5">
                       {isMe ? (
-                        <span className="text-xs text-ink-muted">Akun kamu</span>
+                        <span className="text-xs text-ink-muted">Your account</span>
                       ) : confirmId === user.id ? (
                         <span className="flex items-center gap-2 text-xs">
-                          <span className="text-ink-muted">{makeAdmin ? 'Jadikan admin?' : 'Hapus akses admin?'}</span>
+                          <span className="text-ink-muted">{makeAdmin ? 'Make admin?' : 'Remove admin access?'}</span>
                           <button
                             onClick={() => toggleRole(user)}
                             disabled={toggling !== null}
                             className={`font-semibold ${makeAdmin ? 'text-purple-600 hover:text-purple-800' : 'text-red-500 hover:text-red-700'} disabled:opacity-50`}
                           >
-                            Ya
+                            Yes
                           </button>
                           <button onClick={() => setConfirmId(null)} className="text-ink-muted hover:text-ink">
-                            Batal
+                            Cancel
                           </button>
                         </span>
                       ) : (
@@ -157,7 +157,7 @@ export default function AdminUsersPage() {
                               : 'text-red-500 hover:text-red-700'
                           }`}
                         >
-                          {toggling === user.id ? '...' : makeAdmin ? 'Jadikan Admin' : 'Hapus Admin'}
+                          {toggling === user.id ? '…' : makeAdmin ? 'Make admin' : 'Remove admin'}
                         </button>
                       )}
                     </td>
@@ -167,7 +167,7 @@ export default function AdminUsersPage() {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-sm text-ink-muted">
-                    {search ? 'Tidak ada pengguna ditemukan' : 'Belum ada pengguna'}
+                    {search ? 'No users match your search' : 'No users yet'}
                   </td>
                 </tr>
               )}

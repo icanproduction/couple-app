@@ -44,7 +44,7 @@ export default function SinkronisasiLobby({
         body: JSON.stringify({
           recipientId: partnerId,
           title: 'Nanti Kita',
-          body: `${myName} nungguin kamu main Sinkronisasi! Ayo join sekarang`,
+          body: `${myName} is waiting to play Samakan with you. Jump in now.`,
           url: `/app/games/samakan/${sessionId}`,
           kind: 'activity',
         }),
@@ -53,10 +53,10 @@ export default function SinkronisasiLobby({
         setNotifSent(true)
       } else {
         const json = await res.json().catch(() => ({}))
-        setNotifError(json.error ?? 'Notifikasi gagal dikirim')
+        setNotifError(json.error ?? "Couldn't send the notification")
       }
     } catch {
-      setNotifError('Notifikasi gagal dikirim')
+      setNotifError("Couldn't send the notification")
     }
     setNotifSending(false)
   }
@@ -65,15 +65,15 @@ export default function SinkronisasiLobby({
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-ink to-gray-900 px-6">
       <button
         onClick={onClose}
-        aria-label="Keluar dari lobby"
+        aria-label="Leave the lobby"
         className="absolute right-4 top-4 rounded-full p-2 transition-colors hover:bg-white/10 active:scale-95"
       >
         <X className="h-5 w-5 text-white/60" />
       </button>
 
-      <h2 className="mb-2 text-2xl font-bold text-white">Sinkronisasi</h2>
+      <h2 className="mb-2 text-2xl font-bold text-white">Samakan</h2>
       <p className="mb-10 text-sm text-white/60">
-        {chapterTitle ? `Chapter: ${chapterTitle}` : 'Siap-siap main bareng!'}
+        {chapterTitle ? `Chapter: ${chapterTitle}` : 'Get ready to play together'}
       </p>
 
       <div className="flex items-center gap-8 mb-12">
@@ -88,7 +88,7 @@ export default function SinkronisasiLobby({
           </div>
           <span className="text-sm font-medium text-white">{myName}</span>
           {isMyReady && (
-            <span className="text-xs font-bold text-emerald-400">SIAP!</span>
+            <span className="text-xs font-bold text-emerald-400">READY</span>
           )}
         </div>
 
@@ -113,13 +113,13 @@ export default function SinkronisasiLobby({
             )}
           </div>
           <span className="text-sm font-medium text-white">
-            {isPartnerConnected ? partnerName : 'Menunggu...'}
+            {isPartnerConnected ? partnerName : 'Waiting...'}
           </span>
           {isPartnerReady && (
-            <span className="text-xs font-bold text-emerald-400">SIAP!</span>
+            <span className="text-xs font-bold text-emerald-400">READY</span>
           )}
           {!isPartnerConnected && (
-            <span className="text-xs text-white/40">Belum bergabung</span>
+            <span className="text-xs text-white/40">Not here yet</span>
           )}
         </div>
       </div>
@@ -135,13 +135,13 @@ export default function SinkronisasiLobby({
               : 'bg-white/10 text-white/30 cursor-not-allowed'
           }`}
         >
-          Siap!
+          I&apos;m ready
         </button>
       ) : (
         <div className="flex flex-col items-center gap-2">
           <div className="h-10 w-10 rounded-full border-2 border-white/20 border-t-rose animate-spin" />
           <p className="text-sm text-white/50">
-            {isPartnerConnected ? 'Menunggu pasangan siap...' : 'Menunggu pasangan bergabung...'}
+            {isPartnerConnected ? 'Waiting for your partner to get ready...' : 'Waiting for your partner to join...'}
           </p>
         </div>
       )}
@@ -160,12 +160,12 @@ export default function SinkronisasiLobby({
           {notifSent ? (
             <>
               <Check className="h-4 w-4" />
-              Notifikasi terkirim!
+              Notification sent
             </>
           ) : (
             <>
               <Bell className="h-4 w-4" />
-              {notifSending ? 'Mengirim...' : 'Panggil pasangan'}
+              {notifSending ? 'Sending...' : 'Call your partner'}
             </>
           )}
         </button>
@@ -177,7 +177,7 @@ export default function SinkronisasiLobby({
 
       {!isPartnerConnected && !partnerId && (
         <p className="mt-6 text-xs text-white/30 text-center max-w-xs">
-          Pasanganmu akan mendapat notifikasi. Mereka bisa join dari link yang sama.
+          Your partner will get a notification. They can join from the same link.
         </p>
       )}
     </div>

@@ -43,7 +43,7 @@ type Owner = 'me' | 'partner' | 'couple'
 /**
  * Whose event this is, from MY point of view. event_scope is written from the
  * creator's point of view: "personal" = the creator's own, "partner" = for the
- * creator's partner. So the partner's "personal" event is "Pasangan" for me.
+ * creator's partner. So the partner's "personal" event is "Partner's" for me.
  */
 function ownerOf(ev: CoupleEvent, userId: string | null): Owner {
   const createdByMe = !ev.created_by || ev.created_by === userId
@@ -61,7 +61,7 @@ function occursOn(ev: CoupleEvent, dateKey: string): boolean {
   return occursOnDate(ev.event_date, ev.is_recurring, dateKey)
 }
 
-/** Types that get location + budget fields and the "Abadikan jadi Moment" link */
+/** Types that get location + budget fields and the "Save as a Moment" link */
 const OUTING_TYPES = ['date_plan', 'event']
 
 function momentHref(ev: { title: string; location: string | null }, date: string): string {
@@ -74,7 +74,7 @@ function RemindPicker({ value, onChange }: { value: number | null; onChange: (v:
   return (
     <div>
       <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-ink-muted">
-        <Bell className="h-3 w-3" /> Ingatkan
+        <Bell className="h-3 w-3" /> Remind me
       </p>
       <div className="grid grid-cols-5 gap-1.5">
         {REMIND_OPTIONS.map(opt => (
@@ -108,24 +108,25 @@ const EVENT_DOT_COLORS: Record<string, string> = {
 
 // Keyed by owner (my point of view), not by the raw event_scope
 const OWNER_LABELS: Record<Owner, { icon: typeof Users; label: string }> = {
-  couple: { icon: Users, label: 'Bersama' },
-  me: { icon: User, label: 'Pribadi' },
-  partner: { icon: Heart, label: 'Pasangan' },
+  couple: { icon: Users, label: 'Together' },
+  me: { icon: User, label: 'Mine' },
+  partner: { icon: Heart, label: "Partner's" },
 }
 
-const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
-const DAY_NAMES = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December']
+const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 function countdownText(days: number): string {
-  if (days === 0) return 'Hari ini'
-  if (days === 1) return 'Besok'
-  if (days < 0) return `${Math.abs(days)}h lalu`
-  return `${days} hari lagi`
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Tomorrow'
+  if (days === -1) return 'Yesterday'
+  if (days < 0) return `${Math.abs(days)} days ago`
+  return `In ${days} days`
 }
 
 function dayName(dateStr: string): string {
-  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
   return days[new Date(dateStr + 'T00:00:00').getDay()]
 }
 
@@ -137,12 +138,12 @@ export default function CalendarPage() {
   const [partnerId, setPartnerId] = useState<string | null>(null)
   const [events, setEvents] = useState<CoupleEvent[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<Tab>('semua')
+  const [tab, setTab] = useState<Tab>('semua') // copy-ok: internal tab key
   const [modalOpen, setModalOpen] = useState(false)
   const [datePlanModal, setDatePlanModal] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
-  // Calendar navigation — "today" is the Jakarta date, not the device clock's
+  // Calendar navigation: "today" is the Jakarta date, not the device clock's
   const todayKey = todayJakarta()
   const [calMonth, setCalMonth] = useState(() => Number(todayJakarta().slice(5, 7)) - 1)
   const [calYear, setCalYear] = useState(() => Number(todayJakarta().slice(0, 4)))
@@ -165,7 +166,7 @@ export default function CalendarPage() {
   const [formError, setFormError] = useState('')
   const [listError, setListError] = useState('')
   const [loadError, setLoadError] = useState('')
-  /** Event whose inline "hapus?" confirm is open */
+  /** Event whose inline "delete?" confirm is open */
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -174,7 +175,7 @@ export default function CalendarPage() {
   // Runs on mount, on every realtime change and when the app comes back to the
   // foreground. A failed run keeps what is on screen and offers a retry.
   const loadData = useCallback(async () => {
-    const failed = () => { setLoadError('Gagal memuat kalender. Cek koneksi lalu coba lagi.'); setLoading(false) }
+    const failed = () => { setLoadError("Couldn't load the calendar. Check your connection and try again."); setLoading(false) }
     const supabase = createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (!user) {
@@ -308,21 +309,21 @@ export default function CalendarPage() {
     if (error || !data?.length) {
       // Keep the form open with everything that was typed
       setFormError(isEdit && !error
-        ? 'Acara ini sudah tidak ada. Mungkin baru dihapus pasanganmu.'
-        : 'Gagal menyimpan acara. Coba lagi ya.')
+        ? 'This event is gone. Your partner may have just deleted it.'
+        : "Couldn't save the event. Try again.")
       setSaving(false)
       return
     }
     // Notify partner about a new entry (best-effort, never blocks the form)
     if (partnerId && !isEdit) {
-      const typeLabel = newType === 'date_plan' ? 'date plan' : newType === 'reminder' ? 'pengingat' : 'acara'
+      const typeLabel = newType === 'date_plan' ? 'a date plan' : newType === 'reminder' ? 'a reminder' : 'an event'
       void fetch('/api/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           recipientId: partnerId,
           title: 'Nanti Kita',
-          body: `${userName ?? 'Pasanganmu'} menambahkan ${typeLabel}: "${newTitle.trim()}"`,
+          body: `${userName ?? 'Your partner'} added ${typeLabel}: "${newTitle.trim()}"`,
           url: '/app/calendar',
           kind: 'activity',
         }),
@@ -346,7 +347,7 @@ export default function CalendarPage() {
     const supabase = createClient()
     const { error } = await supabase.from('couple_events').delete().eq('id', id)
     setDeletingId(null)
-    if (error) { setListError('Gagal menghapus acara. Coba lagi ya.'); return }
+    if (error) { setListError("Couldn't delete the event. Try again."); return }
     setConfirmDeleteId(null)
     setEvents(prev => prev.filter(ev => ev.id !== id))
   }
@@ -355,11 +356,11 @@ export default function CalendarPage() {
     setListError('')
     const supabase = createClient()
     const { error } = await supabase.from('couple_events').update({ is_completed: !ev.is_completed }).eq('id', ev.id)
-    if (error) { setListError('Gagal mengubah status. Coba lagi ya.'); return }
+    if (error) { setListError("Couldn't update the date plan. Try again."); return }
     setEvents(prev => prev.map(e => e.id === ev.id ? { ...e, is_completed: !e.is_completed } : e))
   }
 
-  // Filter by whose event it is (from my point of view) — not by raw scope
+  // Filter by whose event it is (from my point of view), not by raw scope
   const filtered = events.filter(ev => {
     if (tab === 'personal') return ownerOf(ev, userId) === 'me'
     if (tab === 'partner') return ownerOf(ev, userId) === 'partner'
@@ -388,10 +389,10 @@ export default function CalendarPage() {
 
   const countOwner = (o: Owner) => events.filter(e => ownerOf(e, userId) === o).length
   const TABS: { key: Tab; label: string; count: number }[] = [
-    { key: 'semua', label: 'Semua', count: events.length },
-    { key: 'personal', label: 'Acara Saya', count: countOwner('me') },
-    { key: 'partner', label: 'Pasangan', count: countOwner('partner') },
-    { key: 'couple', label: 'Bersama', count: countOwner('couple') },
+    { key: 'semua', label: 'All', count: events.length }, // copy-ok: internal tab key
+    { key: 'personal', label: 'Mine', count: countOwner('me') },
+    { key: 'partner', label: "Partner's", count: countOwner('partner') },
+    { key: 'couple', label: 'Together', count: countOwner('couple') },
   ]
 
   return (
@@ -399,11 +400,11 @@ export default function CalendarPage() {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border bg-white px-6 py-4">
         <div>
-          <h1 className="text-xl font-bold text-ink">Kalender</h1>
-          <p className="text-xs text-ink-muted">Tanggal penting & date plan</p>
+          <h1 className="text-xl font-bold text-ink">Calendar</h1>
+          <p className="text-xs text-ink-muted">Big days and date plans</p>
         </div>
         <button onClick={() => { resetForm(); setModalOpen(true) }}
-          aria-label="Tambah acara"
+          aria-label="Add event"
           className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose text-white shadow-sm">
           <Plus className="h-4 w-4" />
         </button>
@@ -413,14 +414,14 @@ export default function CalendarPage() {
       <div className="bg-white px-4 pb-3 pt-2">
         {/* Month nav */}
         <div className="mb-3 flex items-center justify-between">
-          <button onClick={prevMonth} aria-label="Bulan sebelumnya" className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-cream">
+          <button onClick={prevMonth} aria-label="Previous month" className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-cream">
             <ChevronLeft className="h-4 w-4 text-ink-muted" />
           </button>
           <button onClick={goToday} className="flex items-center gap-1.5">
             <span className="text-sm font-bold text-ink">{MONTH_NAMES[calMonth]}</span>
             <span className="text-sm text-ink-muted">{calYear}</span>
           </button>
-          <button onClick={nextMonth} aria-label="Bulan berikutnya" className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-cream">
+          <button onClick={nextMonth} aria-label="Next month" className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-cream">
             <ChevronRight className="h-4 w-4 text-ink-muted" />
           </button>
         </div>
@@ -481,7 +482,7 @@ export default function CalendarPage() {
             <p className="text-xs text-ink-muted">{countdownText(daysUntil(selectedDate))}</p>
           </div>
           <button onClick={() => setSelectedDate(null)} className="rounded-lg px-2.5 py-1 text-xs font-semibold text-rose hover:bg-rose/5">
-            Lihat semua
+            See all
           </button>
         </div>
       )}
@@ -509,9 +510,9 @@ export default function CalendarPage() {
             <div className="mb-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-purple-500" />
-                <span className="text-xs font-bold uppercase tracking-wider text-purple-600">Ide Date</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-purple-600">Date idea</span>
               </div>
-              <button onClick={() => setDateIdea(getRandomDateIdea())} aria-label="Ganti ide date"
+              <button onClick={() => setDateIdea(getRandomDateIdea())} aria-label="Show another date idea"
                 className="rounded-lg p-1 text-purple-400 hover:text-purple-600">
                 <RefreshCw className="h-3.5 w-3.5" />
               </button>
@@ -524,7 +525,7 @@ export default function CalendarPage() {
               </span>
               <button onClick={() => openDatePlanFromIdea(dateIdea)}
                 className="flex items-center gap-1 text-xs font-bold text-purple-600 hover:underline">
-                Jadikan Date Plan <ChevronRight className="h-3 w-3" />
+                Plan this date <ChevronRight className="h-3 w-3" />
               </button>
             </div>
           </div>
@@ -534,7 +535,7 @@ export default function CalendarPage() {
           <div role="alert" className="flex items-center justify-between gap-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
             <span>{loadError}</span>
             <button onClick={() => { void loadData() }} className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold text-red-700 hover:bg-red-100">
-              Coba lagi
+              Try again
             </button>
           </div>
         )}
@@ -547,9 +548,9 @@ export default function CalendarPage() {
           <div className="flex flex-col items-center justify-center py-10 text-center">
             <CalendarDays className="mb-3 h-10 w-10 text-ink-muted/30" strokeWidth={1.5} />
             <p className="text-sm font-semibold text-ink-muted">
-              {selectedDate ? 'Tidak ada acara di tanggal ini' : tab === 'personal' ? 'Belum ada acara pribadi' : tab === 'partner' ? 'Belum ada acara pasangan' : tab === 'couple' ? 'Belum ada acara bersama' : 'Belum ada acara'}
+              {selectedDate ? 'Nothing on this day' : tab === 'personal' ? 'None of your own events yet' : tab === 'partner' ? "None of your partner's events yet" : tab === 'couple' ? 'No shared events yet' : 'No events yet'}
             </p>
-            <p className="text-xs text-ink-muted/60">Ketuk + untuk menambahkan</p>
+            <p className="text-xs text-ink-muted/60">Tap + to add one</p>
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -583,14 +584,14 @@ export default function CalendarPage() {
                       </p>
                       {(ev.is_recurring || scopeInfo || remindText) && (
                         <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[10px] text-ink-muted/60">
-                          {ev.is_recurring && <span className="whitespace-nowrap">Tiap tahun</span>}
+                          {ev.is_recurring && <span className="whitespace-nowrap">Every year</span>}
                           {scopeInfo && (
                             <span className="flex items-center gap-0.5 whitespace-nowrap">
                               <scopeInfo.icon className="h-2.5 w-2.5" /> {scopeInfo.label}
                             </span>
                           )}
                           {remindText && (
-                            <span className="flex items-center gap-0.5 whitespace-nowrap" title="Pengingat">
+                            <span className="flex items-center gap-0.5 whitespace-nowrap" title="Reminder">
                               <Bell className="h-2.5 w-2.5" /> {remindText}
                             </span>
                           )}
@@ -605,7 +606,7 @@ export default function CalendarPage() {
                         : ev.daysLeft <= 30 ? 'bg-gold/20 text-yellow-700'
                         : 'bg-sage/20 text-sage-dark'
                     }`}>
-                      {ev.is_completed ? 'Selesai' : countdownText(ev.daysLeft)}
+                      {ev.is_completed ? 'Done' : countdownText(ev.daysLeft)}
                     </span>
                   </div>
 
@@ -629,16 +630,16 @@ export default function CalendarPage() {
 
                   {confirmDeleteId === ev.id ? (
                     <div className="border-t border-red-200 bg-red-50 px-4 py-3 text-center">
-                      <p className="text-sm font-semibold text-red-700">Hapus acara &ldquo;{ev.title}&rdquo;?</p>
-                      <p className="mt-0.5 text-xs text-red-600/80">Acara ini hilang dari kalender kalian berdua.</p>
+                      <p className="text-sm font-semibold text-red-700">Delete &ldquo;{ev.title}&rdquo;?</p>
+                      <p className="mt-0.5 text-xs text-red-600/80">It will be removed from both of your calendars.</p>
                       <div className="mt-2.5 flex gap-2">
                         <button onClick={() => setConfirmDeleteId(null)} disabled={deletingId === ev.id}
                           className="flex-1 rounded-xl border border-border bg-white py-2 text-xs font-semibold text-ink-muted">
-                          Batal
+                          Cancel
                         </button>
                         <button onClick={() => deleteEvent(ev.id)} disabled={deletingId === ev.id}
                           className="flex-1 rounded-xl bg-red-500 py-2 text-xs font-bold text-white disabled:opacity-60">
-                          {deletingId === ev.id ? 'Menghapus...' : 'Ya, hapus'}
+                          {deletingId === ev.id ? 'Deleting...' : 'Yes, delete'}
                         </button>
                       </div>
                     </div>
@@ -648,7 +649,7 @@ export default function CalendarPage() {
                       <>
                         <button onClick={() => toggleComplete(ev)}
                           className="flex-1 py-2 text-xs font-semibold text-sage-dark hover:bg-sage/5">
-                          {ev.is_completed ? 'Belum selesai' : 'Tandai selesai'}
+                          {ev.is_completed ? 'Mark as not done' : 'Mark as done'}
                         </button>
                         <div className="w-px bg-border" />
                       </>
@@ -656,15 +657,15 @@ export default function CalendarPage() {
                     {canMoment && (
                       <Link href={momentHref(ev, ev.nextDate)}
                         className="flex items-center gap-1 whitespace-nowrap px-3 py-2 text-xs font-semibold text-rose hover:bg-rose/5">
-                        <Camera className="h-3.5 w-3.5" /> Abadikan jadi Moment
+                        <Camera className="h-3.5 w-3.5" /> Save as a Moment
                       </Link>
                     )}
                     <div className="ml-auto flex">
-                      <button onClick={() => openEdit(ev)} aria-label={`Ubah acara ${ev.title}`}
+                      <button onClick={() => openEdit(ev)} aria-label={`Edit ${ev.title}`}
                         className="px-3 py-2 text-ink-muted/50 hover:text-rose">
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
-                      <button onClick={() => { setConfirmDeleteId(ev.id); setListError('') }} aria-label={`Hapus acara ${ev.title}`}
+                      <button onClick={() => { setConfirmDeleteId(ev.id); setListError('') }} aria-label={`Delete ${ev.title}`}
                         className="px-3 py-2 text-ink-muted/30 hover:text-red-400">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -681,19 +682,19 @@ export default function CalendarPage() {
       {/* ===== ADD / EDIT EVENT MODAL ===== */}
       <Modal open={modalOpen}
         onClose={() => { setModalOpen(false); if (editingId) resetForm() }}
-        title={editingId ? 'Ubah Acara' : 'Tambah ke Kalender'}
+        title={editingId ? 'Edit event' : 'Add to calendar'}
         className="max-h-[92vh] overflow-y-auto">
         <form onSubmit={saveEvent} className="space-y-4">
-          <input type="text" placeholder="Judul acara" aria-label="Judul acara" value={newTitle} onChange={e => setNewTitle(e.target.value)} required
+          <input type="text" placeholder="Event title" aria-label="Event title" value={newTitle} onChange={e => setNewTitle(e.target.value)} required
             className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm font-medium focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20" />
-          <input type="date" aria-label="Tanggal" value={newDate} onChange={e => setNewDate(e.target.value)} required
+          <input type="date" aria-label="Date" value={newDate} onChange={e => setNewDate(e.target.value)} required
             className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20" />
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-muted">Jenis</label>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-muted">Type</label>
             <div className="grid grid-cols-3 gap-1.5">
               {[
-                { value: 'event', label: 'Acara' }, { value: 'reminder', label: 'Pengingat' },
-                { value: 'date_plan', label: 'Date Plan' }, { value: 'birthday', label: 'Ultah' },
+                { value: 'event', label: 'Event' }, { value: 'reminder', label: 'Reminder' },
+                { value: 'date_plan', label: 'Date plan' }, { value: 'birthday', label: 'Birthday' },
                 { value: 'anniversary', label: 'Anniversary' }, { value: 'milestone', label: 'Milestone' },
               ].map(opt => (
                 <button key={opt.value} type="button" onClick={() => setNewType(opt.value)}
@@ -704,12 +705,12 @@ export default function CalendarPage() {
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-muted">Untuk siapa?</label>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-muted">Who&apos;s it for?</label>
             <div className="grid grid-cols-3 gap-1.5">
               {[
-                { value: 'couple', label: 'Bersama', icon: Users },
-                { value: 'personal', label: 'Pribadi', icon: User },
-                { value: 'partner', label: 'Pasangan', icon: Heart },
+                { value: 'couple', label: 'Both of us', icon: Users },
+                { value: 'personal', label: 'Me', icon: User },
+                { value: 'partner', label: 'My partner', icon: Heart },
               ].map(opt => {
                 const ScopeIcon = opt.icon
                 return (
@@ -723,15 +724,15 @@ export default function CalendarPage() {
               })}
             </div>
           </div>
-          <input type="text" placeholder="Catatan (opsional)" aria-label="Catatan" value={newDescription} onChange={e => setNewDescription(e.target.value)}
+          <input type="text" placeholder="Notes (optional)" aria-label="Notes" value={newDescription} onChange={e => setNewDescription(e.target.value)}
             className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20" />
           {OUTING_TYPES.includes(newType) && (
             <>
-              <input type="text" placeholder="Lokasi (opsional)" aria-label="Lokasi" value={newLocation} onChange={e => setNewLocation(e.target.value)}
+              <input type="text" placeholder="Location (optional)" aria-label="Location" value={newLocation} onChange={e => setNewLocation(e.target.value)}
                 className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20" />
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs text-ink-muted">Rp</span>
-                <input type="text" inputMode="numeric" placeholder="Budget (opsional)" aria-label="Budget" value={newBudget}
+                <input type="text" inputMode="numeric" placeholder="Budget (optional)" aria-label="Budget" value={newBudget}
                   onChange={e => { const n = e.target.value.replace(/\D/g, ''); setNewBudget(n ? parseInt(n,10).toLocaleString('id-ID') : '') }}
                   className="w-full rounded-2xl border border-border bg-white py-3 pl-9 pr-4 text-sm focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20" />
               </div>
@@ -740,31 +741,31 @@ export default function CalendarPage() {
           <label className="flex items-center gap-3 rounded-xl border border-border px-4 py-3">
             <input type="checkbox" checked={newRecurring} onChange={e => setNewRecurring(e.target.checked)}
               className="h-4 w-4 rounded border-border text-rose focus:ring-rose" />
-            <span className="text-sm text-ink">Berulang setiap tahun</span>
+            <span className="text-sm text-ink">Repeats every year</span>
           </label>
           <RemindPicker value={newRemind} onChange={setNewRemind} />
           {formError && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{formError}</p>}
-          <Button type="submit" loading={saving} size="lg">{editingId ? 'Simpan Perubahan' : 'Simpan'}</Button>
+          <Button type="submit" loading={saving} size="lg">{editingId ? 'Save changes' : 'Save'}</Button>
         </form>
       </Modal>
 
       {/* ===== DATE PLAN FROM IDEA MODAL ===== */}
-      <Modal open={datePlanModal} onClose={() => { setDatePlanModal(false); resetForm() }} title="Buat Date Plan">
+      <Modal open={datePlanModal} onClose={() => { setDatePlanModal(false); resetForm() }} title="Plan a date">
         <form onSubmit={saveEvent} className="space-y-4">
           <div className="rounded-xl bg-purple-50 p-3">
             <p className="text-sm font-bold text-purple-700">{newTitle}</p>
             <p className="text-xs text-purple-600/70">{newDescription}</p>
           </div>
           <div className="space-y-1">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Kapan?</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">When?</label>
             <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} required
               className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20" />
           </div>
-          <input type="text" placeholder="Lokasi (opsional)" aria-label="Lokasi" value={newLocation} onChange={e => setNewLocation(e.target.value)}
+          <input type="text" placeholder="Location (optional)" aria-label="Location" value={newLocation} onChange={e => setNewLocation(e.target.value)}
             className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20" />
           <RemindPicker value={newRemind} onChange={setNewRemind} />
           {formError && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{formError}</p>}
-          <Button type="submit" loading={saving} size="lg">Simpan Date Plan</Button>
+          <Button type="submit" loading={saving} size="lg">Save date plan</Button>
         </form>
       </Modal>
     </div>

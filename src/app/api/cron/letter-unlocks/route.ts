@@ -35,16 +35,16 @@ export async function GET(req: NextRequest) {
 
   const senderIds = Array.from(new Set(due.map((l) => l.sender_id)))
   const { data: senders } = await admin.from('profiles').select('id, name').in('id', senderIds)
-  const nameOf = new Map((senders ?? []).map((s) => [s.id, s.name ?? 'Pasanganmu']))
+  const nameOf = new Map((senders ?? []).map((s) => [s.id, s.name ?? 'Your partner']))
 
   let sent = 0
   for (const letter of due) {
     // ignoreQuietHours: each letter is marked handled below and never retried,
     // so a push held back for quiet hours would be lost, not delayed. The
-    // "Surat" switch still applies.
+    // letters switch still applies.
     const result = await sendPushToProfile(letter.receiver_id, {
       title: 'Nanti Kita',
-      body: `Surat dari ${nameOf.get(letter.sender_id) ?? 'pasanganmu'} sudah bisa dibuka`,
+      body: `Your letter from ${nameOf.get(letter.sender_id) ?? 'your partner'} is ready to open`,
       url: `/app/letters/${letter.id}`,
     }, 'letters', { ignoreQuietHours: true })
     sent += result?.sent ?? 0

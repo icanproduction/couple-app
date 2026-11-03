@@ -11,23 +11,23 @@ type Problem = 'closed' | 'expired' | 'full' | 'not_found'
 const PROBLEMS: Record<Problem, { icon: typeof Clock; title: string; body: string }> = {
   closed: {
     icon: Archive,
-    title: 'Kode ini sudah tidak berlaku',
-    body: 'Ruang pasangan pemilik kode ini sudah ditutup karena salah satu dari mereka keluar. Minta pasanganmu memulai ruang baru, lalu kirim kode undangan barunya ke kamu.',
+    title: 'This code no longer works',
+    body: 'The couple space behind this code was closed when one of them left. Ask your partner to start a new space, then send you the new invite code.',
   },
   expired: {
     icon: Clock,
-    title: 'Kode undangan sudah kedaluwarsa',
-    body: 'Kode undangan berlaku 7 hari. Minta pasanganmu buka Profil lalu ketuk "Buat kode baru", kemudian kirim link barunya ke kamu.',
+    title: 'This invite code has expired',
+    body: 'Invite codes last 7 days. Ask your partner to open Profile, tap "New code", then send you the new link.',
   },
   full: {
     icon: Users,
-    title: 'Pasangan ini sudah lengkap',
-    body: 'Kode ini milik pasangan yang sudah terhubung berdua. Cek lagi kode dari pasanganmu, ya.',
+    title: 'This couple is already complete',
+    body: 'This code belongs to a couple where both people have already joined. Double-check the code your partner sent.',
   },
   not_found: {
     icon: SearchX,
-    title: 'Kode undangan tidak ditemukan',
-    body: 'Mungkin kodenya salah ketik atau sudah diganti dengan kode baru. Minta pasanganmu kirim ulang link undangannya.',
+    title: 'We couldn\'t find this invite code',
+    body: 'It may have a typo, or it was replaced with a new code. Ask your partner to send the invite link again.',
   },
 }
 
@@ -102,10 +102,10 @@ export default async function InvitePage({ params }: { params: { code: string } 
               href="/onboarding/couple?join=1"
               className="block w-full rounded-2xl bg-rose py-3.5 text-sm font-bold text-white shadow-elevated"
             >
-              Masukkan kode lain
+              Enter another code
             </Link>
             <Link href="/app/home" className="block w-full py-2 text-sm font-semibold text-ink-muted hover:text-ink">
-              Nanti saja
+              Not now
             </Link>
           </>
         ) : (
@@ -114,10 +114,10 @@ export default async function InvitePage({ params }: { params: { code: string } 
               href="/auth/signup"
               className="block w-full rounded-2xl bg-rose py-3.5 text-sm font-bold text-white shadow-elevated"
             >
-              Daftar dulu
+              Sign up first
             </Link>
             <Link href="/auth/login" className="block w-full py-2 text-sm font-semibold text-ink-muted hover:text-ink">
-              Sudah punya akun? Masuk
+              Have an account? Log in
             </Link>
           </>
         )}

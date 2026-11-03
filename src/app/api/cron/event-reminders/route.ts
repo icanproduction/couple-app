@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
       try {
         // ignoreQuietHours: this occurrence is claimed above and never retried,
         // so holding it back for quiet hours would drop the reminder for good.
-        // The "Pengingat kalender" switch still applies.
+        // The calendar reminders switch still applies.
         const result = await sendPushToProfile(profileId, payload, 'reminders', { ignoreQuietHours: true })
         sent += result?.sent ?? 0
       } catch (err) {

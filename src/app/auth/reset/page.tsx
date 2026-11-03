@@ -30,8 +30,8 @@ export default function ResetPasswordPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (password.length < 8) { setError('Password minimal 8 karakter.'); return }
-    if (password !== confirm) { setError('Konfirmasi password tidak sama.'); return }
+    if (password.length < 8) { setError('Password needs at least 8 characters.'); return }
+    if (password !== confirm) { setError('The two passwords don\'t match.'); return }
     setError('')
     setLoading(true)
 
@@ -39,10 +39,10 @@ export default function ResetPasswordPage() {
     if (updateError) {
       const msg = updateError.message.toLowerCase()
       setError(msg.includes('different') || msg.includes('same')
-        ? 'Password baru harus berbeda dari yang lama.'
+        ? 'Your new password has to be different from the old one.'
         : msg.includes('weak')
-        ? 'Password terlalu mudah ditebak. Coba yang lain.'
-        : 'Gagal menyimpan password. Coba lagi.')
+        ? 'That password is too easy to guess. Try another one.'
+        : 'Couldn\'t save the password. Try again.')
       setLoading(false)
       return
     }
@@ -62,13 +62,13 @@ export default function ResetPasswordPage() {
   if (!hasSession) {
     return (
       <div className="animate-fade-in text-center">
-        <h1 className="text-2xl font-bold text-ink">Link tidak valid</h1>
+        <h1 className="text-2xl font-bold text-ink">This link doesn&apos;t work</h1>
         <p className="mt-2 text-sm text-ink-muted">
-          Link reset password sudah tidak berlaku. Minta link baru, ya.
+          This password reset link has expired. Ask for a new one.
         </p>
         <p className="mt-8 text-sm">
           <Link href="/auth/forgot" className="font-semibold text-rose hover:text-rose-dark">
-            Minta link baru
+            Get a new link
           </Link>
         </p>
       </div>
@@ -81,15 +81,15 @@ export default function ResetPasswordPage() {
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50">
           <KeyRound className="h-7 w-7 text-rose" strokeWidth={2} />
         </div>
-        <h1 className="text-2xl font-bold text-ink">Password Baru</h1>
-        <p className="mt-1 text-sm text-ink-muted">Buat password baru untuk akunmu</p>
+        <h1 className="text-2xl font-bold text-ink">New password</h1>
+        <p className="mt-1 text-sm text-ink-muted">Choose a new password for your account</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Password Baru"
+          label="New password"
           type="password"
-          placeholder="Min. 8 karakter"
+          placeholder="At least 8 characters"
           value={password}
           onChange={e => setPassword(e.target.value)}
           required
@@ -97,9 +97,9 @@ export default function ResetPasswordPage() {
           autoComplete="new-password"
         />
         <Input
-          label="Ulangi Password"
+          label="Repeat password"
           type="password"
-          placeholder="Ketik ulang password"
+          placeholder="Type it again"
           value={confirm}
           onChange={e => setConfirm(e.target.value)}
           required
@@ -109,7 +109,7 @@ export default function ResetPasswordPage() {
         />
         <div className="pt-2">
           <Button type="submit" loading={loading} size="lg">
-            Simpan Password
+            Save password
           </Button>
         </div>
       </form>

@@ -23,7 +23,7 @@ export default function AdminDeepTalkPage() {
       .from('deep_talk_packs')
       .select('*')
       .order('sort_order')
-    if (loadError) setError(`Gagal memuat pack: ${loadError.message}`)
+    if (loadError) setError(`Couldn't load packs: ${loadError.message}`)
     else setPacks((data ?? []) as DeepTalkPack[])
     setLoading(false)
   }, [])
@@ -38,7 +38,7 @@ export default function AdminDeepTalkPage() {
       .from('deep_talk_packs')
       .update({ is_published: !pack.is_published })
       .eq('id', pack.id)
-    if (updateError) setError(`Gagal mengubah status "${pack.title}": ${updateError.message}`)
+    if (updateError) setError(`Couldn't change the status of "${pack.title}": ${updateError.message}`)
     await loadPacks()
     setToggling(null)
   }
@@ -60,7 +60,7 @@ export default function AdminDeepTalkPage() {
       is_published: false,
     })
     if (insertError) {
-      setError(`Gagal membuat pack: ${insertError.message}`)
+      setError(`Couldn't create the pack: ${insertError.message}`)
     } else {
       setNewTitle('')
       setNewDesc('')
@@ -76,13 +76,13 @@ export default function AdminDeepTalkPage() {
       <div className="mb-6 flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-ink">Deep Talk</h1>
-          <p className="mt-1 text-sm text-ink-muted">{packs.length} pack tersedia</p>
+          <p className="mt-1 text-sm text-ink-muted">{packs.length} {packs.length === 1 ? 'pack' : 'packs'}</p>
         </div>
         <button
           onClick={() => setCreating(true)}
           className="flex flex-shrink-0 items-center gap-2 rounded-xl bg-rose px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-rose-dark"
         >
-          <Plus className="h-4 w-4" /> Buat Pack
+          <Plus className="h-4 w-4" /> New pack
         </button>
       </div>
 
@@ -90,7 +90,7 @@ export default function AdminDeepTalkPage() {
         <div className="mb-4 flex items-start gap-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
           <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <span className="flex-1">{error}</span>
-          <button onClick={() => setError('')} className="text-xs font-semibold">Tutup</button>
+          <button onClick={() => setError('')} className="text-xs font-semibold">Dismiss</button>
         </div>
       )}
 
@@ -100,18 +100,18 @@ export default function AdminDeepTalkPage() {
           onSubmit={e => { e.preventDefault(); createPack() }}
           className="mb-5 rounded-2xl border border-rose/30 bg-rose/5 p-4"
         >
-          <p className="mb-3 text-sm font-semibold text-ink">Pack Baru</p>
+          <p className="mb-3 text-sm font-semibold text-ink">New pack</p>
           <div className="space-y-2">
             <input
               value={newTitle}
               onChange={e => setNewTitle(e.target.value)}
-              placeholder="Judul pack (wajib)"
+              placeholder="Pack title (required)"
               className="w-full rounded-xl border border-border px-3 py-2 text-sm outline-none focus:border-rose"
             />
             <input
               value={newDesc}
               onChange={e => setNewDesc(e.target.value)}
-              placeholder="Deskripsi (opsional)"
+              placeholder="Description (optional)"
               className="w-full rounded-xl border border-border px-3 py-2 text-sm outline-none focus:border-rose"
             />
           </div>
@@ -121,7 +121,7 @@ export default function AdminDeepTalkPage() {
               disabled={savingPack || !newTitle.trim()}
               className="rounded-xl bg-rose px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
-              {savingPack ? 'Menyimpan...' : 'Simpan'}
+              {savingPack ? 'Saving…' : 'Save'}
             </button>
             <button
               type="button"
@@ -129,7 +129,7 @@ export default function AdminDeepTalkPage() {
               disabled={savingPack}
               className="rounded-xl border border-border px-4 py-2 text-sm text-ink-muted"
             >
-              Batal
+              Cancel
             </button>
           </div>
         </form>
@@ -149,7 +149,7 @@ export default function AdminDeepTalkPage() {
               />
               <div className="flex-1 min-w-0">
                 <p className="truncate text-sm font-semibold text-ink">{pack.title}</p>
-                <p className="text-xs text-ink-muted truncate">{pack.description ?? '—'}</p>
+                <p className="text-xs text-ink-muted truncate">{pack.description ?? 'No description'}</p>
               </div>
               <button
                 onClick={() => togglePublished(pack)}
@@ -172,7 +172,7 @@ export default function AdminDeepTalkPage() {
             </div>
           ))}
           {packs.length === 0 && (
-            <div className="py-12 text-center text-sm text-ink-muted">Belum ada pack. Buat pack pertama!</div>
+            <div className="py-12 text-center text-sm text-ink-muted">No packs yet. Create the first one.</div>
           )}
         </div>
       )}

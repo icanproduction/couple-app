@@ -421,3 +421,19 @@ Navigation: bottom nav is Beranda · **Jelajah** · Keuangan · Kalender · Prof
 | Deep Talk | `/app/games/deep-talk` | 10 themed packs, `is_free` = every level open, no order |
 
 Privacy rules worth remembering: letters are readable only by sender and receiver; a closed couple accepts no new member; joining a new code while your current space holds memories asks for confirmation and deletes that space (and its photos).
+
+---
+
+## 20. v0.7: ENGLISH + THREE NEW GAMES (2026-11-03)
+
+**Language.** Every screen, toast, push notification, SQL message, AI output and question bank is English. The rules, glossary and kept Indonesian names (Nanti Kita, Kangen, Toples, Jelajah, Samakan, Pet Kita) are in `docs/COPY-GUIDE.md`. Routes, table/column names and stored values did not change (mood keys, categories, assessment score keys stay Indonesian and are mapped to English labels). Dates use `en-GB`, money stays `id-ID` with "Rp". Migration `20261103120000_english_content.sql` re-creates 20 SQL functions with English strings only (logic proven identical) and translates the 10 Deep Talk packs, 30 levels and 180 questions in place; `20261103140000_mood_feed_label.sql` makes the feed name the mood again ("Kezia checked in: Missing you"). AI prompts share `src/lib/ai-style.ts` (English, local context, no dashes, banned slop words) and `tidyAiText()` strips dashes from model output.
+
+**Games hub** (`/app/games`): Pet Kita · Samakan · Deep Talk · the three below (badge NEW). "Compatibility Test" was dropped because the readiness assessment covers it.
+
+| Game | Route | How it plays | Data |
+|---|---|---|---|
+| Truth or Dare | `/app/games/truth-or-dare` | one phone, together. Heat Sweet / Playful / Brave, 5/10/15 turns each, Truth / Dare / Random, Done +1, 3 skips per player, 1 swap per turn, no repeats until a pile runs out | 156 built-in cards (`src/components/games/truth-or-dare/deck.ts`), custom couple cards in `truth_or_dare_cards` (300 per couple, delete own only) |
+| Love Languages | `/app/games/love-languages` | private 20-pair quiz → ranked Kind words / Quality time / Thoughtful gifts / Helping hands / Physical touch; couple view with "How to love {partner}" tips; nudge once a day | `love_language_results` (one row per person). The DB recomputes scores from the answers; answers are never readable through the API; partner sees scores only |
+| Two Truths & a Lie | `/app/games/two-truths` | async: write 3 statements, mark the lie, optional story; partner gets a push, guesses once, reveal; tally both ways | `two_truths_rounds`, RPC-only (`two_truths_create/guess/list/cancel`), the lie and story stay hidden until the guess; one open round per author |
+
+Brave content is bold but safe: no sexual content, no alcohol, nothing dangerous or humiliating, spending dares capped at Rp 50.000.

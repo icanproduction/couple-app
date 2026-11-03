@@ -57,7 +57,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
             <h3 className="text-base font-bold text-ink">{title}</h3>
             <button
               onClick={onClose}
-              aria-label="Tutup"
+              aria-label="Close"
               className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-ink-muted"
             >
               <X className="h-4 w-4" />

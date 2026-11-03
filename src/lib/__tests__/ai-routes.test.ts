@@ -45,11 +45,11 @@ function userDb(): (q: Query) => QueryResult {
       case 'mbti_results':
         return { data: opArgs(q, 'eq')?.[1] === USER.id ? { mbti_type: 'INFP' } : null }
       case 'ai_daily_questions':
-        return { data: [{ question: 'Apa momen paling lucu minggu ini?' }] }
+        return { data: [{ question: 'What was the funniest moment of your week?' }] }
       case 'couple_events':
-        return { data: [{ title: 'Ulang tahun Dita', event_date: '2026-11-02' }] }
+        return { data: [{ title: "Dita's birthday", event_date: '2026-11-02' }] }
       case 'bucket_items':
-        return { data: [{ title: 'Naik gunung bareng' }] }
+        return { data: [{ title: 'Hike a volcano together' }] }
       default:
         throw new Error(`unexpected user query on ${q.table}`)
     }
@@ -124,7 +124,7 @@ describe('without LLM_API_KEY', () => {
   it('daily question → 503 before claiming, no network call', async () => {
     const res = await routes.dailyQuestion()
     expect(res.status).toBe(503)
-    expect(await res.json()).toEqual({ error: 'Fitur AI belum diaktifkan' })
+    expect(await res.json()).toEqual({ error: 'AI features aren\'t turned on yet' })
     expect(adminWork()).toHaveLength(0)
     expect(fake.requests).toHaveLength(0)
   })
@@ -132,7 +132,7 @@ describe('without LLM_API_KEY', () => {
   it('date ideas → 503 before claiming quota, no network call', async () => {
     const res = await routes.dateIdeas(ideasRequest())
     expect(res.status).toBe(503)
-    expect(await res.json()).toEqual({ error: 'Fitur AI belum diaktifkan' })
+    expect(await res.json()).toEqual({ error: 'AI features aren\'t turned on yet' })
     expect(adminWork()).toHaveLength(0)
     expect(fake.requests).toHaveLength(0)
   })
@@ -152,11 +152,11 @@ describe('with LLM_API_KEY (fake OpenRouter)', () => {
   })
 
   it('daily question: saves the text with the model id in generated_by', async () => {
-    fake.reply(chatCompletion('Kalau bisa liburan berdua minggu depan, kalian mau ke mana?'))
+    fake.reply(chatCompletion('If you could take a trip together next week, where would you go?'))
     const res = await routes.dailyQuestion()
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({
-      question: 'Kalau bisa liburan berdua minggu depan, kalian mau ke mana?',
+      question: 'If you could take a trip together next week, where would you go?',
       alreadyGenerated: false,
     })
 
@@ -169,7 +169,7 @@ describe('with LLM_API_KEY (fake OpenRouter)', () => {
     expect(opArgs(claim, 'insert')?.[0]).toMatchObject({ couple_id: COUPLE, question: null, generated_by: USER.id })
     const [save] = adminWrites('ai_daily_questions', 'update')
     expect(opArgs(save, 'update')?.[0]).toMatchObject({
-      question: 'Kalau bisa liburan berdua minggu depan, kalian mau ke mana?',
+      question: 'If you could take a trip together next week, where would you go?',
       generated_by: 'openai/gpt-6-luna',
       context_used: { myName: 'Raka', partnerName: 'Dita', myMbti: 'INFP' },
     })
@@ -196,7 +196,7 @@ describe('with LLM_API_KEY (fake OpenRouter)', () => {
     useDb({ quotaFull: true })
     const res = await routes.dateIdeas(ideasRequest())
     expect(res.status).toBe(429)
-    expect(await res.json()).toEqual({ error: 'Kuota ide hari ini sudah habis, coba lagi besok', remaining: 0 })
+    expect(await res.json()).toEqual({ error: 'You\'ve used up today\'s ideas. Try again tomorrow.', remaining: 0 })
     expect(fake.requests).toHaveLength(0)
   })
 
@@ -204,25 +204,25 @@ describe('with LLM_API_KEY (fake OpenRouter)', () => {
     fake.reply(chatCompletion(JSON.stringify({ ideas: IDEAS.ideas.slice(0, 2) })))
     const res = await routes.dateIdeas(ideasRequest())
     expect(res.status).toBe(502)
-    expect(await res.json()).toEqual({ error: 'Idenya kurang pas, coba minta lagi ya' })
+    expect(await res.json()).toEqual({ error: 'Those ideas didn\'t come out right. Ask again.' })
     const [failed] = adminWrites('ai_date_idea_runs', 'update')
     expect(opArgs(failed, 'update')?.[0]).toEqual({ status: 'failed' })
     expect(opArgs(failed, 'eq')).toEqual(['id', 'run-1'])
   })
 
   it('date ideas: a non-JSON answer → 502', async () => {
-    fake.reply(chatCompletion('Maaf, aku tidak bisa membantu itu.'))
+    fake.reply(chatCompletion('Sorry, I can\'t help with that.'))
     const res = await routes.dateIdeas(ideasRequest())
     expect(res.status).toBe(502)
-    expect(await res.json()).toEqual({ error: 'Idenya kurang pas, coba minta lagi ya' })
+    expect(await res.json()).toEqual({ error: 'Those ideas didn\'t come out right. Ask again.' })
   })
 
   const upstream: Array<[number, number, string, string, number]> = [
     // upstream, status, daily question message, date ideas message, requests (1 + SDK retries)
-    [401, 503, 'AI belum dikonfigurasi dengan benar', 'AI belum dikonfigurasi dengan benar', 1],
-    [402, 503, 'Kuota AI sedang habis', 'Kuota AI sedang habis', 1],
-    [429, 429, 'AI sedang sibuk, coba lagi sebentar', 'AI sedang sibuk, coba lagi sebentar', 3],
-    [500, 502, 'Gagal membuat pertanyaan, coba lagi', 'Gagal membuat ide, coba lagi', 3],
+    [401, 503, 'The AI isn\'t set up correctly yet', 'The AI isn\'t set up correctly yet', 1],
+    [402, 503, 'The AI has run out of credits for now', 'The AI has run out of credits for now', 1],
+    [429, 429, 'The AI is busy. Try again in a moment.', 'The AI is busy. Try again in a moment.', 3],
+    [500, 502, 'Couldn\'t make a question. Try again.', 'Couldn\'t make ideas. Try again.', 3],
   ]
 
   it.each(upstream)('daily question: upstream %i → %i, claim released', async (code, status, message, _ideas, calls) => {
@@ -251,7 +251,7 @@ describe('key pasted in Admin → AI', () => {
   it('is used when LLM_API_KEY is empty', async () => {
     useDb({ dbKey: 'sk-or-admin' })
     const routes = await loadRoutes({ LLM_BASE_URL: fake.baseUrl, LLM_API_KEY: '' })
-    fake.reply(chatCompletion('Apa hal kecil yang bikin kamu senyum hari ini?'))
+    fake.reply(chatCompletion('What small thing made you smile today?'))
     const res = await routes.dailyQuestion()
     expect(res.status).toBe(200)
     expect(fake.requests[0].headers.authorization).toBe('Bearer sk-or-admin')
@@ -268,7 +268,7 @@ describe('key pasted in Admin → AI', () => {
   it('a model set there is sent and stored in generated_by', async () => {
     useDb({ dbKey: 'sk-or-admin', dbModel: 'openai/gpt-5.6-luna' })
     const routes = await loadRoutes({ LLM_BASE_URL: fake.baseUrl, LLM_API_KEY: '' })
-    fake.reply(chatCompletion('Lagu apa yang paling mengingatkanmu padaku?'))
+    fake.reply(chatCompletion('Which song reminds you of me the most?'))
     expect((await routes.dailyQuestion()).status).toBe(200)
     expect((fake.requests[0].body as ChatRequestBody).model).toBe('openai/gpt-5.6-luna')
     const [save] = adminWrites('ai_daily_questions', 'update')
@@ -278,7 +278,7 @@ describe('key pasted in Admin → AI', () => {
   it('a failed settings lookup falls back to LLM_API_KEY', async () => {
     useDb({ dbFails: true })
     const routes = await loadRoutes({ LLM_BASE_URL: fake.baseUrl, LLM_API_KEY: 'sk-or-env' })
-    fake.reply(chatCompletion('Kapan terakhir kali kita tertawa sampai sakit perut?'))
+    fake.reply(chatCompletion('When did we last laugh until our stomachs hurt?'))
     expect((await routes.dailyQuestion()).status).toBe(200)
     expect(fake.requests[0].headers.authorization).toBe('Bearer sk-or-env')
   })

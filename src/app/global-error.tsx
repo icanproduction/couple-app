@@ -4,7 +4,7 @@
 // so styles are inline.
 export default function GlobalError({ reset }: { error: Error; reset: () => void }) {
   return (
-    <html lang="id">
+    <html lang="en">
       <body
         style={{
           margin: 0, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -12,9 +12,9 @@ export default function GlobalError({ reset }: { error: Error; reset: () => void
         }}
       >
         <div style={{ maxWidth: 320 }}>
-          <h1 style={{ fontSize: 22, margin: '0 0 8px' }}>Ups, aplikasi error</h1>
+          <h1 style={{ fontSize: 22, margin: '0 0 8px' }}>The app hit an error</h1>
           <p style={{ fontSize: 14, lineHeight: 1.6, color: '#8B7E7E', margin: '0 0 24px' }}>
-            Coba muat ulang. Kalau masih error, tutup lalu buka lagi aplikasinya.
+            Try reloading. If it still fails, close the app and open it again.
           </p>
           <button
             onClick={reset}
@@ -23,7 +23,7 @@ export default function GlobalError({ reset }: { error: Error; reset: () => void
               fontWeight: 700, fontSize: 14, padding: '14px 24px', cursor: 'pointer',
             }}
           >
-            Muat Ulang
+            Reload
           </button>
         </div>
       </body>

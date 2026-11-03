@@ -20,10 +20,10 @@ interface SinkronisasiResultsProps {
 }
 
 const ROUND_TYPE_LABELS: Record<RoundType, string> = {
-  pilih_sama: 'Pilih Sama',
+  pilih_sama: 'Same pick',
   slider_sama: 'Slider',
-  tebak_angka: 'Tebak Angka',
-  tebak_pasangan: 'Tebak Pasangan',
+  tebak_angka: 'Number match',
+  tebak_pasangan: 'Guess your partner',
 }
 
 const ROUND_TYPE_EMOJI: Record<RoundType, string> = {
@@ -90,7 +90,7 @@ export default function SinkronisasiResults({
         {/* Per-round breakdown */}
         <div className="w-full max-w-sm mb-8">
           <p className="text-xs font-bold uppercase tracking-wider text-white/30 mb-3">
-            Detail Ronde
+            Round by round
           </p>
           <div className="space-y-2">
             {results.map((result, i) => {
@@ -106,7 +106,7 @@ export default function SinkronisasiResults({
                     <p className="text-sm font-medium text-white">
                       {ROUND_TYPE_LABELS[result.type]}
                     </p>
-                    <p className="text-xs text-white/40">Ronde {i + 1}</p>
+                    <p className="text-xs text-white/40">Round {i + 1}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -134,14 +134,14 @@ export default function SinkronisasiResults({
             className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-white/20 py-3 text-sm font-medium text-white/70 active:scale-95 transition-transform"
           >
             <ArrowLeft className="h-4 w-4" />
-            Kembali
+            Back
           </button>
           <button
             onClick={onPlayAgain}
             className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-rose py-3 text-sm font-bold text-white active:scale-95 transition-transform shadow-lg shadow-rose/20"
           >
             <RotateCcw className="h-4 w-4" />
-            Main Lagi
+            Play again
           </button>
         </div>
       </div>

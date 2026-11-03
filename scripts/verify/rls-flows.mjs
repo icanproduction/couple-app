@@ -125,7 +125,7 @@ async function main() {
 
   const { data: sc } = await signUp(c, 'c')
   const { error: fullE } = await c.rpc('join_couple', { p_code: code })
-  ok('third member rejected', /penuh/.test(fullE?.message ?? ''), fullE?.message)
+  ok('third member rejected', /already full/.test(fullE?.message ?? ''), fullE?.message)
   const { data: leak } = await c.from('couple_members').select('id').eq('couple_id', couple.id)
   ok('outsider cannot list members', (leak ?? []).length === 0)
   const { data: leakP } = await c.from('profiles').select('id').eq('id', aid)
@@ -185,7 +185,7 @@ async function main() {
   const { error: againE } = await b.rpc('perform_pet_care', { p_pet_id: petId, p_action: 'feed' })
   ok('pet care cooldown enforced', /cooldown/.test(againE?.message ?? ''), againE?.message)
   const { error: roleE } = await b.rpc('perform_pet_care', { p_pet_id: petId, p_action: 'play' })
-  ok('pet care role enforced', /pasanganmu/.test(roleE?.message ?? ''), roleE?.message)
+  ok('pet care role enforced', /your partner's job/.test(roleE?.message ?? ''), roleE?.message)
   const { data: moodHack } = await b.from('pet_mood_state').update({ hunger: 100, happiness: 100 }).eq('pet_id', petId).select('id')
   const { error: logHack } = await b.from('pet_care_logs').insert({ pet_id: petId, action_type: 'play', done_by: bid })
   const { data: xpHack } = await b.from('couple_pets').update({ xp: 9999 }).eq('id', petId).select('id')
@@ -193,9 +193,9 @@ async function main() {
   const { data: petNow } = await b.from('couple_pets').select('xp, level').eq('id', petId).single()
   ok('pet xp from one action', petNow?.xp === 10 && petNow?.level === 1, JSON.stringify(petNow))
   const { error: kangen2 } = await b.from('miss_you').insert({ couple_id: cid, sender_id: bid, receiver_id: aid })
-  ok('kangen cooldown enforced', /Tunggu/.test(kangen2?.message ?? ''), kangen2?.message)
+  ok('kangen cooldown enforced', /Wait a bit/.test(kangen2?.message ?? ''), kangen2?.message)
   const { error: overdraw } = await b.from('couple_transactions').insert({ couple_id: cid, goal_id: r.goal.data?.id, amount: -999999999, type: 'withdrawal', created_by: bid })
-  ok('withdrawal beyond balance rejected', /tidak cukup/.test(overdraw?.message ?? ''), overdraw?.message)
+  ok('withdrawal beyond balance rejected', /too low/.test(overdraw?.message ?? ''), overdraw?.message)
 
   // R2: a transaction / savings entry can only point at a goal of its own couple.
   const { data: cCouple, error: ccE } = await c.rpc('create_couple')
@@ -246,7 +246,7 @@ async function main() {
   const { error: contentE } = await a.from('letters').select('content').eq('couple_id', cid)
   ok('letter content not selectable', !!contentE)
   const { error: lockedE } = await a.rpc('read_letter', { p_letter_id: aSees?.[0]?.id })
-  ok('locked letter unreadable by receiver', /terkunci/.test(lockedE?.message ?? ''), lockedE?.message)
+  ok('locked letter unreadable by receiver', /still locked/.test(lockedE?.message ?? ''), lockedE?.message)
   const { data: senderRead } = await b.rpc('read_letter', { p_letter_id: aSees?.[0]?.id })
   ok('sender can read own sealed letter', senderRead?.[0]?.content === 'hai')
   const { data: redate } = await a.from('letters').update({ unlock_date: new Date().toISOString() }).eq('couple_id', cid).select('id')

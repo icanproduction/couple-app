@@ -68,7 +68,7 @@ async function main() {
     paths.push(path)
   }
   const { error: eighthE } = await a.from('moment_photos').insert({ moment_id: mid, couple_id: cid, storage_path: `${cid}/${mid}/p7.jpg`, sort_order: 7 })
-  ok('8th photo rejected by DB', /Maksimal 7/.test(eighthE?.message ?? ''), eighthE?.message)
+  ok('8th photo rejected by DB', /Up to 7 photos/.test(eighthE?.message ?? ''), eighthE?.message)
   const { error: wrongFolder } = await a.from('moment_photos').insert({ moment_id: mid, couple_id: cid, storage_path: `${cid}/other/x.jpg` })
   ok('photo path outside moment folder rejected', !!wrongFolder)
 

@@ -4,11 +4,11 @@
 export const DATE_IDEA_DAILY_LIMIT = 5
 export const CITY_MAX = 40
 
-export const BUDGETS = ['hemat', 'sedang', 'spesial'] as const
+export const BUDGETS = ['hemat', 'sedang', 'spesial'] as const // copy-ok: stored value
 export const VIBES = ['santai', 'romantis', 'seru', 'kuliner', 'produktif'] as const
 export const SETTINGS = ['indoor', 'outdoor', 'bebas'] as const
 /** Same list as the DB check on bucket_items.category */
-export const IDEA_CATEGORIES = ['petualangan', 'kuliner', 'traveling', 'romantis', 'belajar', 'rumah', 'lainnya'] as const
+export const IDEA_CATEGORIES = ['petualangan', 'kuliner', 'traveling', 'romantis', 'belajar', 'rumah', 'lainnya'] as const // copy-ok: stored value
 
 export type Budget = (typeof BUDGETS)[number]
 export type Vibe = (typeof VIBES)[number]
@@ -34,33 +34,33 @@ export type DateIdea = {
 export const IDEA_LIMITS = { title: 80, description: 300, tips: 160 } as const
 
 export const BUDGET_LABELS: Record<Budget, { label: string; hint: string }> = {
-  hemat: { label: 'Hemat', hint: '< Rp 100rb' },
-  sedang: { label: 'Sedang', hint: 'Rp 100–500rb' },
-  spesial: { label: 'Spesial', hint: '> Rp 500rb' },
+  hemat: { label: 'Low', hint: '< Rp 100.000' },
+  sedang: { label: 'Mid', hint: 'Rp 100.000–500.000' },
+  spesial: { label: 'Splurge', hint: '> Rp 500.000' },
 }
 
 export const VIBE_LABELS: Record<Vibe, string> = {
-  santai: 'Santai',
-  romantis: 'Romantis',
-  seru: 'Seru',
-  kuliner: 'Kuliner',
-  produktif: 'Produktif',
+  santai: 'Relaxed',
+  romantis: 'Romantic',
+  seru: 'Fun',
+  kuliner: 'Food',
+  produktif: 'Productive',
 }
 
 export const SETTING_LABELS: Record<Setting, string> = {
   indoor: 'Indoor',
   outdoor: 'Outdoor',
-  bebas: 'Bebas',
+  bebas: 'Either',
 }
 
 export const CATEGORY_LABELS: Record<IdeaCategory, string> = {
-  petualangan: 'Petualangan',
-  kuliner: 'Kuliner',
-  traveling: 'Traveling',
-  romantis: 'Romantis',
-  belajar: 'Belajar',
-  rumah: 'Di rumah',
-  lainnya: 'Lainnya',
+  petualangan: 'Adventure',
+  kuliner: 'Food',
+  traveling: 'Travel',
+  romantis: 'Romantic',
+  belajar: 'Learning',
+  rumah: 'At home',
+  lainnya: 'Other',
 }
 
 // Any letter (incl. accented), space, dot, comma, hyphen. Built at runtime:
@@ -70,11 +70,11 @@ const CITY_PATTERN = new RegExp('^[\\p{L} .,-]+$', 'u')
 /** Trimmed city, null when empty, or an error message. */
 export function cleanCity(raw: unknown): { ok: true; city: string | null } | { ok: false; error: string } {
   if (raw === undefined || raw === null) return { ok: true, city: null }
-  if (typeof raw !== 'string') return { ok: false, error: 'Kota tidak valid' }
+  if (typeof raw !== 'string') return { ok: false, error: "That city name doesn't look right" }
   const city = raw.trim().replace(/\s+/g, ' ')
   if (!city) return { ok: true, city: null }
-  if (city.length > CITY_MAX) return { ok: false, error: `Nama kota maksimal ${CITY_MAX} karakter` }
-  if (!CITY_PATTERN.test(city)) return { ok: false, error: 'Nama kota cukup huruf, spasi, titik, koma, atau tanda hubung' }
+  if (city.length > CITY_MAX) return { ok: false, error: `City names can be up to ${CITY_MAX} characters` }
+  if (!CITY_PATTERN.test(city)) return { ok: false, error: 'Use only letters, spaces, dots, commas or hyphens for the city' }
   return { ok: true, city }
 }
 
@@ -84,11 +84,11 @@ function oneOf<T extends string>(list: readonly T[], value: unknown): value is T
 
 /** Validates the POST body of /api/ai/date-ideas. */
 export function parseDateIdeaInput(body: unknown): { ok: true; input: DateIdeaInput } | { ok: false; error: string } {
-  if (!body || typeof body !== 'object' || Array.isArray(body)) return { ok: false, error: 'Data tidak valid' }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return { ok: false, error: 'Invalid request' }
   const b = body as Record<string, unknown>
-  if (!oneOf(BUDGETS, b.budget)) return { ok: false, error: 'Pilih budget dulu' }
-  if (!oneOf(VIBES, b.vibe)) return { ok: false, error: 'Pilih suasana dulu' }
-  if (!oneOf(SETTINGS, b.setting)) return { ok: false, error: 'Pilih tempat dulu' }
+  if (!oneOf(BUDGETS, b.budget)) return { ok: false, error: 'Pick a budget first' }
+  if (!oneOf(VIBES, b.vibe)) return { ok: false, error: 'Pick a vibe first' }
+  if (!oneOf(SETTINGS, b.setting)) return { ok: false, error: 'Pick a setting first' }
   const city = cleanCity(b.city)
   if (!city.ok) return city
   return { ok: true, input: { budget: b.budget, vibe: b.vibe, setting: b.setting, city: city.city } }

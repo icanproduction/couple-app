@@ -35,14 +35,14 @@ export default function AssessmentPage() {
   }
 
   const agreeOptions = [
-    { value: 1, label: 'Sangat Tidak Setuju' },
-    { value: 2, label: 'Tidak Setuju' },
-    { value: 3, label: 'Netral' },
-    { value: 4, label: 'Setuju' },
-    { value: 5, label: 'Sangat Setuju' },
+    { value: 1, label: 'Strongly disagree' },
+    { value: 2, label: 'Disagree' },
+    { value: 3, label: 'Neutral' },
+    { value: 4, label: 'Agree' },
+    { value: 5, label: 'Strongly agree' },
   ]
 
-  const scaleLabels = ['Jarang', '', 'Kadang', '', 'Selalu']
+  const scaleLabels = ['Rarely', '', 'Sometimes', '', 'Always']
 
   return (
     <div className="flex min-h-screen flex-col px-6 py-6">
@@ -50,7 +50,7 @@ export default function AssessmentPage() {
       <div className="mb-6">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-xs font-medium text-ink-muted">
-            {currentIndex + 1} dari {questions.length}
+            {currentIndex + 1} of {questions.length}
           </span>
           <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-dark">
             {DIMENSION_LABELS[question.dimension]}
@@ -137,7 +137,7 @@ export default function AssessmentPage() {
               onClick={() => handleAnswer((answers[question.id] as number) ?? 3)}
               className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-rose px-5 py-3.5 text-sm font-semibold text-white shadow-elevated transition-all hover:bg-rose-dark active:scale-[0.98]"
             >
-              Lanjut
+              Next
               <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </button>
           </div>
@@ -186,7 +186,7 @@ export default function AssessmentPage() {
           className="mt-8 flex items-center justify-center gap-1.5 text-sm text-ink-muted transition hover:text-ink"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Kembali
+          Back
         </button>
       )}
     </div>

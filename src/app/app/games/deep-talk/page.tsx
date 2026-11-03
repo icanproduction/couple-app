@@ -45,7 +45,7 @@ export default function DeepTalkHubPage() {
 
   useEffect(() => {
     loadData().catch((err) => {
-      console.error('[deep-talk] gagal memuat daftar pack:', err)
+      console.error('[deep-talk] failed to load the pack list:', err)
       setLoading(false)
     })
   }, [loadData])
@@ -58,18 +58,19 @@ export default function DeepTalkHubPage() {
   function getPackState(packId: string, progress: DeepTalkProgress | null) {
     const packLevels = levels.filter(l => l.pack_id === packId)
     const completed = progress?.completed_levels ?? []
-    if (isPackCompleted(packLevels, completed)) return { done: true, label: 'Selesai' }
+    if (isPackCompleted(packLevels, completed)) return { done: true, label: 'Done' }
     if (!progress) return { done: false, label: null }
 
     const resumeLevel = packLevels.find(l => l.level_number === progress.level_number)
     if (!completed.includes(progress.level_number) && progress.current_question_index > 0) {
       const total = resumeLevel?.question_count
       const position = total ? `${progress.current_question_index}/${total}` : `${progress.current_question_index}`
-      return { done: false, label: `Level ${progress.level_number} · ${position} pertanyaan` }
+      return { done: false, label: `Level ${progress.level_number} · ${position} done` }
     }
     if (completed.length > 0) {
       const playable = packLevels.filter(isPlayableLevel).length
-      return { done: false, label: `${completed.length}${playable ? `/${playable}` : ''} level selesai` }
+      const unit = (playable || completed.length) === 1 ? 'level' : 'levels'
+      return { done: false, label: `${completed.length}${playable ? `/${playable}` : ''} ${unit} done` }
     }
     return { done: false, label: null }
   }
@@ -84,8 +85,8 @@ export default function DeepTalkHubPage() {
         <button onClick={() => router.push('/app/games')} className="mb-3 flex items-center gap-1 text-sm text-ink-muted">
           <ArrowLeft className="h-4 w-4" /> Games
         </button>
-        <h1 className="text-xl font-bold text-ink">Obrolan Bareng</h1>
-        <p className="text-sm text-ink-muted">Pertanyaan untuk saling kenal lebih dalam</p>
+        <h1 className="text-xl font-bold text-ink">Deep Talk</h1>
+        <p className="text-sm text-ink-muted">Questions for getting to know each other</p>
       </div>
 
       <div className="space-y-3 px-6 pt-5">
@@ -124,12 +125,12 @@ export default function DeepTalkHubPage() {
                     </span>
                   ) : (
                     <span className="inline-block rounded-full px-2 py-0.5 text-[10px] font-bold text-ink-muted" style={{ background: `${color}1f` }}>
-                      {packLevels.length} level · {questionTotal} pertanyaan
+                      {packLevels.length} {packLevels.length === 1 ? 'level' : 'levels'} · {questionTotal} {questionTotal === 1 ? 'question' : 'questions'}
                     </span>
                   )}
                   {pack.is_free && (
                     <span className="inline-block rounded-full bg-sage/10 px-2 py-0.5 text-[10px] font-bold text-sage-dark">
-                      Semua terbuka
+                      All open
                     </span>
                   )}
                 </div>
@@ -141,7 +142,7 @@ export default function DeepTalkHubPage() {
 
         {!coupleId && (
           <div className="rounded-2xl border border-dashed border-border p-8 text-center">
-            <p className="text-sm text-ink-muted">Hubungkan akun dengan pasanganmu dulu untuk mulai</p>
+            <p className="text-sm text-ink-muted">Connect with your partner first to start</p>
           </div>
         )}
       </div>
@@ -150,8 +151,8 @@ export default function DeepTalkHubPage() {
         <div className="flex items-start gap-3">
           <Play className="mt-0.5 h-4 w-4 flex-shrink-0 text-rose" />
           <div>
-            <p className="text-xs font-semibold text-ink">Cara main</p>
-            <p className="mt-1 text-xs text-ink-muted">Buka bareng pasangan, baca pertanyaannya bergantian, terus jawab apa adanya. Bebas, santai, yang penting jujur.</p>
+            <p className="text-xs font-semibold text-ink">How to play</p>
+            <p className="mt-1 text-xs text-ink-muted">Open it together, take turns reading the questions out loud, and answer honestly. No rush, no wrong answers.</p>
           </div>
         </div>
       </div>

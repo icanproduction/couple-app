@@ -5,22 +5,22 @@ export interface Coords {
   longitude: number
 }
 
-/** Current device position. Rejects with a user-facing Indonesian message. */
+/** Current device position. Rejects with a user-facing English message. */
 export function getCurrentPosition(): Promise<Coords> {
   return new Promise((resolve, reject) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      reject(new Error('Perangkat ini tidak mendukung GPS.'))
+      reject(new Error('This device doesn\'t support GPS.'))
       return
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
       (err) => {
         const messages: Record<number, string> = {
-          1: 'Izin lokasi ditolak. Aktifkan izin lokasi untuk aplikasi ini di pengaturan browser.',
-          2: 'Lokasi tidak ditemukan. Coba lagi di tempat terbuka.',
-          3: 'GPS terlalu lama merespons. Coba lagi.',
+          1: 'Location access was denied. Allow location for this app in your browser settings.',
+          2: 'Couldn\'t find your location. Try again outdoors or near a window.',
+          3: 'GPS took too long to respond. Try again.',
         }
-        reject(new Error(messages[err.code] ?? 'Gagal mengambil lokasi.'))
+        reject(new Error(messages[err.code] ?? 'Couldn\'t get your location.'))
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
     )
@@ -63,7 +63,7 @@ export function googleMapsUrl({ latitude, longitude }: Coords): string {
   return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
 }
 
-/** OpenStreetMap embed (no API key) centred on the point with a marker */
+/** OpenStreetMap embed (no API key) centered on the point with a marker */
 export function osmEmbedUrl({ latitude, longitude }: Coords): string {
   const dLat = 0.004
   const dLon = 0.006

@@ -58,19 +58,19 @@ export function getRoundVerdict(result: Pick<RoundResult, 'type' | 'score'>): { 
   const { type, score } = result
   switch (type) {
     case 'pilih_sama':
-      return score >= 20 ? { tone: 'match', label: 'Kompak!' } : { tone: 'miss', label: 'Belum sama...' }
+      return score >= 20 ? { tone: 'match', label: 'In sync' } : { tone: 'miss', label: 'Not quite...' }
     case 'slider_sama':
     case 'tebak_angka':
-      if (score >= 20) return { tone: 'match', label: 'Persis sama!' }
-      if (score >= 14) return { tone: 'match', label: 'Kompak!' } // selisih ≤ 2
-      if (score >= 7) return { tone: 'close', label: 'Hampir sama' } // selisih 3–4
-      return { tone: 'miss', label: 'Beda jauh...' }
+      if (score >= 20) return { tone: 'match', label: 'Exact match' }
+      if (score >= 14) return { tone: 'match', label: 'In sync' } // gap ≤ 2
+      if (score >= 7) return { tone: 'close', label: 'So close' } // gap 3–4
+      return { tone: 'miss', label: 'Way off...' }
     case 'tebak_pasangan':
-      if (score >= 20) return { tone: 'match', label: 'Saling kenal banget!' }
-      if (score >= 10) return { tone: 'close', label: 'Setengah benar' }
-      return { tone: 'miss', label: 'Belum ketebak...' }
+      if (score >= 20) return { tone: 'match', label: 'You know each other well' }
+      if (score >= 10) return { tone: 'close', label: 'Half right' }
+      return { tone: 'miss', label: 'Missed this one...' }
     default:
-      return score >= 15 ? { tone: 'match', label: 'Kompak!' } : { tone: 'miss', label: 'Belum sama...' }
+      return score >= 15 ? { tone: 'match', label: 'In sync' } : { tone: 'miss', label: 'Not quite...' }
   }
 }
 
@@ -109,7 +109,7 @@ export async function updateSessionPlaying(sessionId: string): Promise<GameStatu
     status: 'playing',
     started_at: new Date().toISOString(),
   }).eq('id', sessionId).eq('status', 'waiting').select('status')
-  if (error) console.error('[samakan] gagal memulai sesi:', error.message)
+  if (error) console.error('[samakan] failed to start the session:', error.message)
   if (data && data.length > 0) return 'playing'
   const current = await getGameSession(sessionId)
   return current?.status ?? null
@@ -122,7 +122,7 @@ export async function saveSessionRounds(sessionId: string, results: RoundResult[
     rounds: results as unknown as Json[],
     total_score: totalScore,
   }).eq('id', sessionId).in('status', ['waiting', 'playing'])
-  if (error) console.error('[samakan] gagal menyimpan ronde:', error.message)
+  if (error) console.error('[samakan] failed to save the round:', error.message)
 }
 
 export async function completeGameSession(sessionId: string, totalScore: number, results: RoundResult[]) {
@@ -133,7 +133,7 @@ export async function completeGameSession(sessionId: string, totalScore: number,
     rounds: results as unknown as Json[],
     completed_at: new Date().toISOString(),
   }).eq('id', sessionId).neq('status', 'completed')
-  if (error) console.error('[samakan] gagal menyelesaikan sesi:', error.message)
+  if (error) console.error('[samakan] failed to complete the session:', error.message)
 }
 
 /** Closing the game ends it for both players (frees the couple's open slot). */
@@ -143,7 +143,7 @@ export async function expireGameSession(sessionId: string) {
     .update({ status: 'expired' })
     .eq('id', sessionId)
     .in('status', ['waiting', 'playing'])
-  if (error) console.error('[samakan] gagal mengakhiri sesi:', error.message)
+  if (error) console.error('[samakan] failed to end the session:', error.message)
 }
 
 export async function getGameHistory(coupleId: string, limit = 10): Promise<GameSession[]> {

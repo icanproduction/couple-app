@@ -46,22 +46,22 @@ export default function SpendingHabitsIntro() {
 
       <h1 className="mb-2 text-2xl font-extrabold text-ink">Spending Habits</h1>
       <p className="mb-6 max-w-xs text-sm leading-relaxed text-ink-muted">
-        Temukan tipe spending personality kamu dan lihat compatibility keuangan dengan pasangan.
+        Find your spending personality and see how your money style fits with your partner&apos;s.
       </p>
 
       <div className="mb-8 flex items-center gap-4 text-xs text-ink-muted">
-        <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> 3-5 menit</span>
-        <span className="flex items-center gap-1"><BarChart3 className="h-3.5 w-3.5" /> 15 pertanyaan</span>
-        <span className="flex items-center gap-1"><Shield className="h-3.5 w-3.5" /> Privat</span>
+        <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> 3–5 min</span>
+        <span className="flex items-center gap-1"><BarChart3 className="h-3.5 w-3.5" /> 15 questions</span>
+        <span className="flex items-center gap-1"><Shield className="h-3.5 w-3.5" /> Private</span>
       </div>
 
       <p className="mb-8 max-w-xs text-xs text-ink-muted/70">
-        Pilih jawaban yang paling mencerminkan kamu, bukan yang paling ideal. Tidak ada jawaban benar atau salah.
+        Pick the answer that sounds most like you, not the ideal one. There are no right or wrong answers.
       </p>
 
       <Button onClick={() => router.push('/app/about-me/spending-habits/questions')} size="lg">
         <span className="flex items-center gap-2">
-          Mulai Tes <ArrowRight className="h-4 w-4" />
+          Start test <ArrowRight className="h-4 w-4" />
         </span>
       </Button>
     </div>

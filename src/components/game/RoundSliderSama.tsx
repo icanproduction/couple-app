@@ -56,12 +56,12 @@ export default function RoundSliderSama({ config, onSubmit, disabled }: RoundSli
           onClick={handleSubmit}
           className="rounded-full bg-white/20 px-10 py-3 text-base font-bold text-white backdrop-blur-sm transition-all active:scale-95 hover:bg-white/30"
         >
-          Pilih {value}
+          Pick {value}
         </button>
       ) : (
         <div className="flex flex-col items-center gap-2">
           <div className="h-8 w-8 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-          <p className="text-sm text-white/50">Menunggu pasangan...</p>
+          <p className="text-sm text-white/50">Waiting for your partner...</p>
         </div>
       )}
     </div>

@@ -11,7 +11,7 @@ interface InviteExpiryProps {
   className?: string
 }
 
-/** "Berlaku sampai …" / "Kedaluwarsa" under an invite code, with "Buat kode baru". */
+/** "Valid until …" / "Expired" under an invite code, with "New code". */
 export function InviteExpiry({ expiresAt, onRenewed, className }: InviteExpiryProps) {
   const [renewing, setRenewing] = useState(false)
   const [error, setError] = useState('')
@@ -25,7 +25,7 @@ export function InviteExpiry({ expiresAt, onRenewed, className }: InviteExpiryPr
       const next = await regenerateInviteCode()
       onRenewed({ inviteCode: next.inviteCode, inviteExpiresAt: next.inviteExpiresAt })
     } catch (e: unknown) {
-      setError(e instanceof Error && e.message ? e.message : 'Gagal membuat kode baru, coba lagi')
+      setError(e instanceof Error && e.message ? e.message : "Couldn't make a new code. Try again.")
     }
     setRenewing(false)
   }
@@ -35,7 +35,7 @@ export function InviteExpiry({ expiresAt, onRenewed, className }: InviteExpiryPr
       <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5">
         <p className={cn('flex items-center gap-1.5 text-xs', expired ? 'font-semibold text-danger' : 'text-ink-muted')}>
           <Clock className="h-3.5 w-3.5" />
-          {expired ? 'Kode ini sudah kedaluwarsa' : `Berlaku sampai ${formatInviteExpiry(expiresAt)}`}
+          {expired ? 'This code has expired' : `Valid until ${formatInviteExpiry(expiresAt)}`}
         </p>
         <button
           type="button"
@@ -47,12 +47,12 @@ export function InviteExpiry({ expiresAt, onRenewed, className }: InviteExpiryPr
           )}
         >
           <RefreshCw className={cn('h-3 w-3', renewing && 'animate-spin')} />
-          {renewing ? 'Membuat...' : 'Buat kode baru'}
+          {renewing ? 'Making...' : 'New code'}
         </button>
       </div>
       {expired && !error && (
         <p className="text-center text-[11px] leading-relaxed text-ink-muted">
-          Kode undangan berlaku 7 hari. Buat kode baru, lalu kirim lagi ke pasanganmu.
+          Invite codes last 7 days. Make a new one and send it to your partner again.
         </p>
       )}
       {error && <p role="alert" className="text-center text-xs text-danger">{error}</p>}

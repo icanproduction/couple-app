@@ -106,8 +106,8 @@ export default function PetRoom({ pet, moodState, myActions, userId, coupleId }:
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             recipientId: partnerId,
-            title: `${pet.name} dirawat! 🐾`,
-            body: `Pasanganmu baru saja ${CARE_ACTION_META[action].label.toLowerCase()} ${pet.name}`,
+            title: `${pet.name} got some care`,
+            body: `Your partner just ticked off "${CARE_ACTION_META[action].label}" for ${pet.name}`,
             url: '/app/pet',
             kind: 'activity',
           }),
@@ -117,8 +117,8 @@ export default function PetRoom({ pet, moodState, myActions, userId, coupleId }:
       const onCooldown = e instanceof Error && e.message.includes('cooldown')
       if (onCooldown) setCooldowns(prev => ({ ...prev, [action]: true }))
       setActionError(onCooldown
-        ? `${CARE_ACTION_META[action].label} baru saja dilakukan, tunggu sebentar ya.`
-        : 'Gagal merawat, coba lagi ya.')
+        ? `"${CARE_ACTION_META[action].label}" was just done. Give it a little while.`
+        : "Couldn't save that. Try again.")
     } finally {
       setActionLoading(null)
     }
@@ -144,6 +144,7 @@ export default function PetRoom({ pet, moodState, myActions, userId, coupleId }:
       <div className="absolute top-10 left-0 right-0 z-20 flex justify-between items-center px-4">
         <button
           onClick={() => router.back()}
+          aria-label="Back"
           className="flex items-center gap-1 bg-white/90 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/90 shadow-sm"
         >
           <ArrowLeft className="w-4 h-4 text-ink" />
@@ -155,7 +156,7 @@ export default function PetRoom({ pet, moodState, myActions, userId, coupleId }:
           </div>
           <div>
             <div className="text-[13px] font-semibold text-ink">{pet.name}</div>
-            <div className="text-[9px] text-ink-muted font-medium">Lv.{pet.level} · {daysSinceAdopt} hari</div>
+            <div className="text-[9px] text-ink-muted font-medium">Lv.{pet.level} · {daysSinceAdopt} {daysSinceAdopt === 1 ? 'day' : 'days'}</div>
           </div>
         </div>
 
@@ -271,7 +272,7 @@ export default function PetRoom({ pet, moodState, myActions, userId, coupleId }:
           className="flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-[14px] px-1.5 py-2 border border-[#F0E4D8] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 transition-transform"
         >
           <span className="text-[15px]">📋</span>
-          <span className="whitespace-nowrap text-[10px] font-bold text-ink">Semua</span>
+          <span className="whitespace-nowrap text-[10px] font-bold text-ink">All</span>
         </button>
       </div>
 
@@ -283,9 +284,9 @@ export default function PetRoom({ pet, moodState, myActions, userId, coupleId }:
       >
         <div className="flex gap-3">
           {[
-            { label: 'Lapar', value: stats.hunger, gradient: 'linear-gradient(90deg, #F09060, #F06B6B)' },
+            { label: 'Food', value: stats.hunger, gradient: 'linear-gradient(90deg, #F09060, #F06B6B)' },
             { label: 'Happy', value: stats.happiness, gradient: 'linear-gradient(90deg, #F06B6B, #F090B0)' },
-            { label: 'Bersih', value: stats.cleanliness, gradient: 'linear-gradient(90deg, #7EC4A0, #5BA882)' },
+            { label: 'Clean', value: stats.cleanliness, gradient: 'linear-gradient(90deg, #7EC4A0, #5BA882)' },
           ].map(bar => (
             <div key={bar.label} className="flex-1">
               <div className="flex justify-between text-[9px] font-bold text-ink-muted uppercase tracking-wider mb-1.5">
@@ -303,7 +304,7 @@ export default function PetRoom({ pet, moodState, myActions, userId, coupleId }:
         </div>
       </button>
 
-      {/* CSS Animations */}
+      {/* CSS animations */}
       <style jsx global>{`
         @keyframes catFloat {
           0%, 100% { transform: translateX(-50%) translateY(0); }

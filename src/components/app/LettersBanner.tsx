@@ -48,9 +48,9 @@ export default function LettersBanner({ myId, coupleId }: LettersBannerProps) {
         </div>
         <div className="flex-1">
           <p className="text-sm font-bold text-white">
-            {readyCount} surat siap dibuka!
+            {readyCount === 1 ? '1 letter is ready to open' : `${readyCount} letters are ready to open`}
           </p>
-          <p className="text-xs text-white/80">Tap untuk membaca suratnya</p>
+          <p className="text-xs text-white/80">Tap to read</p>
         </div>
         <ChevronRight className="h-4 w-4 flex-shrink-0 text-white/70" />
       </button>
@@ -67,8 +67,8 @@ export default function LettersBanner({ myId, coupleId }: LettersBannerProps) {
         <Mail className="h-5 w-5 text-amber-600" />
       </div>
       <div className="flex-1">
-        <p className="text-sm font-bold text-ink">Surat Rahasia</p>
-        <p className="text-xs text-ink-muted">Tulis surat terkunci untuk momen spesial</p>
+        <p className="text-sm font-bold text-ink">Letters</p>
+        <p className="text-xs text-ink-muted">Write a letter that stays locked until a special day</p>
       </div>
       <ChevronRight className="h-4 w-4 flex-shrink-0 text-ink-muted" />
     </button>

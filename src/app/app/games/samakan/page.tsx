@@ -12,7 +12,7 @@ export default function SinkronisasiHubPage() {
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
-  const [partnerName, setPartnerName] = useState<string>('Pasangan')
+  const [partnerName, setPartnerName] = useState<string>('your partner')
   const [creating, setCreating] = useState<string | null>(null)
   const [createError, setCreateError] = useState<string | null>(null)
   const [history, setHistory] = useState<GameSession[]>([])
@@ -61,7 +61,7 @@ export default function SinkronisasiHubPage() {
       setLoading(false)
     }
     init().catch((err) => {
-      console.error('[samakan] gagal memuat hub:', err)
+      console.error('[samakan] failed to load the hub:', err)
       if (!cancelled) setLoading(false)
     })
     return () => { cancelled = true }
@@ -88,10 +88,10 @@ export default function SinkronisasiHubPage() {
         router.push(`/app/games/samakan/${data.sessionId}`)
         return
       }
-      setCreateError(data.error ?? 'Gagal memulai permainan. Coba lagi ya.')
+      setCreateError(data.error ?? "Couldn't start the game. Try again.")
     } catch (err) {
       console.error('Failed to create session:', err)
-      setCreateError('Tidak bisa terhubung. Cek koneksi internetmu lalu coba lagi.')
+      setCreateError("Couldn't connect. Check your internet and try again.")
     } finally {
       setCreating(null)
     }
@@ -119,9 +119,9 @@ export default function SinkronisasiHubPage() {
           <div>
             <div className="flex items-center gap-2">
               <Zap className="h-5 w-5 text-purple-500" />
-              <h1 className="text-xl font-bold text-ink">Sinkronisasi</h1>
+              <h1 className="text-xl font-bold text-ink">Samakan</h1>
             </div>
-            <p className="text-sm text-ink-muted">Main bareng {partnerName} real-time</p>
+            <p className="text-sm text-ink-muted">Match answers with {partnerName} in real time</p>
           </div>
         </div>
       </div>
@@ -129,7 +129,7 @@ export default function SinkronisasiHubPage() {
       {/* Chapter select */}
       <div className="px-6 pt-6">
         <p className="mb-3 text-xs font-bold uppercase tracking-wider text-ink-muted">
-          Pilih Chapter
+          Pick a chapter
         </p>
         {createError && (
           <div role="alert" className="mb-3 rounded-xl border border-rose/20 bg-rose/5 px-4 py-3 text-xs font-medium text-rose animate-fade-in">
@@ -143,7 +143,7 @@ export default function SinkronisasiHubPage() {
               className="relative flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-card"
             >
               <div className={`h-2 bg-gradient-to-r ${chapter.gradient}`} />
-              {/* Column layout + mt-auto keeps every "Main Bareng" on the same line,
+              {/* Column layout + mt-auto keeps every "Play together" on the same line,
                   whether the title takes one line or two. */}
               <div className="flex flex-1 flex-col p-4">
                 <div className="flex-1">
@@ -164,10 +164,10 @@ export default function SinkronisasiHubPage() {
                   {creating === chapter.id ? (
                     <span className="flex items-center justify-center gap-1.5">
                       <Loader2 className="h-3 w-3 animate-spin" />
-                      Membuat...
+                      Starting...
                     </span>
                   ) : (
-                    'Main Bareng'
+                    'Play together'
                   )}
                 </button>
               </div>
@@ -180,7 +180,7 @@ export default function SinkronisasiHubPage() {
       {history.length > 0 && (
         <div className="px-6 pt-8">
           <p className="mb-3 text-xs font-bold uppercase tracking-wider text-ink-muted">
-            Riwayat
+            Past games
           </p>
           <div className="space-y-2">
             {history.map((game) => {
@@ -202,7 +202,7 @@ export default function SinkronisasiHubPage() {
                       <div className="flex items-center gap-1 text-xs text-ink-muted">
                         <Clock className="h-3 w-3" />
                         {game.completed_at
-                          ? new Date(game.completed_at).toLocaleDateString('id-ID', {
+                          ? new Date(game.completed_at).toLocaleDateString('en-GB', {
                               day: 'numeric',
                               month: 'short',
                             })

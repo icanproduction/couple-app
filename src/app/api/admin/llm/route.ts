@@ -23,7 +23,7 @@ async function requireAdmin() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { supabase, error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   const { data: isAdmin } = await supabase.rpc('is_admin')
-  if (!isAdmin) return { supabase, error: NextResponse.json({ error: 'Hanya admin' }, { status: 403 }) }
+  if (!isAdmin) return { supabase, error: NextResponse.json({ error: 'Admins only' }, { status: 403 }) }
   return { supabase, error: null }
 }
 
@@ -59,10 +59,10 @@ export async function PUT(req: NextRequest) {
   if (error) return error
   const body = await req.json().catch(() => null) as { apiKey?: unknown; model?: unknown } | null
   if (!body || (body.apiKey === undefined && body.model === undefined)) {
-    return rpcError('Tidak ada yang disimpan')
+    return rpcError('Nothing to save')
   }
-  if (body.apiKey !== undefined && typeof body.apiKey !== 'string') return rpcError('API key harus berupa teks')
-  if (body.model !== undefined && body.model !== null && typeof body.model !== 'string') return rpcError('Model harus berupa teks')
+  if (body.apiKey !== undefined && typeof body.apiKey !== 'string') return rpcError('The API key must be text')
+  if (body.model !== undefined && body.model !== null && typeof body.model !== 'string') return rpcError('The model must be text')
 
   let status: Status | null = null
   if (typeof body.apiKey === 'string') {
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
   const { supabase, error } = await requireAdmin()
   if (error) return error
   const body = await req.json().catch(() => null) as { action?: unknown } | null
-  if (body?.action !== 'test') return rpcError('Aksi tidak dikenal')
+  if (body?.action !== 'test') return rpcError('Unknown action')
 
   forgetLlmConfig()
   const { llm } = await getLlmWithSource()

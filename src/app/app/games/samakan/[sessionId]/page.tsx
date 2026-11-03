@@ -93,7 +93,7 @@ export default function SinkronisasiGamePage() {
   const [role, setRole] = useState<PlayerRole>('guest')
   const [myName, setMyName] = useState('')
   const [myAvatar, setMyAvatar] = useState<string | null>(null)
-  const [partnerName, setPartnerName] = useState('Pasangan')
+  const [partnerName, setPartnerName] = useState('Partner')
   const [partnerAvatar, setPartnerAvatar] = useState<string | null>(null)
   const [partnerUserId, setPartnerUserId] = useState<string | null>(null)
 
@@ -216,7 +216,7 @@ export default function SinkronisasiGamePage() {
         getGameSession(sessionId),
       ])
       if (cancelled) return
-      setMyName(profile?.name ?? 'Kamu')
+      setMyName(profile?.name ?? 'You')
       setMyAvatar(profile?.avatar_url ?? null)
       if (!sess) { router.replace(HUB); return }
 
@@ -233,7 +233,7 @@ export default function SinkronisasiGamePage() {
       if (partnerId) {
         const { data: partnerProfile } = await supabase.from('profiles').select('name, avatar_url').eq('id', partnerId).maybeSingle()
         if (cancelled) return
-        setPartnerName(partnerProfile?.name ?? 'Pasangan')
+        setPartnerName(partnerProfile?.name ?? 'Partner')
         setPartnerAvatar(partnerProfile?.avatar_url ?? null)
       }
 
@@ -276,7 +276,7 @@ export default function SinkronisasiGamePage() {
     }
 
     init().catch((err) => {
-      console.error('[samakan] gagal memuat sesi:', err)
+      console.error('[samakan] failed to load the session:', err)
       if (cancelled) return
       setEndedReason('error')
       applyPhase('ended')
@@ -542,10 +542,10 @@ export default function SinkronisasiGamePage() {
 
   if (phase === 'ended') {
     const copy = endedReason === 'partner'
-      ? { title: `${partnerName} mengakhiri permainan`, desc: 'Kalian bisa mulai lagi kapan saja dari halaman Sinkronisasi.' }
+      ? { title: `${partnerName} ended the game`, desc: 'You can start again anytime from the Samakan page.' }
       : endedReason === 'error'
-        ? { title: 'Permainan gagal dimuat', desc: 'Cek koneksi internetmu, lalu coba buka lagi.' }
-        : { title: 'Sesi ini sudah berakhir', desc: 'Mulai permainan baru dari halaman Sinkronisasi ya.' }
+        ? { title: "The game couldn't load", desc: 'Check your internet, then try opening it again.' }
+        : { title: 'This session has ended', desc: 'Start a new game from the Samakan page.' }
     screen = (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-ink to-gray-900 px-8 text-center">
         <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
@@ -557,7 +557,7 @@ export default function SinkronisasiGamePage() {
           onClick={() => router.push(HUB)}
           className="mt-8 rounded-full bg-rose px-8 py-3 text-sm font-bold text-white shadow-lg shadow-rose/30 active:scale-95 transition-transform"
         >
-          Kembali ke Sinkronisasi
+          Back to Samakan
         </button>
       </div>
     )
@@ -566,7 +566,7 @@ export default function SinkronisasiGamePage() {
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-ink to-gray-900">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-white/60" />
-          <p className="text-sm text-white/40">Menghubungkan...</p>
+          <p className="text-sm text-white/40">Connecting...</p>
         </div>
       </div>
     )
@@ -585,7 +585,7 @@ export default function SinkronisasiGamePage() {
         <div className="flex flex-col items-center gap-3 px-8 text-center">
           <Loader2 className="h-8 w-8 animate-spin text-white/60" />
           <p className="text-sm text-white/60">
-            {isPartnerConnected ? 'Menyambungkan ulang permainan...' : `Menunggu ${partnerName} kembali ke permainan...`}
+            {isPartnerConnected ? 'Reconnecting the game...' : `Waiting for ${partnerName} to come back...`}
           </p>
         </div>
       </div>
@@ -603,7 +603,7 @@ export default function SinkronisasiGamePage() {
       const pct = maxScore > 0 ? (totalScore / maxScore) * 100 : 0
       text = pct >= 80 ? chapter.endings.high : pct >= 50 ? chapter.endings.mid : chapter.endings.low
     }
-    const hint = role === 'guest' && phase !== 'story_ending' ? `Menunggu ${partnerName} lanjut...` : undefined
+    const hint = role === 'guest' && phase !== 'story_ending' ? `Waiting for ${partnerName} to continue...` : undefined
     screen = <StoryCard text={text} gradient={chapter.bgClass} onNext={handleStoryNext} hint={hint} />
   } else if (phase === 'results') {
     const maxScore = chapter.rounds.length * 20
@@ -668,7 +668,7 @@ export default function SinkronisasiGamePage() {
           />
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-white/60" />
-            <p className="text-sm text-white/40">Menunggu pasangan...</p>
+            <p className="text-sm text-white/40">Waiting for your partner...</p>
           </div>
         </div>
       )

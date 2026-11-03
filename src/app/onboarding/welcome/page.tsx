@@ -5,9 +5,9 @@ import { Heart, Sparkles, Wallet, CalendarDays } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
 const FEATURES = [
-  { icon: Sparkles, text: 'Assessment kesiapan hubungan', color: 'text-rose' },
-  { icon: Wallet, text: 'Tabungan & wishlist bersama', color: 'text-yellow-600' },
-  { icon: CalendarDays, text: 'Kalender tanggal penting', color: 'text-sage-dark' },
+  { icon: Sparkles, text: 'A relationship readiness check', color: 'text-rose' },
+  { icon: Wallet, text: 'Shared savings and a wishlist', color: 'text-yellow-600' },
+  { icon: CalendarDays, text: 'A calendar for your big dates', color: 'text-sage-dark' },
 ]
 
 export default function OnboardingWelcomePage() {
@@ -31,12 +31,12 @@ export default function OnboardingWelcomePage() {
       </div>
 
       <h1 className="mb-2 text-3xl font-extrabold text-ink">
-        Selamat Datang!
+        Welcome to Nanti Kita
       </h1>
       <p className="mb-8 max-w-xs text-sm leading-relaxed text-ink-muted">
-        Nanti Kita membantu kamu dan pasangan mempersiapkan
-        masa depan bersama &mdash; dari hubungan, keuangan, sampai
-        momen spesial kalian.
+        Nanti Kita helps you and your partner plan your future
+        together, from your relationship and your money to the
+        days you want to celebrate.
       </p>
 
       {/* Feature pills */}
@@ -54,7 +54,7 @@ export default function OnboardingWelcomePage() {
 
       <Button onClick={() => router.push('/onboarding/profile')} size="lg">
         <span className="flex items-center gap-2">
-          Mari Mulai
+          Let&apos;s start
           <Heart className="h-4 w-4" fill="currentColor" fillOpacity={0.3} />
         </span>
       </Button>

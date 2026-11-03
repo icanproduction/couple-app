@@ -59,7 +59,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 }
 
 function costLabel(cost: number): string {
-  return cost === 0 ? 'Gratis' : `± ${formatRupiah(cost)} berdua`
+  return cost === 0 ? 'Free' : `About ${formatRupiah(cost)} for two`
 }
 
 function IdeaCard({ idea, saved, saving, onSave, compact = false }: {
@@ -96,14 +96,14 @@ function IdeaCard({ idea, saved, saving, onSave, compact = false }: {
           saving && 'opacity-60',
         )}
       >
-        {saved ? <><Check className="h-4 w-4" /> Tersimpan di Bucket List</> : saving ? 'Menyimpan…' : 'Simpan ke Bucket List'}
+        {saved ? <><Check className="h-4 w-4" /> Saved to Bucket List</> : saving ? 'Saving…' : 'Save to Bucket List'}
       </button>
     </div>
   )
 }
 
 function inputSummary(input: DateIdeaInput | null): string {
-  if (!input) return 'Ide date'
+  if (!input) return 'Date idea'
   return [
     BUDGET_LABELS[input.budget].label,
     VIBE_LABELS[input.vibe],
@@ -171,7 +171,7 @@ export default function IdeDatePage() {
         setInfo(i)
         if (i.coupleId) await Promise.all([loadRuns(i.coupleId), loadSaved(i.coupleId)])
       } catch {
-        if (!cancelled) setLoadError('Gagal memuat halaman. Coba buka ulang.')
+        if (!cancelled) setLoadError("Couldn't load this page. Try reopening it.")
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -204,14 +204,14 @@ export default function IdeDatePage() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setError(typeof json.error === 'string' ? json.error : 'Gagal membuat ide, coba lagi')
+        setError(typeof json.error === 'string' ? json.error : "Couldn't come up with ideas. Try again.")
       } else if (typeof json.runId === 'string') {
         setCurrentId(json.runId)
         setLatest({ id: json.runId, ideas: readStoredIdeas(json.ideas) })
       }
       if (coupleId) await loadRuns(coupleId).catch(() => {})
     } catch {
-      setError('Koneksi bermasalah, coba lagi sebentar')
+      setError('Connection problem. Try again in a moment.')
     } finally {
       setGenerating(false)
     }
@@ -234,28 +234,28 @@ export default function IdeDatePage() {
       if (e) throw e
       setSavedTitles((prev) => new Set(prev).add(titleKey(idea.title)))
     } catch {
-      setSaveError('Gagal menyimpan ke bucket list, coba lagi')
+      setSaveError("Couldn't save to your bucket list. Try again.")
     } finally {
       setSavingKey(null)
     }
   }
 
-  const author = (r: Run) => (r.profile_id === info?.userId ? 'Kamu' : r.profile_id ? info?.names[r.profile_id] ?? 'Pasangan' : 'Pasangan')
+  const author = (r: Run) => (r.profile_id === info?.userId ? 'You' : r.profile_id ? info?.names[r.profile_id] ?? 'Partner' : 'Partner')
 
   return (
     <div className="animate-fade-in pb-8">
       <div className="border-b border-border bg-white px-6 pb-5 pt-6">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-ink">Ide Date</h1>
-            <p className="text-sm text-ink-muted">Bingung mau ke mana? Biar AI kasih ide.</p>
+            <h1 className="text-xl font-bold text-ink">Date Ideas</h1>
+            <p className="text-sm text-ink-muted">Not sure where to go? Let AI suggest a few.</p>
           </div>
           {!loading && coupleId && (
             <span className={cn(
               'shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold',
               remaining > 0 ? 'bg-rose-50 text-rose' : 'bg-border/60 text-ink-muted',
             )}>
-              Sisa {remaining}/{DATE_IDEA_DAILY_LIMIT} hari ini
+              {remaining}/{DATE_IDEA_DAILY_LIMIT} left today
             </span>
           )}
         </div>
@@ -270,8 +270,8 @@ export default function IdeDatePage() {
         <p className="mx-6 mt-5 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{loadError}</p>
       ) : !coupleId ? (
         <div className="px-8 pt-16 text-center">
-          <p className="text-sm text-ink-muted">Hubungkan akunmu dengan pasangan dulu untuk minta ide date.</p>
-          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Ke Profil</Link>
+          <p className="text-sm text-ink-muted">Connect with your partner first to get date ideas.</p>
+          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Go to Profile</Link>
         </div>
       ) : (
         <div className="space-y-6 px-6 pt-5">
@@ -287,7 +287,7 @@ export default function IdeDatePage() {
               </div>
             </div>
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Suasana</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Vibe</p>
               <div className="flex flex-wrap gap-2">
                 {VIBES.map((v) => (
                   <Chip key={v} active={vibe === v} onClick={() => setVibe(v)}>{VIBE_LABELS[v]}</Chip>
@@ -295,7 +295,7 @@ export default function IdeDatePage() {
               </div>
             </div>
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Tempat</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Setting</p>
               <div className="flex flex-wrap gap-2">
                 {SETTINGS.map((s) => (
                   <Chip key={s} active={setting === s} onClick={() => setSetting(s)}>{SETTING_LABELS[s]}</Chip>
@@ -304,7 +304,7 @@ export default function IdeDatePage() {
             </div>
             <div>
               <label htmlFor="ide-date-city" className="mb-2 block text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                Kota <span className="normal-case tracking-normal text-ink-muted/80">(opsional)</span>
+                City <span className="normal-case tracking-normal text-ink-muted/80">(optional)</span>
               </label>
               <div className="relative">
                 <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-rose" />
@@ -313,7 +313,7 @@ export default function IdeDatePage() {
                   value={city}
                   maxLength={CITY_MAX}
                   onChange={(e) => { setCity(e.target.value); setCityError('') }}
-                  placeholder="mis. Bandung"
+                  placeholder="e.g. Bandung"
                   className="w-full rounded-xl border border-border bg-cream/50 py-3 pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus:border-rose focus:outline-none"
                 />
               </div>
@@ -321,10 +321,10 @@ export default function IdeDatePage() {
             </div>
             <Button onClick={generate} loading={generating} disabled={remaining === 0}>
               {!generating && <Sparkles className="h-4 w-4" />}
-              {generating ? 'Lagi mikirin ide…' : remaining === 0 ? 'Kuota hari ini habis' : 'Kasih ide'}
+              {generating ? 'Thinking of ideas…' : remaining === 0 ? 'No more tries today' : 'Get ideas'}
             </Button>
             {remaining === 0 && !generating && (
-              <p className="text-center text-xs text-ink-muted">Kalian sudah pakai {DATE_IDEA_DAILY_LIMIT} ide hari ini. Coba lagi besok, ya.</p>
+              <p className="text-center text-xs text-ink-muted">You&apos;ve used all {DATE_IDEA_DAILY_LIMIT} tries for today. Come back tomorrow.</p>
             )}
           </section>
 
@@ -333,14 +333,14 @@ export default function IdeDatePage() {
 
           {generating ? (
             <section aria-busy="true" className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Menyiapkan 3 ide…</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Getting 3 ideas ready…</p>
               {[0, 1, 2].map((i) => <div key={i} className="h-40 animate-pulse rounded-2xl bg-rose-50" />)}
             </section>
           ) : current && current.ideas.length > 0 ? (
             <section className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Ide buat kalian</p>
-                <Link href="/app/bucket-list" className="text-xs font-semibold text-rose">Buka Bucket List</Link>
+                <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Ideas for you two</p>
+                <Link href="/app/bucket-list" className="text-xs font-semibold text-rose">Open Bucket List</Link>
               </div>
               {current.ideas.map((idea, i) => {
                 const key = `${current.id}:${i}`
@@ -358,11 +358,11 @@ export default function IdeDatePage() {
           ) : null}
 
           <section>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-muted">Ide sebelumnya</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-muted">Earlier ideas</p>
             {history.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border bg-white/60 px-4 py-6 text-center">
                 <Sparkles className="mx-auto h-6 w-6 text-rose/50" />
-                <p className="mt-2 text-sm text-ink-muted">Belum ada ide sebelumnya. Pilih preferensi kalian lalu tekan &ldquo;Kasih ide&rdquo;.</p>
+                <p className="mt-2 text-sm text-ink-muted">No earlier ideas yet. Pick what you&apos;re in the mood for, then tap &ldquo;Get ideas&rdquo;.</p>
               </div>
             ) : (
               <div className="space-y-3">

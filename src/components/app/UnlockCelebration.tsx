@@ -33,10 +33,12 @@ export default function UnlockCelebration({ levelNumber, levelTitle, questionCou
             <Sparkles className="h-12 w-12 text-white" strokeWidth={1.5} />
           </div>
         </div>
-        <p className="text-xs font-bold uppercase tracking-widest text-white/70">Level Terbuka</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-white/70">New level</p>
         <h2 className="mt-2 text-3xl font-extrabold drop-shadow-md">Level {levelNumber}</h2>
         <p className="mt-1 text-lg font-bold text-white/90">{levelTitle}</p>
-        <p className="mt-3 text-sm text-white/70">{questionCount} pertanyaan baru menanti</p>
+        <p className="mt-3 text-sm text-white/70">
+          {questionCount} new {questionCount === 1 ? 'question is' : 'questions are'} waiting
+        </p>
       </div>
     </div>
   )

@@ -235,7 +235,7 @@ async function activities({ a, b, c, aid, bid, cid }) {
   const leaks = (rows ?? []).filter((r) => /RAHASIA/.test(r.summary))
   ok('no note / letter / mood-note text in activity summaries', leaks.length === 0, leaks.map((r) => r.kind).join(','))
   const grat = (rows ?? []).filter((r) => r.kind === 'gratitude')
-  ok('gratitude summary is generic', grat.length >= 3 && grat.every((r) => r.summary === 'menaruh apresiasi baru di toples' && r.url === '/app/toples'))
+  ok('gratitude summary is generic', grat.length >= 3 && grat.every((r) => r.summary === 'left a note of thanks in the Toples' && r.url === '/app/toples'))
   const { data: cRows } = await c.from('activities').select('id').eq('couple_id', cid)
   ok('other couple reads no activities', (cRows ?? []).length === 0)
 }
@@ -298,7 +298,7 @@ function milestoneUnits() {
   const d100 = milestonesFor('2026-01-01').find((m) => m.key === 'd100')
   ok('milestone: 100 hari date', d100?.date === '2026-04-11')
   const s4 = milestoneStatus('2025-10-27', '2026-10-27')
-  ok('milestone: first anniversary today', s4.next?.key === 'y1' && s4.next.daysLeft === 0 && s4.next.caption === 'Anniversary pertama')
+  ok('milestone: first anniversary today', s4.next?.key === 'y1' && s4.next.daysLeft === 0 && s4.next.caption === 'First anniversary')
   // Same rule as the calendar and reminders (src/lib/reminders.ts): 29 Feb → 1 Mar in common years.
   const leap = milestonesFor('2024-02-29').filter((m) => m.kind === 'years').map((m) => m.date)
   ok('milestone: 29 Feb start → 1 Mar in common years, 29 Feb in leap years', leap[0] === '2025-03-01' && leap[3] === '2028-02-29', leap.slice(0, 4).join(','))

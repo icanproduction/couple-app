@@ -47,7 +47,7 @@ export default function RoundPilihSama({ config, onSubmit, disabled }: RoundPili
       </div>
 
       {selected && (
-        <p className="mt-6 text-sm text-white/40 animate-pulse">Menunggu pasangan...</p>
+        <p className="mt-6 text-sm text-white/40 animate-pulse">Waiting for your partner...</p>
       )}
     </div>
   )

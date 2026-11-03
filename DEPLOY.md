@@ -80,6 +80,22 @@ The premium gate for Deep Talk level 2+ is already enforced in the database (RLS
 - [ ] Ide Date AI returns 3 ideas; "Simpan ke Bucket List" works; the 6th request of the day is refused.
 - [ ] Profil → Keluar dari pasangan: the partner sees the closed state; the old invite code no longer works.
 - [ ] Deep Talk: any level of any pack opens without Premium.
+- [ ] Games hub: Truth or Dare, Love Languages and Two Truths & a Lie open; a Two Truths round sent from one phone reaches the other with a push, and the lie only shows after the guess.
+
+## 7. Upgrading a live project (v0.6 → v0.7, English + games)
+
+Production already runs the v0.6 migrations. Push only the new ones, then deploy the code in the same sitting so the English SQL messages and the client matchers ship together (the clients accept both the old and new wording anyway):
+
+```bash
+supabase link --project-ref <ref>
+supabase db push --dry-run     # must list exactly the 20261103* migrations
+supabase db push
+```
+
+- `20261103120000_english_content.sql`: English SQL messages and Deep Talk text, plus a rewrite of existing activity-feed lines and "Saldo awal" deposit notes. Deep Talk questions edited in the admin before this point keep their text (the update matches the original wording).
+- `20261103130000` / `131000` / `132000`: the three game tables and RPCs.
+- `20261103140000_mood_feed_label.sql`: mood feed lines name the mood.
+- Events auto-created earlier ("Ulang Tahun …") switch to English the next time that person saves their profile.
 
 ## Local reference
 

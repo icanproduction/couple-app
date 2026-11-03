@@ -113,7 +113,7 @@ async function main() {
 
   // --- Admin set / status / runtime ----------------------------------------
   const bad = await adminC.rpc('admin_set_llm_key', { p_key: 'abc' })
-  ok('too-short key refused', /Format key/.test(bad.error?.message ?? ''), bad.error?.message)
+  ok('too-short key refused', /Unknown key format/.test(bad.error?.message ?? ''), bad.error?.message)
   const spaced = await adminC.rpc('admin_set_llm_key', { p_key: 'sk-or-v1 has spaces in it 1234567890' })
   ok('key with spaces refused', !!spaced.error)
 
@@ -151,7 +151,7 @@ async function main() {
   const putKey = await api('PUT', adminCookie, { apiKey: KEY })
   ok('API: PUT key → last4 updated, key not echoed', putKey.status === 200 && putKey.json?.key_last4 === KEY.slice(-4) && !putKey.text.includes(KEY.slice(0, 20)))
   const putBad = await api('PUT', adminCookie, { apiKey: 'x' })
-  ok('API: bad key → 400 with message', putBad.status === 400 && /Format key/.test(putBad.json?.error ?? ''))
+  ok('API: bad key → 400 with message', putBad.status === 400 && /Unknown key format/.test(putBad.json?.error ?? ''))
   const putModel = await api('PUT', adminCookie, { model: 'openai/gpt-6-luna-pro' })
   ok('API: PUT model', putModel.status === 200 && putModel.json?.in_use?.model === 'openai/gpt-6-luna-pro')
   await api('PUT', adminCookie, { model: null })
@@ -164,7 +164,7 @@ async function main() {
   const test = await api('POST', adminCookie, { action: 'test' })
   const envHasKey = !!env.LLM_API_KEY
   if (!envHasKey) {
-    ok('API: test with no key → not ok, no network', test.status === 200 && test.json?.check?.ok === false && /Belum ada API key/.test(test.json?.check?.message ?? ''), test.text.slice(0, 200))
+    ok('API: test with no key → not ok, no network', test.status === 200 && test.json?.check?.ok === false && /No API key yet/.test(test.json?.check?.message ?? ''), test.text.slice(0, 200))
   } else {
     pass++ // with an env key the test would call OpenRouter; skipped on purpose
   }

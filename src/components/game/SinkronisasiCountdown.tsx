@@ -30,7 +30,7 @@ export default function SinkronisasiCountdown({ onComplete }: SinkronisasiCountd
         {count > 0 ? (
           <span className="text-8xl font-black text-white drop-shadow-lg">{count}</span>
         ) : (
-          <span className="text-5xl font-black text-rose drop-shadow-lg">MAIN!</span>
+          <span className="text-5xl font-black text-rose drop-shadow-lg">GO!</span>
         )}
       </div>
     </div>

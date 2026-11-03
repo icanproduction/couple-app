@@ -8,9 +8,9 @@ import { LayoutDashboard, MessageCircleHeart, Users, Bell, ChevronRight, Heart, 
 const NAV = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/admin/deep-talk', label: 'Deep Talk', icon: MessageCircleHeart, exact: false },
-  { href: '/admin/notifications', label: 'Notifikasi', icon: Bell, exact: false },
-  { href: '/admin/users', label: 'Pengguna', icon: Users, exact: false },
-  { href: '/admin/ai', label: 'Pengaturan AI', icon: Sparkles, exact: false },
+  { href: '/admin/notifications', label: 'Notifications', icon: Bell, exact: false },
+  { href: '/admin/users', label: 'Users', icon: Users, exact: false },
+  { href: '/admin/ai', label: 'AI settings', icon: Sparkles, exact: false },
 ]
 
 export default function AdminSidebar() {
@@ -38,7 +38,7 @@ export default function AdminSidebar() {
             <p className="text-sm font-bold text-ink">Admin Panel</p>
           </div>
           <Link href="/app/home" className="text-xs text-ink-muted hover:text-ink transition-colors">
-            ← Kembali ke App
+            ← Back to app
           </Link>
         </div>
         <nav ref={tabsRef} className="flex gap-1 overflow-x-auto px-3 pb-2">
@@ -100,7 +100,7 @@ export default function AdminSidebar() {
 
         <div className="border-t border-gray-100 p-4">
           <Link href="/app/home" className="text-xs text-ink-muted hover:text-ink transition-colors">
-            ← Kembali ke App
+            ← Back to app
           </Link>
         </div>
       </aside>

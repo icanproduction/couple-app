@@ -7,8 +7,8 @@ import { generateDailyQuestion, type DailyQuestionContext } from '@/lib/daily-qu
 
 // A claim older than this with no question means the generating request died.
 const STALE_CLAIM_MS = 90_000
-const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
-const RETRY_MESSAGE = 'Gagal membuat pertanyaan, coba lagi'
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const RETRY_MESSAGE = 'Couldn\'t make a question. Try again.'
 
 function dayOfWeekJakarta(): string {
   const [y, m, d] = todayJakarta().split('-').map(Number)
@@ -39,7 +39,7 @@ export async function POST() {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const coupleId = await getCoupleId(supabase, user.id)
-    if (!coupleId) return NextResponse.json({ error: 'Belum punya pasangan' }, { status: 400 })
+    if (!coupleId) return NextResponse.json({ error: 'You\'re not connected with a partner yet' }, { status: 400 })
 
     // Key pasted in Admin → AI, else LLM_API_KEY.
     const llm = await getLlm()
@@ -79,7 +79,7 @@ export async function POST() {
         : { data: null }
       if (!retaken) {
         return NextResponse.json(
-          { question: null, pending: true, error: 'Pertanyaan sedang dibuat, coba lagi sebentar' },
+          { question: null, pending: true, error: 'Today\'s question is being made. Try again in a moment.' },
           { status: 202 }
         )
       }
@@ -179,6 +179,6 @@ export async function GET() {
     return NextResponse.json({ question: data?.question ?? null, pending: !!data && !data.question })
   } catch (error) {
     console.error('[ai/daily-question] GET error:', error)
-    return NextResponse.json({ error: 'Gagal memuat pertanyaan' }, { status: 500 })
+    return NextResponse.json({ error: 'Couldn\'t load the question' }, { status: 500 })
   }
 }

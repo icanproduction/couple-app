@@ -164,7 +164,7 @@ export default function DeepTalkPlayPage() {
 
   useEffect(() => {
     loadData().catch((err) => {
-      console.error('[deep-talk] gagal memuat level:', err)
+      console.error('[deep-talk] failed to load the level:', err)
       setLoadError(true)
       setLoading(false)
     })
@@ -174,7 +174,7 @@ export default function DeepTalkPlayPage() {
   useEffect(() => {
     if (loading || isReplay || isCompleted || !coupleId || !packId || questions.length === 0) return
     saveProgress(coupleId, packId, levelNumber, Math.min(currentIndex, questions.length - 1))
-      .catch((err) => console.error('[deep-talk] gagal menyimpan posisi:', err))
+      .catch((err) => console.error('[deep-talk] failed to save the position:', err))
   }, [loading, isReplay, isCompleted, coupleId, packId, levelNumber, currentIndex, questions.length])
 
   const completeLevel = useCallback(async () => {
@@ -196,7 +196,7 @@ export default function DeepTalkPlayPage() {
         setShowCelebration(true)
       }
     } catch (err) {
-      console.error('[deep-talk] gagal menyimpan level selesai:', err)
+      console.error('[deep-talk] failed to save the finished level:', err)
       if (mountedRef.current) setSaveState('error')
     } finally {
       completingRef.current = false
@@ -238,9 +238,9 @@ export default function DeepTalkPlayPage() {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white px-6 text-center">
         <p className="text-sm text-ink-muted">
-          {loadError ? 'Gagal memuat pertanyaan. Cek koneksi lalu coba lagi.' : 'Pertanyaan tidak ditemukan'}
+          {loadError ? "Couldn't load the questions. Check your connection and try again." : "We couldn't find these questions"}
         </p>
-        <button onClick={() => router.push(packHref)} className="mt-4 text-sm text-rose">Kembali</button>
+        <button onClick={() => router.push(packHref)} className="mt-4 text-sm text-rose">Back</button>
       </div>
     )
   }
@@ -252,6 +252,7 @@ export default function DeepTalkPlayPage() {
     const saved = saveState === 'saved'
     const failed = saveState === 'error'
     const hasNextLevel = allLevels.some(l => l.level_number > levelNumber && isPlayableLevel(l))
+    const questionCount = `${questions.length} ${questions.length === 1 ? 'question' : 'questions'}`
     return (
       <>
         {showCelebration && nextLevel && (
@@ -272,12 +273,12 @@ export default function DeepTalkPlayPage() {
               : <Trophy className="h-12 w-12 text-white" strokeWidth={1.5} />}
           </div>
           <h1 className="text-3xl font-extrabold">
-            {failed ? 'Progress belum tersimpan' : `Level ${levelNumber} Selesai!`}
+            {failed ? "Progress wasn't saved" : `Level ${levelNumber} done!`}
           </h1>
           <p className="mt-3 text-base text-white/80">
             {failed
-              ? `Kalian sudah membahas ${questions.length} pertanyaan, tapi progress gagal disimpan. Cek koneksi lalu coba lagi ya.`
-              : `Kalian baru saja menyelesaikan ${questions.length} pertanyaan bersama. Luar biasa!`}
+              ? `You talked through ${questionCount}, but your progress didn't save. Check your connection and try again.`
+              : `You just went through ${questionCount} together.`}
           </p>
           <div className="mt-8 w-full space-y-3">
             {failed ? (
@@ -286,7 +287,7 @@ export default function DeepTalkPlayPage() {
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-sm font-bold shadow-elevated transition-all active:scale-[0.98]"
                 style={{ color }}
               >
-                <RefreshCw className="h-4 w-4" /> Coba Simpan Lagi
+                <RefreshCw className="h-4 w-4" /> Try saving again
               </button>
             ) : (
               <button
@@ -296,17 +297,17 @@ export default function DeepTalkPlayPage() {
                 style={{ color }}
               >
                 {!saved && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />}
-                {hasNextLevel ? 'Lihat Level Berikutnya' : 'Lihat Semua Level'}
+                {hasNextLevel ? 'See the next level' : 'See all levels'}
               </button>
             )}
             <button
               onClick={() => router.push('/app/games/deep-talk')}
               className="w-full rounded-2xl border border-white/30 py-3.5 text-sm font-semibold text-white transition-all active:scale-[0.98]"
             >
-              Kembali ke Deep Talk
+              Back to Deep Talk
             </button>
           </div>
-          {saveState === 'saving' && <p className="mt-4 text-xs text-white/60 animate-pulse">Menyimpan progress...</p>}
+          {saveState === 'saving' && <p className="mt-4 text-xs text-white/60 animate-pulse">Saving progress...</p>}
         </div>
       </>
     )
@@ -314,8 +315,8 @@ export default function DeepTalkPlayPage() {
 
   const assigneeId = memberIds[getAssignee(question, safeIndex) - 1] ?? null
   const assignedName = assigneeId
-    ? names[assigneeId] ?? (assigneeId === myUserId ? 'Kamu' : 'Pasangan')
-    : 'pasanganmu'
+    ? names[assigneeId] ?? (assigneeId === myUserId ? 'you' : 'your partner')
+    : 'your partner'
   const isRead = readIndexes.includes(safeIndex)
   const progress = ((safeIndex + 1) / questions.length) * 100
 
@@ -328,7 +329,7 @@ export default function DeepTalkPlayPage() {
       <div className="flex items-center justify-between px-5 pt-safe pt-6 pb-2">
         <button
           onClick={() => router.push(packHref)}
-          aria-label="Tutup"
+          aria-label="Close"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white/80 shadow-sm backdrop-blur-sm"
         >
           <X className="h-4 w-4 text-ink" />
@@ -355,7 +356,7 @@ export default function DeepTalkPlayPage() {
           className="mb-5 rounded-full px-5 py-1.5 text-sm font-bold text-white shadow-sm"
           style={{ background: color }}
         >
-          Pertanyaan untuk {assignedName}
+          Question for {assignedName}
         </div>
 
         {/* Question card */}
@@ -376,7 +377,7 @@ export default function DeepTalkPlayPage() {
               className="absolute right-4 top-4 flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold text-white animate-scale-in"
               style={{ background: color }}
             >
-              <Check className="h-3 w-3" strokeWidth={3} /> Sudah dibaca
+              <Check className="h-3 w-3" strokeWidth={3} /> Done
             </span>
           )}
           <p className={`text-xl font-bold leading-relaxed transition-colors ${isRead ? 'text-ink-muted' : 'text-ink'}`}>
@@ -385,7 +386,7 @@ export default function DeepTalkPlayPage() {
         </button>
 
         <p className="mt-4 text-xs text-ink-muted">
-          {isRead ? 'Sudah dibaca. Ketuk lagi untuk batal.' : 'Ketuk kartu untuk menandai sudah dibaca'}
+          {isRead ? 'Marked as done. Tap again to undo.' : "Tap the card once you've talked it through"}
         </p>
       </div>
 
@@ -394,7 +395,7 @@ export default function DeepTalkPlayPage() {
         <button
           onClick={goPrev}
           disabled={safeIndex === 0}
-          aria-label="Pertanyaan sebelumnya"
+          aria-label="Previous question"
           className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-white shadow-card disabled:opacity-30 transition-all active:scale-[0.95]"
         >
           <ChevronLeft className="h-5 w-5 text-ink" />
@@ -416,7 +417,7 @@ export default function DeepTalkPlayPage() {
 
         <button
           onClick={goNext}
-          aria-label={safeIndex >= questions.length - 1 ? 'Selesaikan level' : 'Pertanyaan berikutnya'}
+          aria-label={safeIndex >= questions.length - 1 ? 'Finish level' : 'Next question'}
           className="flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-elevated transition-all active:scale-[0.95]"
           style={{ background: color }}
         >

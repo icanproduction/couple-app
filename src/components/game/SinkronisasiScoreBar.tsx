@@ -41,14 +41,14 @@ export default function SinkronisasiScoreBar({
       {/* Mute + Close */}
       <div className="flex items-center gap-1">
         {onToggleMute && (
-          <button onClick={onToggleMute} aria-label={muted ? "Nyalakan suara" : "Matikan suara"} className="rounded-full p-1.5 hover:bg-white/10 transition-colors">
+          <button onClick={onToggleMute} aria-label={muted ? "Turn sound on" : "Mute sound"} className="rounded-full p-1.5 hover:bg-white/10 transition-colors">
             {muted
               ? <VolumeX className="h-4 w-4 text-white/40" />
               : <Volume2 className="h-4 w-4 text-white/60" />
             }
           </button>
         )}
-        <button onClick={onClose} className="rounded-full p-1.5 hover:bg-white/10 transition-colors">
+        <button onClick={onClose} aria-label="Close" className="rounded-full p-1.5 hover:bg-white/10 transition-colors">
           <X className="h-5 w-5 text-white/60" />
         </button>
       </div>

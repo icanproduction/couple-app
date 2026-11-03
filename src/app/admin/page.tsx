@@ -17,16 +17,16 @@ export default function AdminDashboard() {
   }, [])
 
   const STAT_CARDS = [
-    { label: 'Total Pengguna', value: stats.totalUsers, icon: Users, color: 'bg-blue-50 text-blue-600' },
-    { label: 'Total Pasangan', value: stats.totalCouples, icon: Heart, color: 'bg-rose/10 text-rose' },
-    { label: 'Sesi Deep Talk', value: stats.totalSessions, icon: MessageCircleHeart, color: 'bg-purple-50 text-purple-600' },
+    { label: 'Total users', value: stats.totalUsers, icon: Users, color: 'bg-blue-50 text-blue-600' },
+    { label: 'Total couples', value: stats.totalCouples, icon: Heart, color: 'bg-rose/10 text-rose' },
+    { label: 'Deep Talk sessions', value: stats.totalSessions, icon: MessageCircleHeart, color: 'bg-purple-50 text-purple-600' },
   ]
 
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-ink">Dashboard</h1>
-        <p className="mt-1 text-sm text-ink-muted">Ringkasan aplikasi Nanti Kita</p>
+        <p className="mt-1 text-sm text-ink-muted">Nanti Kita at a glance</p>
       </div>
 
       {/* Stats */}
@@ -39,7 +39,7 @@ export default function AdminDashboard() {
                 <Icon className="h-5 w-5" strokeWidth={2} />
               </div>
               <p className="text-2xl font-bold text-ink">
-                {loading ? '—' : card.value?.toLocaleString()}
+                {loading ? '…' : card.value?.toLocaleString()}
               </p>
               <p className="mt-0.5 text-sm text-ink-muted">{card.label}</p>
             </div>
@@ -49,12 +49,12 @@ export default function AdminDashboard() {
 
       {/* Quick links */}
       <div className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold text-ink-muted">Kelola Konten</h2>
+        <h2 className="mb-3 text-sm font-semibold text-ink-muted">Manage content</h2>
         <div className="divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
           {[
-            { href: '/admin/deep-talk', label: 'Deep Talk Packs', desc: 'Kelola pack, level, dan pertanyaan', icon: MessageCircleHeart },
-            { href: '/admin/notifications', label: 'Push Notifications', desc: 'Test & broadcast notifikasi', icon: Bell },
-            { href: '/admin/users', label: 'Pengguna', desc: 'Kelola akun dan role pengguna', icon: Users },
+            { href: '/admin/deep-talk', label: 'Deep Talk packs', desc: 'Packs, levels and questions', icon: MessageCircleHeart },
+            { href: '/admin/notifications', label: 'Push notifications', desc: 'Test and broadcast notifications', icon: Bell },
+            { href: '/admin/users', label: 'Users', desc: 'Manage accounts and user roles', icon: Users },
           ].map(item => {
             const Icon = item.icon
             return (

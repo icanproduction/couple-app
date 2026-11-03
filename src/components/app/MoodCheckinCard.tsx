@@ -14,7 +14,7 @@ interface MoodCheckinCardProps {
   userId: string
   partnerId: string | null
   partnerName: string | null
-  /** Hide the "Riwayat" link (on /app/mood itself) */
+  /** Hide the "History" link (on /app/mood itself) */
   hideHistoryLink?: boolean
   /** Called after my mood is saved */
   onSaved?: () => void
@@ -44,7 +44,7 @@ export default function MoodCheckinCard({
       loadedDay.current = today
       setLoadError('')
     } catch {
-      setLoadError('Gagal memuat mood hari ini.')
+      setLoadError("Couldn't load today's moods.")
     } finally {
       setLoaded(true)
     }
@@ -67,7 +67,7 @@ export default function MoodCheckinCard({
   const myMood = moodInfo(mine?.mood)
   const partnerMood = moodInfo(partnerRow?.mood)
   const showPicker = !mine || editing
-  const who = partnerName ?? 'Pasanganmu'
+  const who = partnerName ?? 'Your partner'
 
   function startEdit() {
     setSelected(mine && moodInfo(mine.mood) ? (mine.mood as MoodKey) : null)
@@ -102,7 +102,7 @@ export default function MoodCheckinCard({
       onSaved?.()
     } catch {
       // Keep the picked mood and note so nothing is lost
-      setSaveError('Mood-mu belum tersimpan. Coba lagi ya.')
+      setSaveError("Your mood wasn't saved. Try again.")
     } finally {
       setSaving(false)
     }
@@ -115,11 +115,11 @@ export default function MoodCheckinCard({
           <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gold/15">
             <Smile className="h-3.5 w-3.5 text-yellow-700" strokeWidth={2} />
           </div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Mood Hari Ini</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Daily Mood</span>
         </div>
         {!hideHistoryLink && (
           <Link href="/app/mood" className="flex items-center gap-0.5 text-xs font-semibold text-rose">
-            Riwayat <ChevronRight className="h-3.5 w-3.5" />
+            History <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         )}
       </div>
@@ -136,7 +136,7 @@ export default function MoodCheckinCard({
             onClick={() => load()}
             className="flex items-center gap-1 rounded-xl border border-border px-3 py-1.5 text-xs font-semibold text-ink-light"
           >
-            <RefreshCw className="h-3.5 w-3.5" /> Coba lagi
+            <RefreshCw className="h-3.5 w-3.5" /> Try again
           </button>
         </div>
       ) : (
@@ -146,9 +146,9 @@ export default function MoodCheckinCard({
             {showPicker ? (
               <>
                 <p className="mb-2.5 text-sm font-medium text-ink">
-                  {editing ? 'Ganti mood-mu hari ini' : 'Gimana perasaanmu hari ini?'}
+                  {editing ? 'Change your mood for today' : 'How are you feeling today?'}
                 </p>
-                <div className="grid grid-cols-4 gap-2" role="group" aria-label="Pilih mood">
+                <div className="grid grid-cols-4 gap-2" role="group" aria-label="Pick a mood">
                   {MOOD_KEYS.map((key) => {
                     const m = MOODS[key]
                     const active = selected === key
@@ -158,7 +158,7 @@ export default function MoodCheckinCard({
                         type="button"
                         onClick={() => setSelected(key)}
                         aria-pressed={active}
-                        aria-label={`Mood ${m.label}`}
+                        aria-label={`Mood: ${m.label}`}
                         className={cn(
                           'flex flex-col items-center gap-0.5 rounded-xl border px-1 py-2 transition-all active:scale-95',
                           active ? 'border-transparent shadow-card' : 'border-border bg-white hover:bg-cream'
@@ -174,14 +174,14 @@ export default function MoodCheckinCard({
 
                 {selected && (
                   <div className="mt-3 animate-fade-in">
-                    <label htmlFor="mood-note" className="sr-only">Catatan mood (opsional)</label>
+                    <label htmlFor="mood-note" className="sr-only">Mood note (optional)</label>
                     <textarea
                       id="mood-note"
                       value={note}
                       onChange={(e) => setNote(e.target.value.slice(0, MOOD_NOTE_MAX))}
                       maxLength={MOOD_NOTE_MAX}
                       rows={2}
-                      placeholder="Mau cerita sedikit? (opsional)"
+                      placeholder="Want to say a bit more? (optional)"
                       className="w-full resize-none rounded-xl border border-border bg-cream px-3 py-2 text-sm text-ink placeholder:text-ink-muted/60 focus:border-rose focus:outline-none focus:ring-1 focus:ring-rose/20"
                     />
                     <div className="mt-1 flex items-center justify-between">
@@ -193,7 +193,7 @@ export default function MoodCheckinCard({
                             onClick={cancelEdit}
                             className="rounded-xl px-3 py-2 text-xs font-semibold text-ink-muted"
                           >
-                            Batal
+                            Cancel
                           </button>
                         )}
                         <button
@@ -202,7 +202,7 @@ export default function MoodCheckinCard({
                           disabled={saving}
                           className="rounded-xl bg-rose px-4 py-2 text-xs font-bold text-white shadow-elevated disabled:opacity-50"
                         >
-                          {saving ? 'Menyimpan…' : 'Simpan'}
+                          {saving ? 'Saving…' : 'Save'}
                         </button>
                       </div>
                     </div>
@@ -210,7 +210,7 @@ export default function MoodCheckinCard({
                 )}
                 {editing && !selected && (
                   <button type="button" onClick={cancelEdit} className="mt-2 text-xs font-semibold text-ink-muted">
-                    Batal
+                    Cancel
                   </button>
                 )}
                 {saveError && <p className="mt-2 text-xs font-medium text-red-600">{saveError}</p>}
@@ -227,14 +227,14 @@ export default function MoodCheckinCard({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-ink">
-                      Kamu lagi <span className="font-bold" style={{ color: myMood.color }}>{myMood.label.toLowerCase()}</span>
+                      Your mood: <span className="font-bold" style={{ color: myMood.color }}>{myMood.label.toLowerCase()}</span>
                     </p>
                     {mine.note && <p className="mt-0.5 break-words text-xs italic text-ink-light">“{mine.note}”</p>}
                   </div>
                   <button
                     type="button"
                     onClick={startEdit}
-                    aria-label="Ubah mood hari ini"
+                    aria-label="Change today's mood"
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border text-ink-muted hover:text-ink"
                   >
                     <Pencil className="h-3.5 w-3.5" />
@@ -248,7 +248,7 @@ export default function MoodCheckinCard({
           <div className="border-t border-border bg-cream/50 px-4 py-3">
             {!partnerId ? (
               <p className="text-xs text-ink-muted">
-                Pasanganmu belum bergabung. Nanti kalian bisa saling lihat mood di sini.
+                Your partner hasn&apos;t joined yet. Once they do, you&apos;ll see each other&apos;s moods here.
               </p>
             ) : partnerMood && partnerRow ? (
               <div className="space-y-2">
@@ -262,7 +262,7 @@ export default function MoodCheckinCard({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-ink">
-                      {who} lagi <span className="font-bold" style={{ color: partnerMood.color }}>{partnerMood.label.toLowerCase()}</span>
+                      {who}&apos;s mood: <span className="font-bold" style={{ color: partnerMood.color }}>{partnerMood.label.toLowerCase()}</span>
                     </p>
                     {partnerRow.note && (
                       <p className="mt-0.5 break-words text-xs italic text-ink-light">“{partnerRow.note}”</p>
@@ -280,7 +280,7 @@ export default function MoodCheckinCard({
             ) : (
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 animate-pulse rounded-full bg-gold" />
-                <p className="text-xs text-ink-muted">{who} belum check-in hari ini</p>
+                <p className="text-xs text-ink-muted">{who} hasn&apos;t checked in today</p>
               </div>
             )}
           </div>

@@ -35,13 +35,13 @@ function LoginForm() {
       const msg = authError.message.toLowerCase()
       if (authError.code === 'email_not_confirmed' || msg.includes('email not confirmed')) {
         setUnconfirmed(true)
-        setError('Email kamu belum dikonfirmasi. Buka link konfirmasi yang kami kirim ke email-mu dulu, ya.')
+        setError('Your email isn\'t confirmed yet. Open the confirmation link we sent to your inbox first.')
       } else if (msg.includes('rate limit') || msg.includes('too many')) {
-        setError('Terlalu banyak percobaan. Coba lagi beberapa menit lagi.')
+        setError('Too many attempts. Try again in a few minutes.')
       } else if (authError.code === 'invalid_credentials' || msg.includes('invalid login')) {
-        setError('Email atau password salah.')
+        setError('Wrong email or password.')
       } else {
-        setError('Gagal masuk. Periksa koneksi lalu coba lagi.')
+        setError('Couldn\'t log you in. Check your connection and try again.')
       }
       setLoading(false)
       return
@@ -92,15 +92,15 @@ function LoginForm() {
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50">
           <Heart className="h-7 w-7 text-rose" strokeWidth={2} />
         </div>
-        <h1 className="text-2xl font-bold text-ink">Masuk</h1>
+        <h1 className="text-2xl font-bold text-ink">Log in</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          {inviteCode ? 'Masuk untuk bergabung dengan pasangan' : 'Selamat datang kembali'}
+          {inviteCode ? 'Log in to join your partner' : 'Welcome back'}
         </p>
       </div>
 
       {linkError && (
         <div className="mb-5 rounded-2xl border border-gold/30 bg-gold/10 px-4 py-3 text-xs leading-relaxed text-ink-light">
-          Link di email sudah tidak berlaku atau dibuka di browser lain. Kalau email-mu sudah terkonfirmasi, silakan masuk di sini.
+          That email link has expired or was opened in a different browser. If your email is already confirmed, log in here.
         </div>
       )}
 
@@ -108,7 +108,7 @@ function LoginForm() {
         <Input
           label="Email"
           type="email"
-          placeholder="kamu@email.com"
+          placeholder="you@email.com"
           value={email}
           onChange={e => setEmail(e.target.value)}
           required
@@ -127,39 +127,39 @@ function LoginForm() {
 
         {unconfirmed && (
           <p className="text-xs text-ink-muted">
-            Tidak ada email?{' '}
+            No email?{' '}
             <button
               type="button"
               onClick={resendConfirmation}
               disabled={resendState === 'sending' || resendState === 'sent'}
               className="font-semibold text-rose hover:text-rose-dark disabled:opacity-60"
             >
-              {resendState === 'sending' ? 'Mengirim…' : resendState === 'sent' ? 'Link sudah dikirim ulang' : 'Kirim ulang link konfirmasi'}
+              {resendState === 'sending' ? 'Sending…' : resendState === 'sent' ? 'Link sent again' : 'Resend confirmation link'}
             </button>
-            {resendState === 'error' && <span className="block pt-1 text-danger">Gagal mengirim ulang. Coba lagi sebentar lagi.</span>}
+            {resendState === 'error' && <span className="block pt-1 text-danger">Couldn&apos;t resend it. Try again in a moment.</span>}
           </p>
         )}
 
         <div className="text-right">
           <Link href="/auth/forgot" className="text-xs font-semibold text-ink-muted hover:text-rose">
-            Lupa password?
+            Forgot password?
           </Link>
         </div>
 
         <div className="pt-1">
           <Button type="submit" loading={loading} size="lg">
-            Masuk
+            Log in
           </Button>
         </div>
       </form>
 
       <p className="mt-8 text-center text-sm text-ink-muted">
-        Belum punya akun?{' '}
+        New here?{' '}
         <Link
           href={inviteCode ? `/auth/signup?invite=${inviteCode}` : '/auth/signup'}
           className="font-semibold text-rose hover:text-rose-dark"
         >
-          Daftar sekarang
+          Sign up
         </Link>
       </p>
     </div>

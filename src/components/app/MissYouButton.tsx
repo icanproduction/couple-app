@@ -20,7 +20,7 @@ function formatCountdown(ms: number): string {
   const totalMins = Math.ceil(ms / 60000)
   const h = Math.floor(totalMins / 60)
   const m = totalMins % 60
-  if (h > 0) return `${h}j ${m}m`
+  if (h > 0) return `${h}h ${m}m`
   return `${m}m`
 }
 
@@ -62,7 +62,7 @@ export default function MissYouButton({ myId, myName, partnerId, partnerName, co
     const todayCount = rows.filter(r => isToday(r.created_at)).length
     setUsedToday(todayCount)
 
-    // The partner answered my latest kangen ("kangen kamu juga") in the last day
+    // The partner answered my latest Kangen ("Miss you too") in the last day
     const answered = rows[0]?.responded && rows[0].responded_at
       && Date.now() - new Date(rows[0].responded_at).getTime() < 24 * 3600000
     setRepliedAt(answered ? rows[0].responded_at : null)
@@ -119,7 +119,7 @@ export default function MissYouButton({ myId, myName, partnerId, partnerName, co
     })
 
     if (error) {
-      setSendError('Kangen belum terkirim. Coba lagi ya.')
+      setSendError("Your Kangen didn't go through. Try again.")
     } else {
       setJustSent(true)
       setRepliedAt(null)
@@ -134,8 +134,8 @@ export default function MissYouButton({ myId, myName, partnerId, partnerName, co
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             recipientId: partnerId,
-            title: '💓 Nanti Kita',
-            body: `${myName} lagi kangen kamu`,
+            title: 'Nanti Kita',
+            body: `${myName} sent you a Kangen`,
             url: '/app/home',
             kind: 'kangen',
           }),
@@ -157,9 +157,9 @@ export default function MissYouButton({ myId, myName, partnerId, partnerName, co
   return (
     <div className="mx-4">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Tombol Kangen</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Send a Kangen</span>
         {!isCoolingDown && !isMaxedOut && (
-          <span className="text-xs text-ink-muted">{remaining} lagi hari ini</span>
+          <span className="text-xs text-ink-muted">{remaining} left today</span>
         )}
       </div>
 
@@ -194,13 +194,13 @@ export default function MissYouButton({ myId, myName, partnerId, partnerName, co
           />
           <span className={`text-sm font-bold ${isDisabled ? 'text-ink-muted' : 'text-white'}`}>
             {justSent
-              ? 'Terkirim!'
+              ? 'Sent'
               : isCoolingDown
-              ? `Bisa kirim lagi dalam ${formatCountdown(cooldownMs)}`
+              ? `Send again in ${formatCountdown(cooldownMs)}`
               : isMaxedOut
-              ? 'Batas hari ini tercapai'
+              ? "That's all for today"
               : sending
-              ? 'Mengirim...'
+              ? 'Sending...'
               : 'Kangen'}
           </span>
         </div>
@@ -209,11 +209,11 @@ export default function MissYouButton({ myId, myName, partnerId, partnerName, co
       {justSent && (
         <p className="mt-1.5 text-center text-xs animate-fade-in">
           {pushStatus === 'sent' ? (
-            <span className="text-sage-dark">Notifikasi terkirim ke pasangan</span>
+            <span className="text-sage-dark">Your partner got a notification</span>
           ) : pushStatus === 'no_sub' ? (
-            <span className="text-ink-muted">Kangen terkirim — pasangan belum aktifkan notifikasi</span>
+            <span className="text-ink-muted">Kangen sent. Your partner hasn&apos;t turned on notifications yet.</span>
           ) : (
-            <span className="text-ink-muted">Mengirim...</span>
+            <span className="text-ink-muted">Sending...</span>
           )}
         </p>
       )}
@@ -222,7 +222,7 @@ export default function MissYouButton({ myId, myName, partnerId, partnerName, co
       )}
       {!justSent && repliedAt && (
         <p className="mt-1.5 flex items-center justify-center gap-1 text-center text-xs font-semibold text-rose animate-fade-in">
-          <Heart className="h-3 w-3" fill="currentColor" /> {partnerName ?? 'Pasanganmu'} kangen kamu juga
+          <Heart className="h-3 w-3" fill="currentColor" /> {partnerName ?? 'Your partner'} misses you too
         </p>
       )}
     </div>

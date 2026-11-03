@@ -8,7 +8,7 @@ type Client = SupabaseClient<Database>
 export type MoodCheckin = Database['public']['Tables']['mood_checkins']['Row']
 
 /** Same list, same order as the DB check on mood_checkins.mood */
-export const MOOD_KEYS = ['senang', 'semangat', 'biasa', 'capek', 'sedih', 'kesal', 'cemas', 'kangen'] as const
+export const MOOD_KEYS = ['senang', 'semangat', 'biasa', 'capek', 'sedih', 'kesal', 'cemas', 'kangen'] as const // copy-ok: stored values
 export type MoodKey = (typeof MOOD_KEYS)[number]
 
 export const MOOD_NOTE_MAX = 140
@@ -17,7 +17,7 @@ export interface MoodInfo {
   key: MoodKey
   emoji: string
   label: string
-  /** Strong colour (text, bars) as hex: src/lib is outside Tailwind's content globs */
+  /** Strong color (text, bars) as hex: src/lib is outside Tailwind's content globs */
   color: string
   /** Soft background */
   soft: string
@@ -27,36 +27,36 @@ export interface MoodInfo {
 
 export const MOODS: Record<MoodKey, MoodInfo> = {
   senang: {
-    key: 'senang', emoji: '😊', label: 'Senang', color: '#C98A1E', soft: '#FFF4DB',
-    suggestion: 'Ikut senang bareng dia. Tanya apa yang bikin harinya cerah.',
+    key: 'senang', emoji: '😊', label: 'Happy', color: '#C98A1E', soft: '#FFF4DB',
+    suggestion: 'Share the good mood. Ask what made their day.',
   },
   semangat: {
-    key: 'semangat', emoji: '🔥', label: 'Semangat', color: '#E0702F', soft: '#FFEBDD',
-    suggestion: 'Dukung semangatnya, kasih pujian atau rayakan kecil-kecilan.',
+    key: 'semangat', emoji: '🔥', label: 'Fired up', color: '#E0702F', soft: '#FFEBDD', // copy-ok: stored value
+    suggestion: 'Cheer them on with a compliment or a small celebration.',
   },
   biasa: {
-    key: 'biasa', emoji: '😐', label: 'Biasa aja', color: '#8A7E7E', soft: '#F3EFEA',
-    suggestion: 'Sapaan kecil darimu bisa bikin harinya lebih hangat.',
+    key: 'biasa', emoji: '😐', label: 'Just okay', color: '#8A7E7E', soft: '#F3EFEA',
+    suggestion: 'A small hello from you could make their day a little warmer.',
   },
   capek: {
-    key: 'capek', emoji: '😩', label: 'Capek', color: '#7E6CB8', soft: '#EFEBFA',
-    suggestion: 'Mungkin dia butuh dipeluk & istirahat.',
+    key: 'capek', emoji: '😩', label: 'Tired', color: '#7E6CB8', soft: '#EFEBFA',
+    suggestion: 'They might need a hug and some rest.',
   },
   sedih: {
-    key: 'sedih', emoji: '😢', label: 'Sedih', color: '#4F7FBF', soft: '#E6EFFA',
-    suggestion: 'Dengarkan dulu tanpa buru-buru kasih solusi. Kehadiranmu sudah cukup.',
+    key: 'sedih', emoji: '😢', label: 'Sad', color: '#4F7FBF', soft: '#E6EFFA',
+    suggestion: 'Listen first and don\'t rush to fix it. Being there is enough.',
   },
   kesal: {
-    key: 'kesal', emoji: '😤', label: 'Kesal', color: '#D04848', soft: '#FDE4E4',
-    suggestion: 'Kasih ruang sebentar, lalu tanya pelan-pelan apa yang terjadi.',
+    key: 'kesal', emoji: '😤', label: 'Annoyed', color: '#D04848', soft: '#FDE4E4',
+    suggestion: 'Give them a little space, then gently ask what happened.',
   },
   cemas: {
-    key: 'cemas', emoji: '😟', label: 'Cemas', color: '#3E8F86', soft: '#E0F2EF',
-    suggestion: 'Ajak ngobrol santai dan bantu pecah masalahnya jadi kecil-kecil.',
+    key: 'cemas', emoji: '😟', label: 'Anxious', color: '#3E8F86', soft: '#E0F2EF',
+    suggestion: 'Have a relaxed chat and help break the problem into smaller pieces.',
   },
   kangen: {
-    key: 'kangen', emoji: '🥺', label: 'Kangen', color: '#D9487F', soft: '#FDE6EF',
-    suggestion: 'Dia lagi kangen kamu. Telepon atau kirim pesan manis sekarang.',
+    key: 'kangen', emoji: '🥺', label: 'Missing you', color: '#D9487F', soft: '#FDE6EF',
+    suggestion: 'They miss you. Call or send them something sweet now.',
   },
 }
 
@@ -115,7 +115,7 @@ export interface SaveCheckinInput {
 /** Sets (or changes) my mood for `date` */
 export async function saveCheckin(client: Client, input: SaveCheckinInput): Promise<MoodCheckin> {
   const note = input.note?.trim() || null
-  if (note && note.length > MOOD_NOTE_MAX) throw new Error(`Catatan maksimal ${MOOD_NOTE_MAX} karakter`)
+  if (note && note.length > MOOD_NOTE_MAX) throw new Error(`Notes can be up to ${MOOD_NOTE_MAX} characters`)
   const { data, error } = await client
     .from('mood_checkins')
     .upsert(

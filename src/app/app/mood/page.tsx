@@ -65,8 +65,8 @@ export default function MoodPage() {
 
   const people: Person[] = useMemo(() => {
     if (!info) return []
-    const list: Person[] = [{ id: info.userId, name: 'Kamu' }]
-    if (info.partnerId) list.push({ id: info.partnerId, name: info.names[info.partnerId] ?? 'Pasangan' })
+    const list: Person[] = [{ id: info.userId, name: 'You' }]
+    if (info.partnerId) list.push({ id: info.partnerId, name: info.names[info.partnerId] ?? 'Partner' })
     return list
   }, [info])
 
@@ -88,8 +88,8 @@ export default function MoodPage() {
         <Link href="/app/jelajah" className="mb-3 flex w-fit items-center gap-1 text-sm text-ink-muted">
           <ArrowLeft className="h-4 w-4" /> Jelajah
         </Link>
-        <h1 className="text-xl font-bold text-ink">Mood Harian</h1>
-        <p className="text-sm text-ink-muted">Saling tahu perasaan masing-masing, tiap hari</p>
+        <h1 className="text-xl font-bold text-ink">Daily Mood</h1>
+        <p className="text-sm text-ink-muted">Know how each other feels, every day</p>
       </div>
 
       {status === 'loading' ? (
@@ -99,17 +99,17 @@ export default function MoodPage() {
         </div>
       ) : status === 'nocouple' ? (
         <div className="px-8 pt-16 text-center">
-          <p className="text-sm text-ink-muted">Hubungkan akunmu dengan pasangan dulu untuk mulai check-in mood.</p>
-          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Ke Profil</Link>
+          <p className="text-sm text-ink-muted">Connect with your partner first to start mood check-ins.</p>
+          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Go to Profile</Link>
         </div>
       ) : status === 'error' && rows.length === 0 ? (
         <div className="mx-6 mt-5 flex items-center justify-between gap-3 rounded-xl bg-red-50 px-3 py-2">
-          <p className="text-sm text-red-600">Gagal memuat riwayat mood.</p>
+          <p className="text-sm text-red-600">Couldn&apos;t load your mood history.</p>
           <button
             onClick={() => { setStatus('loading'); if (info) loadHistory(); else setAttempt((n) => n + 1) }}
             className="flex items-center gap-1 text-xs font-semibold text-red-600"
           >
-            <RefreshCw className="h-3.5 w-3.5" /> Coba lagi
+            <RefreshCw className="h-3.5 w-3.5" /> Try again
           </button>
         </div>
       ) : info ? (
@@ -127,7 +127,7 @@ export default function MoodPage() {
           {/* 14-day grid */}
           <section className="mx-6 rounded-2xl border border-border bg-white p-4 shadow-card">
             <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="text-sm font-bold text-ink">{HISTORY_DAYS} Hari Terakhir</h2>
+              <h2 className="text-sm font-bold text-ink">Last {HISTORY_DAYS} days</h2>
               <p className="text-[11px] text-ink-muted">
                 {formatDateShortID(days[0])} – {formatDateShortID(days[days.length - 1])}
               </p>
@@ -163,7 +163,7 @@ export default function MoodPage() {
             </div>
 
             {!info.partnerId && (
-              <p className="mt-3 text-xs text-ink-muted">Pasanganmu belum bergabung, jadi baru mood-mu yang tercatat.</p>
+              <p className="mt-3 text-xs text-ink-muted">Your partner hasn&apos;t joined yet, so only your moods show here.</p>
             )}
 
             {selected && selectedPerson && (
@@ -180,17 +180,17 @@ export default function MoodPage() {
                     {selectedRow.note && <p className="mt-0.5 break-words text-xs italic text-ink-light">“{selectedRow.note}”</p>}
                   </>
                 ) : (
-                  <p className="mt-1 text-sm text-ink-muted">Belum check-in hari itu</p>
+                  <p className="mt-1 text-sm text-ink-muted">No check-in that day</p>
                 )}
               </div>
             )}
-            {!selected && <p className="mt-3 text-[11px] text-ink-muted">Ketuk kotak untuk lihat detail &amp; catatannya.</p>}
+            {!selected && <p className="mt-3 text-[11px] text-ink-muted">Tap a square to see the mood and note.</p>}
           </section>
 
           {/* 30-day counts */}
           <section className="mx-6 rounded-2xl border border-border bg-white p-4 shadow-card">
-            <h2 className="text-sm font-bold text-ink">{COUNT_DAYS} Hari Terakhir</h2>
-            <p className="mb-3 text-[11px] text-ink-muted">Mood yang paling sering muncul</p>
+            <h2 className="text-sm font-bold text-ink">Last {COUNT_DAYS} days</h2>
+            <p className="mb-3 text-[11px] text-ink-muted">Moods that came up most</p>
             <div className="space-y-4">
               {people.map((p) => {
                 const mine = rows.filter((r) => r.profile_id === p.id)
@@ -200,10 +200,10 @@ export default function MoodPage() {
                   <div key={p.id}>
                     <div className="mb-1.5 flex items-baseline justify-between">
                       <p className="text-xs font-bold text-ink">{p.name}</p>
-                      <p className="text-[11px] text-ink-muted">{mine.length} dari {COUNT_DAYS} hari check-in</p>
+                      <p className="text-[11px] text-ink-muted">Checked in {mine.length} of {COUNT_DAYS} days</p>
                     </div>
                     {counts.length === 0 ? (
-                      <p className="rounded-xl bg-cream px-3 py-2 text-xs text-ink-muted">Belum ada check-in.</p>
+                      <p className="rounded-xl bg-cream px-3 py-2 text-xs text-ink-muted">No check-ins yet.</p>
                     ) : (
                       <ul className="space-y-1.5">
                         {counts.map(({ mood, count }) => (
@@ -253,7 +253,7 @@ function PersonRow({
             key={d}
             type="button"
             onClick={() => onSelect(d)}
-            aria-label={`${person.name}, ${formatDateID(d)}: ${mood ? mood.label : 'belum check-in'}`}
+            aria-label={`${person.name}, ${formatDateID(d)}: ${mood ? mood.label : 'no check-in'}`}
             aria-pressed={active}
             className={cn(
               'flex aspect-square w-full items-center justify-center rounded-md text-[13px] leading-none transition-transform active:scale-90',

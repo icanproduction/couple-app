@@ -36,7 +36,7 @@ export default function PetCareScreen({ pet, myActions, partnerActions, userId, 
   const [actionError, setActionError] = useState('')
 
   const today = new Date()
-  // "Hari ke-N": adoption day is day 1 (Jakarta calendar days)
+  // "Day N": adoption day is day 1 (Jakarta calendar days)
   const dayNumber = pet.created_at ? Math.max(0, daysSince(todayJakarta(new Date(pet.created_at)))) + 1 : 1
 
   const loadLogs = useCallback(async () => {
@@ -53,7 +53,7 @@ export default function PetCareScreen({ pet, myActions, partnerActions, userId, 
   const isDoneByAnyone = (action: CareAction) => doneLogs.some(l => l.action_type === action)
   const getLogFor = (action: CareAction) => doneLogs.find(l => l.action_type === action)
   const whoDid = (log: CareLog | undefined) =>
-    log?.done_by === userId ? 'Kamu' : log && !log.done_by ? 'Akun dihapus' : partnerName
+    log?.done_by === userId ? 'You' : log && !log.done_by ? 'Deleted account' : partnerName
   const totalTasks = allActions.length
   const doneTasks = allActions.filter(a => isDoneByAnyone(a)).length
 
@@ -72,8 +72,8 @@ export default function PetCareScreen({ pet, myActions, partnerActions, userId, 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             recipientId: partnerId,
-            title: `${pet.name} dirawat! 🐾`,
-            body: `Pasanganmu baru saja ${meta.label.toLowerCase()} ${pet.name}`,
+            title: `${pet.name} got some care`,
+            body: `Your partner just ticked off "${meta.label}" for ${pet.name}`,
             url: '/app/pet/care',
             kind: 'activity',
           }),
@@ -83,8 +83,8 @@ export default function PetCareScreen({ pet, myActions, partnerActions, userId, 
       await loadLogs()
     } catch (e) {
       setActionError(e instanceof Error && e.message.includes('cooldown')
-        ? `${CARE_ACTION_META[action].label} baru saja dilakukan, tunggu sebentar ya.`
-        : 'Gagal merawat, coba lagi ya.')
+        ? `"${CARE_ACTION_META[action].label}" was just done. Give it a little while.`
+        : "Couldn't save that. Try again.")
     } finally {
       setActionLoading(null)
     }
@@ -98,16 +98,16 @@ export default function PetCareScreen({ pet, myActions, partnerActions, userId, 
       {/* Hero */}
       <div className="px-4 pt-4 pb-5" style={{ background: 'linear-gradient(160deg, #FFE0CC 0%, #FFF2E8 100%)' }}>
         <div className="flex items-center gap-3 mb-3.5">
-          <button onClick={() => router.back()} className="p-1">
+          <button onClick={() => router.back()} aria-label="Back" className="p-1">
             <ArrowLeft className="w-5 h-5 text-ink" />
           </button>
           <div className="w-12 h-12 bg-[#FFD0B0] rounded-2xl flex items-center justify-center text-[26px]">
             {pet.pet_type === 'cat' ? '🐱' : '🐶'}
           </div>
           <div>
-            <div className="text-[17px] font-bold text-ink">Rawat {pet.name}</div>
+            <div className="text-[17px] font-bold text-ink">Care for {pet.name}</div>
             <div className="text-[11px] text-ink-muted">
-              {today.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Jakarta' })} · Hari ke-{dayNumber}
+              {today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Jakarta' })} · Day {dayNumber}
             </div>
           </div>
         </div>
@@ -130,14 +130,14 @@ export default function PetCareScreen({ pet, myActions, partnerActions, userId, 
             </div>
           </div>
           <div className="flex-1">
-            <div className="text-xs font-bold text-ink">{doneTasks} dari {totalTasks} tugas selesai</div>
+            <div className="text-xs font-bold text-ink">{doneTasks} of {totalTasks} {totalTasks === 1 ? 'task' : 'tasks'} done</div>
             <div className="text-[10px] text-ink-muted mt-0.5">
-              {doneTasks === totalTasks ? 'Semua selesai! 🎉' : `${totalTasks - doneTasks} tugas belum dilakukan`}
+              {doneTasks === totalTasks ? 'All done!' : `${totalTasks - doneTasks} still to do`}
             </div>
           </div>
           {totalTasks > 0 && doneTasks === totalTasks && (
             <div className="bg-[rgba(94,196,130,0.14)] text-[#3A9E5A] text-[10px] font-bold px-2.5 py-1.5 rounded-[10px]">
-              Kompak!
+              Teamwork
             </div>
           )}
         </div>
@@ -171,12 +171,12 @@ export default function PetCareScreen({ pet, myActions, partnerActions, userId, 
                 <div className={`text-[10px] font-semibold ${done ? 'text-sage-dark' : 'text-rose-dark'}`}>
                   {done
                     ? `${whoDid(log)} · ${formatTimeAgo(log?.done_at ?? null)} ✓`
-                    : 'Tugasmu · belum dilakukan'}
+                    : 'Your task · not done yet'}
                 </div>
               </div>
               {done ? (
                 <div className="bg-[#EEF9F4] text-sage-dark text-[11px] font-extrabold px-3.5 py-2 rounded-xl">
-                  Selesai
+                  Done
                 </div>
               ) : (
                 <button
@@ -184,7 +184,7 @@ export default function PetCareScreen({ pet, myActions, partnerActions, userId, 
                   disabled={isLoading}
                   className="bg-rose text-white text-[11px] font-extrabold px-3.5 py-2 rounded-xl shadow-[0_3px_10px_rgba(240,107,107,0.35)] hover:scale-105 transition-transform disabled:opacity-50"
                 >
-                  {isLoading ? '...' : 'Lakukan!'}
+                  {isLoading ? '...' : 'Do it'}
                 </button>
               )}
             </div>
@@ -212,16 +212,16 @@ export default function PetCareScreen({ pet, myActions, partnerActions, userId, 
                 <div className={`text-[10px] font-semibold ${done ? 'text-sage-dark' : 'text-[#4A80CC]'}`}>
                   {done
                     ? `${whoDid(log)} · ${formatTimeAgo(log?.done_at ?? null)} ✓`
-                    : `Tugas ${partnerName} · menunggu...`}
+                    : `${partnerName}'s task · waiting...`}
                 </div>
               </div>
               {done ? (
                 <div className="bg-[#EEF9F4] text-sage-dark text-[11px] font-extrabold px-3.5 py-2 rounded-xl">
-                  Selesai
+                  Done
                 </div>
               ) : (
                 <div className="bg-[#EEF3FC] text-[#4A80CC] text-[11px] font-extrabold px-3.5 py-2 rounded-xl">
-                  Nunggu
+                  Waiting
                 </div>
               )}
             </div>
@@ -236,9 +236,9 @@ function formatTimeAgo(dateStr: string | null): string {
   if (!dateStr) return ''
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'baru saja'
-  if (mins < 60) return `${mins} menit lalu`
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins} min ago`
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours} jam lalu`
-  return 'kemarin'
+  if (hours < 24) return `${hours} h ago`
+  return 'yesterday'
 }

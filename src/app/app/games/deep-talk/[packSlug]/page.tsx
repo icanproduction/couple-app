@@ -63,7 +63,7 @@ export default function PackDetailPage() {
 
   useEffect(() => {
     loadData().catch((err) => {
-      console.error('[deep-talk] gagal memuat pack:', err)
+      console.error('[deep-talk] failed to load the pack:', err)
       setLoading(false)
     })
   }, [loadData])
@@ -78,12 +78,12 @@ export default function PackDetailPage() {
     if (lockedParam) {
       const prerequisite = getPrerequisiteLevel(Number(lockedParam), levels)
       setLockedToast(prerequisite
-        ? `Selesaikan Level ${prerequisite} dulu untuk membuka Level ${lockedParam} ✨`
-        : `Level ${lockedParam} belum bisa dibuka ✨`)
+        ? `Finish Level ${prerequisite} first to open Level ${lockedParam}`
+        : `Level ${lockedParam} isn't open yet`)
     } else if (premiumParam) {
-      setLockedToast('Level ini fitur Premium — buka Premium dulu ya ✨')
+      setLockedToast('This level is part of Premium. Get Premium to play it.')
     } else if (comingSoonParam) {
-      setLockedToast(`Level ${comingSoonParam} masih dalam persiapan, nantikan ya 🌟`)
+      setLockedToast(`Level ${comingSoonParam} is still being written. Check back soon.`)
     }
   }, [searchParams, loading, levels])
 
@@ -94,10 +94,10 @@ export default function PackDetailPage() {
   }, [lockedToast])
 
   function getButtonLabel(status: LevelStatus): string {
-    if (status === 'coming_soon') return 'Segera Hadir'
-    if (status === 'locked') return 'Terkunci'
-    if (status === 'completed') return 'Main Lagi'
-    return 'Mulai'
+    if (status === 'coming_soon') return 'Coming soon'
+    if (status === 'locked') return 'Locked'
+    if (status === 'completed') return 'Play again'
+    return 'Start'
   }
 
   if (loading) {
@@ -107,8 +107,8 @@ export default function PackDetailPage() {
   if (!pack) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-        <p className="text-sm text-ink-muted">Pack tidak ditemukan</p>
-        <button onClick={() => router.push('/app/games/deep-talk')} className="mt-4 text-sm text-rose">Kembali</button>
+        <p className="text-sm text-ink-muted">We couldn&apos;t find this pack</p>
+        <button onClick={() => router.push('/app/games/deep-talk')} className="mt-4 text-sm text-rose">Back</button>
       </div>
     )
   }
@@ -130,14 +130,14 @@ export default function PackDetailPage() {
         <p className="mt-1 text-sm text-white/80">{pack.description}</p>
         {pack.is_free && (
           <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-bold">
-            <Sparkles className="h-3 w-3" /> Semua level terbuka, pilih mana saja
+            <Sparkles className="h-3 w-3" /> Every level is open. Start anywhere.
           </span>
         )}
       </div>
 
       {/* Levels */}
       <div className="space-y-3 px-6 pt-5">
-        <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Pilih Level</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Pick a level</p>
 
         {levels.map((level, idx) => {
           const status = getLevelStatus(level, progress?.completed_levels ?? [], isPremium, levels, pack.is_free)
@@ -154,9 +154,9 @@ export default function PackDetailPage() {
               key={level.id}
               onClick={() => {
                 if (status === 'locked') {
-                  setLockedToast(`Selesaikan Level ${prerequisite ?? level.level_number - 1} dulu untuk membuka ini ✨`)
+                  setLockedToast(`Finish Level ${prerequisite ?? level.level_number - 1} first to open this one`)
                 } else if (isPremiumLocked) {
-                  setLockedToast('Buka Premium untuk main level ini ✨')
+                  setLockedToast('Get Premium to play this level')
                 }
               }}
               className={`rounded-2xl border p-4 transition-all ${
@@ -185,7 +185,7 @@ export default function PackDetailPage() {
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                       isUnlocked ? colors.badge : isComingSoon ? 'bg-amber-100 text-amber-700' : 'bg-cream text-ink-muted'
                     }`}>
-                      {isComingSoon ? 'Segera Hadir' : `${level.question_count} pertanyaan`}
+                      {isComingSoon ? 'Coming soon' : `${level.question_count} ${level.question_count === 1 ? 'question' : 'questions'}`}
                     </span>
                   </div>
                 </div>
@@ -216,20 +216,20 @@ export default function PackDetailPage() {
               {status === 'locked' && (
                 <div className="mt-3 flex items-center gap-1.5">
                   <Lock className="h-3.5 w-3.5 text-ink-muted" />
-                  <p className="text-xs text-ink-muted">Selesaikan Level {prerequisite ?? level.level_number - 1} untuk membuka</p>
+                  <p className="text-xs text-ink-muted">Finish Level {prerequisite ?? level.level_number - 1} to open this</p>
                 </div>
               )}
 
               {isPremiumLocked && (
                 <div className="mt-3 flex items-center gap-1.5">
                   <Sparkles className="h-3.5 w-3.5 text-rose" />
-                  <p className="text-xs text-rose">Fitur premium — buka untuk main level ini</p>
+                  <p className="text-xs text-rose">Premium level. Get Premium to play it.</p>
                 </div>
               )}
 
               {isComingSoon && (
                 <div className="mt-3 flex items-center gap-1.5">
-                  <p className="text-xs text-amber-700">Konten level ini sedang dipersiapkan</p>
+                  <p className="text-xs text-amber-700">The questions for this level are still being written</p>
                 </div>
               )}
             </div>

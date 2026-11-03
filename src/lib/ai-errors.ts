@@ -1,15 +1,15 @@
 // Maps LLM provider failures (OpenRouter via the ai SDK) to friendly
-// Indonesian messages and HTTP statuses for the /api/ai/* routes.
+// English messages and HTTP statuses for the /api/ai/* routes.
 // Server-only.
 import { APICallError, RetryError } from 'ai'
 import { LlmNotConfiguredError } from '@/lib/llm'
 
 /** No LLM_API_KEY: the feature is off and nothing is sent anywhere. */
-export const AI_NOT_CONFIGURED = { status: 503, error: 'Fitur AI belum diaktifkan' } as const
+export const AI_NOT_CONFIGURED = { status: 503, error: 'AI features aren\'t turned on yet' } as const
 
-export const AI_KEY_INVALID = 'AI belum dikonfigurasi dengan benar'
-export const AI_CREDITS_EXHAUSTED = 'Kuota AI sedang habis'
-export const AI_BUSY = 'AI sedang sibuk, coba lagi sebentar'
+export const AI_KEY_INVALID = 'The AI isn\'t set up correctly yet'
+export const AI_CREDITS_EXHAUSTED = 'The AI has run out of credits for now'
+export const AI_BUSY = 'The AI is busy. Try again in a moment.'
 
 export type AiFailure = { status: number; error: string }
 

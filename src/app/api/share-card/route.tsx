@@ -3,10 +3,10 @@ import { ImageResponse } from 'next/og'
 // Same bands as the results page. The label is derived from the score so the
 // card can't be used to put arbitrary text on this domain.
 function scoreLabel(score: number): string {
-  if (score >= 80) return 'Sangat Siap!'
-  if (score >= 60) return 'Cukup Siap'
-  if (score >= 40) return 'Perlu Diskusi'
-  return 'Masih Perlu Waktu'
+  if (score >= 80) return 'Very ready'
+  if (score >= 60) return 'Fairly ready'
+  if (score >= 40) return 'Worth talking through'
+  return 'Needs more time'
 }
 
 /**
@@ -46,7 +46,7 @@ export async function GET(req: Request) {
             marginBottom: 24,
           }}
         >
-          Skor Kesiapan
+          Readiness score
         </div>
 
         <div
@@ -90,7 +90,7 @@ export async function GET(req: Request) {
           Nanti Kita
         </div>
         <div style={{ display: 'flex', fontSize: 28, color: '#9A8C90', marginTop: 8 }}>
-          Kesiapan hubungan untuk pasangan
+          Relationship readiness for couples
         </div>
       </div>
     ),

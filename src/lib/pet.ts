@@ -94,11 +94,11 @@ export async function ensureMoodState(petId: string): Promise<MoodRow> {
     .select('*')
     .single()
   if (created) return created
-  if (error?.code !== UNIQUE_VIOLATION) throw error ?? new Error('Gagal menyiapkan status pet')
+  if (error?.code !== UNIQUE_VIOLATION) throw error ?? new Error('Couldn\'t set up the pet\'s status')
 
   const { data: again, error: againError } = await supabase
     .from('pet_mood_state').select('*').eq('pet_id', petId).single()
-  if (againError || !again) throw againError ?? new Error('Gagal menyiapkan status pet')
+  if (againError || !again) throw againError ?? new Error('Couldn\'t set up the pet\'s status')
   return again
 }
 

@@ -31,15 +31,15 @@ interface WishlistSectionProps {
 type WishlistTab = 'couple' | 'personal' | 'partner'
 
 function fmtRp(n: number): string {
-  if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(1)}jt`
-  if (n >= 1_000) return `Rp ${(n / 1_000).toFixed(0)}rb`
+  if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `Rp ${(n / 1_000).toFixed(0)}K`
   return `Rp ${n.toLocaleString('id-ID')}`
 }
 
 /**
  * Turns what the user typed into a safe absolute link: adds https:// when no
  * scheme was typed ("shopee.co.id/..." would otherwise be a relative link)
- * and only allows http(s) — never javascript:, data:, etc. null = invalid.
+ * and only allows http(s), never javascript:, data:, etc. null = invalid.
  */
 function toSafeHref(raw: string | null): string | null {
   const value = raw?.trim()
@@ -117,9 +117,9 @@ export default function WishlistSection({
   const totalPrice = unpurchased.reduce((s, w) => s + (w.price ? Number(w.price) : 0), 0)
 
   const TABS: { key: WishlistTab; label: string; icon: typeof Users; count: number }[] = [
-    { key: 'couple', label: 'Bersama', icon: Users, count: localItems.filter(i => i.owner_type === 'couple' && !i.is_purchased).length },
-    { key: 'personal', label: 'Milikku', icon: User, count: localItems.filter(i => i.owner_type === 'personal' && i.owner_id === userId && !i.is_purchased).length },
-    { key: 'partner', label: partnerName ?? 'Pasangan', icon: Heart, count: localItems.filter(i => i.owner_type === 'personal' && i.owner_id !== userId && !i.is_purchased).length },
+    { key: 'couple', label: 'Shared', icon: Users, count: localItems.filter(i => i.owner_type === 'couple' && !i.is_purchased).length },
+    { key: 'personal', label: 'Mine', icon: User, count: localItems.filter(i => i.owner_type === 'personal' && i.owner_id === userId && !i.is_purchased).length },
+    { key: 'partner', label: partnerName ?? 'Partner', icon: Heart, count: localItems.filter(i => i.owner_type === 'personal' && i.owner_id !== userId && !i.is_purchased).length },
   ]
 
   async function addItem(e: React.FormEvent) {
@@ -129,7 +129,7 @@ export default function WishlistSection({
 
     const link = newLink.trim() ? toSafeHref(newLink) : null
     if (newLink.trim() && !link) {
-      setFormError('Link-nya belum valid. Contoh: shopee.co.id/produk-kamu')
+      setFormError("That link doesn't look right. Example: shopee.co.id/your-product")
       return
     }
 
@@ -145,13 +145,13 @@ export default function WishlistSection({
     })
     if (error) {
       // Keep what was typed
-      setFormError('Gagal menambah wishlist. Coba lagi ya.')
+      setFormError("Couldn't add it to the wishlist. Try again.")
       setAdding(false)
       return
     }
     // Notify partner about new wishlist item
     if (partnerId) {
-      const name = userName || 'Pasanganmu'
+      const name = userName || 'Your partner'
       const priceStr = newPrice ? ` (Rp ${newPrice})` : ''
       try {
         await fetch('/api/push/send', {
@@ -160,7 +160,7 @@ export default function WishlistSection({
           body: JSON.stringify({
             recipientId: partnerId,
             title: 'Nanti Kita',
-            body: `${name} menambahkan "${newName.trim()}"${priceStr} ke wishlist`,
+            body: `${name} added "${newName.trim()}"${priceStr} to the wishlist`,
             url: '/app/partner',
             kind: 'activity',
           }),
@@ -176,7 +176,7 @@ export default function WishlistSection({
     setListError('')
     const supabase = createClient()
     const { error } = await supabase.from('wishlist_items').update({ is_purchased: !item.is_purchased }).eq('id', item.id)
-    if (error) { setListError('Gagal mengubah item. Coba lagi ya.'); return }
+    if (error) { setListError("Couldn't update the item. Try again."); return }
     setLocalItems(prev => prev.map(w => w.id === item.id ? { ...w, is_purchased: !w.is_purchased } : w))
   }
 
@@ -184,7 +184,7 @@ export default function WishlistSection({
     setListError('')
     const supabase = createClient()
     const { error } = await supabase.from('wishlist_items').delete().eq('id', id)
-    if (error) { setListError('Gagal menghapus item. Coba lagi ya.'); return }
+    if (error) { setListError("Couldn't delete the item. Try again."); return }
     setLocalItems(prev => prev.filter(w => w.id !== id))
   }
 
@@ -207,6 +207,7 @@ export default function WishlistSection({
         </div>
         {canAdd && (
           <button onClick={() => setShowForm(!showForm)}
+            aria-label={showForm ? 'Close form' : 'Add an item'}
             className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${
               showForm ? 'bg-ink/10 rotate-45' : 'bg-rose text-white'
             }`}>
@@ -242,7 +243,7 @@ export default function WishlistSection({
       {showForm && canAdd && (
         <form onSubmit={addItem} className="rounded-2xl border border-dashed border-rose/30 bg-rose-50/30 p-4 space-y-3">
           <input
-            placeholder="Nama item wishlist..."
+            placeholder="What's on your wishlist?"
             value={newName} onChange={e => setNewName(e.target.value)}
             className="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-medium focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
             autoFocus
@@ -250,7 +251,7 @@ export default function WishlistSection({
           <div className="flex gap-2">
             <div className="relative flex-1">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted">Rp</span>
-              <input type="text" inputMode="numeric" placeholder="Harga"
+              <input type="text" inputMode="numeric" placeholder="Price"
                 value={newPrice}
                 onChange={e => { const n = e.target.value.replace(/\D/g, ''); setNewPrice(n ? parseInt(n, 10).toLocaleString('id-ID') : '') }}
                 className="w-full rounded-xl border border-border bg-white py-2.5 pl-8 pr-3 text-sm focus:border-rose focus:outline-none"
@@ -258,7 +259,7 @@ export default function WishlistSection({
             </div>
             <div className="relative flex-1">
               <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-muted" />
-              <input type="text" inputMode="url" autoCapitalize="off" autoCorrect="off" placeholder="Link (opsional)"
+              <input type="text" inputMode="url" autoCapitalize="off" autoCorrect="off" placeholder="Link (optional)"
                 value={newLink} onChange={e => setNewLink(e.target.value)}
                 className="w-full rounded-xl border border-border bg-white py-2.5 pl-8 pr-3 text-sm focus:border-rose focus:outline-none"
               />
@@ -267,7 +268,7 @@ export default function WishlistSection({
           {formError && <p className="text-xs font-medium text-red-500">{formError}</p>}
           <button type="submit" disabled={!newName.trim() || adding}
             className="w-full rounded-xl bg-rose py-2.5 text-sm font-bold text-white disabled:opacity-40 transition-all active:scale-[0.98]">
-            {adding ? 'Menyimpan...' : 'Tambah ke Wishlist'}
+            {adding ? 'Saving...' : 'Add to wishlist'}
           </button>
         </form>
       )}
@@ -283,15 +284,15 @@ export default function WishlistSection({
             <Gift className="h-7 w-7 text-rose/60" strokeWidth={1.5} />
           </div>
           <p className="text-sm font-semibold text-ink-muted">
-            {tab === 'partner' ? `${partnerName ?? 'Pasangan'} belum punya wishlist` : 'Wishlist masih kosong'}
+            {tab === 'partner' ? `${partnerName ?? 'Your partner'} hasn't added anything yet` : 'Nothing on the wishlist yet'}
           </p>
           <p className="mt-1 text-xs text-ink-muted/60">
-            {canAdd ? 'Ketuk + untuk menambahkan item impian' : 'Bisa jadi ide kado!'}
+            {canAdd ? 'Tap + to add something you want' : 'Check back later for gift ideas'}
           </p>
         </div>
       )}
 
-      {/* Unpurchased items — card grid */}
+      {/* Unpurchased items: card grid */}
       {unpurchased.length > 0 && (
         <div className="grid grid-cols-2 gap-2.5">
           {unpurchased.map((item, idx) => {
@@ -317,6 +318,7 @@ export default function WishlistSection({
                       <CardIcon className={`h-4 w-4 ${theme.accent}`} />
                     </div>
                     <button onClick={() => deleteItem(item.id)}
+                      aria-label="Delete item"
                       className="rounded-lg p-1 text-ink-muted/20 opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -351,7 +353,7 @@ export default function WishlistSection({
                   {/* Buy / check button */}
                   <button onClick={() => toggleItem(item)}
                     className={`mt-3 w-full rounded-xl border-2 border-white/60 bg-white/70 py-2 text-xs font-bold backdrop-blur-sm transition-all active:scale-[0.97] ${theme.accent}`}>
-                    Sudah Dibeli
+                    Bought it
                   </button>
                 </div>
               </div>
@@ -360,16 +362,17 @@ export default function WishlistSection({
         </div>
       )}
 
-      {/* Purchased items — compact list */}
+      {/* Purchased items: compact list */}
       {purchased.length > 0 && (
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted/50">
-            Sudah Dibeli ({purchased.length})
+            Bought ({purchased.length})
           </p>
           <div className="space-y-1.5">
             {purchased.map(item => (
               <div key={item.id} className="flex items-center gap-3 rounded-xl bg-sage/5 px-3 py-2.5">
                 <button onClick={() => toggleItem(item)}
+                  aria-label="Mark as not bought"
                   className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-sage/20 border border-sage/40">
                   <Check className="h-3 w-3 text-sage-dark" strokeWidth={3} />
                 </button>
@@ -378,6 +381,7 @@ export default function WishlistSection({
                   <span className="text-xs text-ink-muted/50">{fmtRp(Number(item.price))}</span>
                 )}
                 <button onClick={() => deleteItem(item.id)}
+                  aria-label="Delete item"
                   className="text-ink-muted/20 hover:text-red-400">
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -391,7 +395,7 @@ export default function WishlistSection({
       {tab === 'partner' && unpurchased.length > 0 && (
         <div className="rounded-2xl bg-gradient-to-r from-rose-50 to-purple-50 px-4 py-3 text-center">
           <p className="text-xs font-medium text-rose">
-            Ini wishlist {partnerName ?? 'pasangan'} — bisa jadi ide kado!
+            {partnerName ? `${partnerName}'s` : "Your partner's"} wishlist. Handy for gift ideas.
           </p>
         </div>
       )}

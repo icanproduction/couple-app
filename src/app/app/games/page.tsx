@@ -1,68 +1,68 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Shuffle, MessageSquare, Sparkles, Lock, MessageCircleHeart, Zap, PawPrint } from 'lucide-react'
+import { Flame, HeartHandshake, VenetianMask, Lock, MessageCircleHeart, Zap, PawPrint } from 'lucide-react'
 
 const GAMES = [
   {
     id: 'pet',
     title: 'Pet Kita',
-    desc: 'Rawat hewan peliharaan virtual berdua',
+    desc: 'Look after a virtual pet together',
     icon: PawPrint,
     color: 'bg-amber-50 text-amber-600',
     available: true,
     href: '/app/pet',
-    badge: 'BARU',
+    badge: null,
   },
   {
     id: 'samakan',
-    title: 'Sinkronisasi',
-    desc: 'Main bareng pasangan real-time',
+    title: 'Samakan',
+    desc: 'Match answers in real time',
     icon: Zap,
     color: 'bg-purple-50 text-purple-600',
     available: true,
     href: '/app/games/samakan',
-    badge: 'BARU',
+    badge: null,
   },
   {
     id: 'deep-talk',
     title: 'Deep Talk',
-    desc: 'Obrolan bertema untuk saling kenal lebih dalam',
+    desc: 'Questions that go past small talk',
     icon: MessageCircleHeart,
     color: 'bg-rose/10 text-rose',
     available: true,
     href: '/app/games/deep-talk',
-    badge: 'Gratis',
+    badge: 'Free',
   },
   {
     id: 'truth-or-dare',
     title: 'Truth or Dare',
-    desc: 'Tantangan seru untuk pasangan',
-    icon: Shuffle,
+    desc: 'Truths and dares for two, on one phone',
+    icon: Flame,
     color: 'bg-gold/20 text-yellow-700',
-    available: false,
-    href: '#',
-    badge: null,
+    available: true,
+    href: '/app/games/truth-or-dare',
+    badge: 'NEW',
   },
   {
-    id: 'love-language',
-    title: 'Quiz Bahasa Cinta',
-    desc: 'Temukan cara cintamu',
-    icon: MessageSquare,
+    id: 'love-languages',
+    title: 'Love Languages',
+    desc: 'How each of you feels loved',
+    icon: HeartHandshake,
     color: 'bg-sage/20 text-sage-dark',
-    available: false,
-    href: '#',
-    badge: null,
+    available: true,
+    href: '/app/games/love-languages',
+    badge: 'NEW',
   },
   {
-    id: 'compatibility',
-    title: 'Tes Kompatibilitas',
-    desc: 'Seberapa cocok kalian?',
-    icon: Sparkles,
+    id: 'two-truths',
+    title: 'Two Truths & a Lie',
+    desc: 'Hide one lie and see if your partner spots it',
+    icon: VenetianMask,
     color: 'bg-blue-50 text-blue-500',
-    available: false,
-    href: '#',
-    badge: null,
+    available: true,
+    href: '/app/games/two-truths',
+    badge: 'NEW',
   },
 ]
 
@@ -73,7 +73,7 @@ export default function GamesPage() {
     <div className="animate-fade-in pb-6">
       <div className="border-b border-border bg-white px-6 py-5">
         <h1 className="text-xl font-bold text-ink">Games</h1>
-        <p className="text-sm text-ink-muted">Aktivitas seru berdua</p>
+        <p className="text-sm text-ink-muted">Things to play together</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 px-6 pt-6">
@@ -107,7 +107,7 @@ export default function GamesPage() {
               <p className="mt-0.5 text-xs text-ink-muted">{game.desc}</p>
               {!game.available && (
                 <span className="mt-2 text-[10px] font-bold uppercase tracking-wider text-ink-muted">
-                  Segera hadir
+                  Coming soon
                 </span>
               )}
             </button>

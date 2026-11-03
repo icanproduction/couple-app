@@ -29,50 +29,50 @@ const BLUE = 'bg-blue-50 text-blue-600'
 
 const SECTIONS: Section[] = [
   {
-    title: 'Kita Berdua',
+    title: 'Us',
     tiles: [
-      { href: '/app/partner', icon: Heart, label: 'Pasangan', desc: 'Kenali dia lebih dalam', tone: ROSE },
-      { href: '/app/mood', icon: Smile, label: 'Mood Harian', desc: 'Lagi ngerasa apa hari ini', tone: GOLD, badge: 'Baru' },
-      { href: '/app/toples', icon: Gift, label: 'Toples Apresiasi', desc: 'Simpan rasa terima kasih', tone: ROSE, badge: 'Baru' },
-      { href: '/app/aktivitas', icon: Bell, label: 'Aktivitas', desc: 'Apa yang baru dari kalian', tone: BLUE, badge: 'Baru' },
-      { href: '/app/milestone', icon: Trophy, label: 'Milestone', desc: '100 hari, 1 tahun, dan seterusnya', tone: GOLD, badge: 'Baru' },
-      { href: '/app/perjalanan', icon: Route, label: 'Perjalanan Kita', desc: 'Semua cerita dalam satu garis', tone: PURPLE, badge: 'Baru' },
-      { href: '/app/recap', icon: ChartColumn, label: 'Recap Bulanan', desc: 'Rangkuman bulan kalian', tone: SAGE, badge: 'Baru' },
+      { href: '/app/partner', icon: Heart, label: 'Partner', desc: 'Get to know them better', tone: ROSE },
+      { href: '/app/mood', icon: Smile, label: 'Daily Mood', desc: 'How you feel today', tone: GOLD, badge: 'New' },
+      { href: '/app/toples', icon: Gift, label: 'Toples', desc: 'Little notes of thanks', tone: ROSE, badge: 'New' },
+      { href: '/app/aktivitas', icon: Bell, label: 'Activity', desc: "What's new with you two", tone: BLUE, badge: 'New' },
+      { href: '/app/milestone', icon: Trophy, label: 'Milestones', desc: '100 days, 1 year and more', tone: GOLD, badge: 'New' },
+      { href: '/app/perjalanan', icon: Route, label: 'Our Story', desc: 'Everything on one timeline', tone: PURPLE, badge: 'New' },
+      { href: '/app/recap', icon: ChartColumn, label: 'Monthly Recap', desc: 'Your month, summed up', tone: SAGE, badge: 'New' },
     ],
   },
   {
-    title: 'Kenangan',
+    title: 'Memories',
     tiles: [
-      { href: '/app/moments', icon: Camera, label: 'Moment', desc: 'Foto & cerita setiap date', tone: ROSE },
-      { href: '/app/moments/peta', icon: Map, label: 'Peta Moment', desc: 'Tempat-tempat kalian', tone: SAGE, badge: 'Baru' },
-      { href: '/app/moments/scrapbook', icon: BookHeart, label: 'Scrapbook', desc: 'Cetak kenangan jadi buku', tone: PURPLE, badge: 'Baru' },
-      { href: '/app/letters', icon: Mail, label: 'Surat Rahasia', desc: 'Surat yang terkunci waktu', tone: GOLD },
+      { href: '/app/moments', icon: Camera, label: 'Moments', desc: 'Photos and stories from every date', tone: ROSE },
+      { href: '/app/moments/peta', icon: Map, label: 'Moments Map', desc: "Places you've been", tone: SAGE, badge: 'New' },
+      { href: '/app/moments/scrapbook', icon: BookHeart, label: 'Scrapbook', desc: 'Turn memories into a book', tone: PURPLE, badge: 'New' },
+      { href: '/app/letters', icon: Mail, label: 'Letters', desc: 'Letters that open later', tone: GOLD },
     ],
   },
   {
-    title: 'Ngobrol & Main',
+    title: 'Talk & Play',
     tiles: [
-      { href: '/app/games/deep-talk', icon: MessageCircleHeart, label: 'Deep Talk', desc: 'Paket obrolan bertema', tone: ROSE, badge: 'Baru' },
-      { href: '/app/games', icon: Gamepad2, label: 'Games', desc: 'Samakan & lainnya', tone: PURPLE },
-      { href: '/app/arsip-pertanyaan', icon: Archive, label: 'Arsip Jawaban', desc: 'Jawaban harian kalian', tone: BLUE, badge: 'Baru' },
-      { href: '/app/pet', icon: PawPrint, label: 'Peliharaan', desc: 'Rawat bareng-bareng', tone: SAGE },
+      { href: '/app/games/deep-talk', icon: MessageCircleHeart, label: 'Deep Talk', desc: 'Themed question packs', tone: ROSE, badge: 'New' },
+      { href: '/app/games', icon: Gamepad2, label: 'Games', desc: 'Samakan and more', tone: PURPLE },
+      { href: '/app/arsip-pertanyaan', icon: Archive, label: 'Past Answers', desc: 'Your daily answers', tone: BLUE, badge: 'New' },
+      { href: '/app/pet', icon: PawPrint, label: 'Pet', desc: 'Look after it together', tone: SAGE },
     ],
   },
   {
-    title: 'Rencana',
+    title: 'Plans',
     tiles: [
-      { href: '/app/bucket-list', icon: ListChecks, label: 'Bucket List', desc: 'Hal yang mau dicoba berdua', tone: SAGE, badge: 'Baru' },
-      { href: '/app/ide-date', icon: WandSparkles, label: 'Ide Date AI', desc: 'Bingung mau ke mana?', tone: PURPLE, badge: 'Baru' },
-      { href: '/app/calendar', icon: CalendarDays, label: 'Kalender', desc: 'Tanggal penting & pengingat', tone: GOLD },
-      { href: '/app/finance', icon: Wallet, label: 'Keuangan', desc: 'Tabungan & wishlist', tone: ROSE },
+      { href: '/app/bucket-list', icon: ListChecks, label: 'Bucket List', desc: 'Things to try together', tone: SAGE, badge: 'New' },
+      { href: '/app/ide-date', icon: WandSparkles, label: 'AI Date Ideas', desc: 'Not sure where to go?', tone: PURPLE, badge: 'New' },
+      { href: '/app/calendar', icon: CalendarDays, label: 'Calendar', desc: 'Dates and reminders', tone: GOLD },
+      { href: '/app/finance', icon: Wallet, label: 'Money', desc: 'Savings and wishlist', tone: ROSE },
     ],
   },
   {
-    title: 'Tentang Kamu',
+    title: 'About You',
     tiles: [
-      { href: '/app/about-me', icon: User, label: 'About Me', desc: 'MBTI, love language, dll', tone: SAGE },
-      { href: '/app/profile/notifikasi', icon: BellRing, label: 'Notifikasi', desc: 'Atur jenis & jam tenang', tone: BLUE, badge: 'Baru' },
-      { href: '/app/profile', icon: Settings, label: 'Profil & Akun', desc: 'Data, undangan, privasi', tone: GOLD },
+      { href: '/app/about-me', icon: User, label: 'About Me', desc: 'MBTI, love language and more', tone: SAGE },
+      { href: '/app/profile/notifikasi', icon: BellRing, label: 'Notifications', desc: 'Types and quiet hours', tone: BLUE, badge: 'New' },
+      { href: '/app/profile', icon: Settings, label: 'Profile & Account', desc: 'Data, invites, privacy', tone: GOLD },
     ],
   },
 ]
@@ -82,7 +82,7 @@ export default function JelajahPage() {
     <div className="animate-fade-in pb-8">
       <div className="border-b border-border bg-white px-6 pb-5 pt-6">
         <h1 className="text-xl font-bold text-ink">Jelajah</h1>
-        <p className="text-sm text-ink-muted">Semua yang bisa kalian lakukan berdua</p>
+        <p className="text-sm text-ink-muted">Everything you can do together</p>
       </div>
 
       <div className="space-y-6 px-6 pt-5">

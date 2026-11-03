@@ -48,9 +48,9 @@ export default function OnboardingInstallPage() {
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50">
           <Smartphone className="h-7 w-7 text-rose" strokeWidth={2} />
         </div>
-        <h1 className="text-2xl font-bold text-ink">Pasang di Homescreen</h1>
+        <h1 className="text-2xl font-bold text-ink">Add to your home screen</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Tambahkan ke layar utama untuk akses cepat seperti aplikasi biasa
+          Open Nanti Kita from your home screen, just like any other app
         </p>
       </div>
 
@@ -62,13 +62,13 @@ export default function OnboardingInstallPage() {
               <Bell className="h-5 w-5 text-rose" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-bold text-ink">Aktifkan Notifikasi</p>
+              <p className="text-sm font-bold text-ink">Turn on notifications</p>
               <p className="text-xs text-ink-muted mt-0.5">
-                Supaya tahu kalau pasangan kangen, kirim surat, atau ada momen spesial
+                So you know when your partner sends a Kangen or a letter, or a special date is coming up
               </p>
               {pushPermission === 'denied' ? (
                 <p className="mt-2 text-xs text-amber-600 font-medium">
-                  Notifikasi diblokir — aktifkan manual di pengaturan browser
+                  Notifications are blocked. Turn them on in your browser settings.
                 </p>
               ) : (
                 <button
@@ -76,7 +76,7 @@ export default function OnboardingInstallPage() {
                   disabled={enablingPush}
                   className="mt-2.5 rounded-xl bg-rose px-4 py-1.5 text-xs font-bold text-white shadow-sm disabled:opacity-60"
                 >
-                  {enablingPush ? 'Mengaktifkan...' : 'Aktifkan Notifikasi'}
+                  {enablingPush ? 'Turning on…' : 'Turn on notifications'}
                 </button>
               )}
             </div>
@@ -87,7 +87,7 @@ export default function OnboardingInstallPage() {
       {pushPermission === 'granted' && (
         <div className="mb-6 flex items-center gap-2 rounded-xl bg-sage/10 border border-sage/20 px-4 py-3">
           <Bell className="h-4 w-4 text-sage flex-shrink-0" />
-          <p className="text-sm font-semibold text-sage">Notifikasi aktif ✓</p>
+          <p className="text-sm font-semibold text-sage">Notifications are on</p>
         </div>
       )}
 
@@ -113,25 +113,25 @@ export default function OnboardingInstallPage() {
         {platform === 'ios' ? (
           <>
             <Step num={1} icon={<Share className="h-4 w-4" />}>
-              Buka Safari, lalu ketuk ikon <strong>Bagikan</strong> (kotak dengan panah ke atas) di bagian bawah layar
+              Open Safari, then tap the <strong>Share</strong> icon (a square with an arrow pointing up) at the bottom of the screen
             </Step>
             <Step num={2} icon={<Plus className="h-4 w-4" />}>
-              Gulir ke bawah dan pilih <strong>&ldquo;Tambahkan ke Layar Utama&rdquo;</strong>
+              Scroll down and choose <strong>&ldquo;Add to Home Screen&rdquo;</strong>
             </Step>
             <Step num={3} icon={<Smartphone className="h-4 w-4" />}>
-              Ketuk <strong>&ldquo;Tambahkan&rdquo;</strong> di pojok kanan atas
+              Tap <strong>&ldquo;Add&rdquo;</strong> in the top right corner
             </Step>
           </>
         ) : (
           <>
             <Step num={1} icon={<MoreHorizontal className="h-4 w-4" />}>
-              Buka Chrome, ketuk ikon <strong>menu tiga titik</strong> di pojok kanan atas
+              Open Chrome and tap the <strong>three-dot menu</strong> in the top right corner
             </Step>
             <Step num={2} icon={<Plus className="h-4 w-4" />}>
-              Pilih <strong>&ldquo;Tambahkan ke Layar Utama&rdquo;</strong>
+              Choose <strong>&ldquo;Add to Home screen&rdquo;</strong>
             </Step>
             <Step num={3} icon={<Smartphone className="h-4 w-4" />}>
-              Ketuk <strong>&ldquo;Tambahkan&rdquo;</strong> untuk konfirmasi
+              Tap <strong>&ldquo;Add&rdquo;</strong> to confirm
             </Step>
           </>
         )}
@@ -139,13 +139,13 @@ export default function OnboardingInstallPage() {
 
       <div className="space-y-3">
         <Button onClick={handleFinish} loading={loading} size="lg">
-          Selesai, Mulai Pakai!
+          Finish setup
         </Button>
         <button
           onClick={handleFinish}
           className="w-full py-3 text-sm font-medium text-ink-muted hover:text-ink"
         >
-          Lewati
+          Skip
         </button>
       </div>
     </div>

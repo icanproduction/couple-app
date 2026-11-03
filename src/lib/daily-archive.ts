@@ -84,7 +84,7 @@ export function buildDailyEntries(
       type: 'daily' as const,
       date: r.answered_date,
       questionIndex: r.question_index,
-      question: questionText(r.question_index) ?? `Pertanyaan #${r.question_index + 1}`,
+      question: questionText(r.question_index) ?? `Question #${r.question_index + 1}`,
       mine: r.answer,
       partner: partnerByDate.get(r.answered_date) ?? null,
     }))

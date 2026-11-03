@@ -37,7 +37,7 @@ export async function compressImage(file: Blob): Promise<CompressedImage> {
   try {
     source = await decode(file)
   } catch {
-    throw new Error('Format foto tidak didukung. Coba pilih foto JPG atau PNG.')
+    throw new Error('This photo format isn\'t supported. Try a JPG or PNG.')
   }
 
   const scale = Math.min(1, MAX_DIMENSION / Math.max(source.width, source.height))
@@ -48,11 +48,11 @@ export async function compressImage(file: Blob): Promise<CompressedImage> {
   canvas.width = width
   canvas.height = height
   const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Browser tidak bisa memproses foto.')
+  if (!ctx) throw new Error('Your browser couldn\'t process the photo.')
   ctx.drawImage(source, 0, 0, width, height)
   if ('close' in source && typeof source.close === 'function') source.close()
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY))
-  if (!blob) throw new Error('Gagal memproses foto.')
+  if (!blob) throw new Error('Couldn\'t process the photo.')
   return { blob, width, height }
 }

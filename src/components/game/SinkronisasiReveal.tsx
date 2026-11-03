@@ -26,7 +26,7 @@ function formatAnswer(answer: unknown): string {
   if (typeof answer === 'object') {
     const obj = answer as Record<string, unknown>
     if ('real' in obj && 'guess' in obj) {
-      return `Jawab: ${obj.real} · Tebak: ${obj.guess}`
+      return `Answer: ${obj.real} · Guess: ${obj.guess}`
     }
   }
   return String(answer)

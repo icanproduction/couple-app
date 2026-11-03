@@ -11,10 +11,19 @@ const dmSans = DM_Sans({
   variable: '--font-dm-sans',
 })
 
+const DESCRIPTION = 'An app for couples in Indonesia: shared savings, a calendar for your dates, letters that open on a day you choose, and questions to talk about together.'
+
 export const metadata: Metadata = {
   title: 'Nanti Kita',
-  description: 'Aplikasi untuk pasangan Indonesia. Tabungan bersama, kalender, surat rahasia, dan obrolan seru.',
-  keywords: ['couple', 'relationship', 'indonesia', 'pasangan', 'tabungan'],
+  description: DESCRIPTION,
+  keywords: ['couple', 'relationship', 'indonesia', 'couples app', 'shared savings'],
+  openGraph: {
+    title: 'Nanti Kita',
+    description: DESCRIPTION,
+    siteName: 'Nanti Kita',
+    locale: 'en_GB',
+    type: 'website',
+  },
   icons: {
     icon: '/favicon.ico',
     apple: '/icons/apple-touch-icon.png',
@@ -34,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="id">
+    <html lang="en">
       <head>
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />

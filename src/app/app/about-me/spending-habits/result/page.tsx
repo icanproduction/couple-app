@@ -17,7 +17,7 @@ export default function SpendingResultPage() {
   const router = useRouter()
   const [myResult, setMyResult] = useState<ResultData | null>(null)
   const [partnerResult, setPartnerResult] = useState<ResultData | null>(null)
-  const [partnerName, setPartnerName] = useState<string>('Pasangan')
+  const [partnerName, setPartnerName] = useState<string>('Your partner')
   const [loading, setLoading] = useState(true)
   const [revealed, setRevealed] = useState(false)
 
@@ -77,8 +77,8 @@ export default function SpendingResultPage() {
   if (!myResult || !myType) {
     return (
       <div className="flex min-h-[80vh] flex-col items-center justify-center px-6">
-        <p className="mb-4 text-ink-muted">Belum ada hasil. Ambil tes dulu!</p>
-        <Button onClick={() => router.push('/app/about-me/spending-habits/questions')}>Mulai Tes</Button>
+        <p className="mb-4 text-ink-muted">No result yet. Take the test first.</p>
+        <Button onClick={() => router.push('/app/about-me/spending-habits/questions')}>Start test</Button>
       </div>
     )
   }
@@ -114,7 +114,7 @@ export default function SpendingResultPage() {
 
         {/* Strengths */}
         <div className="rounded-2xl border border-sage/20 bg-sage/5 p-4">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-sage-dark">Kekuatan</p>
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-sage-dark">Strengths</p>
           <ul className="space-y-1.5">
             {myType.strengths.map(s => (
               <li key={s} className="flex items-start gap-2 text-sm text-ink">
@@ -126,7 +126,7 @@ export default function SpendingResultPage() {
 
         {/* Blind spots */}
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-700">Blind Spot</p>
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-700">Blind spots</p>
           <ul className="space-y-1.5">
             {myType.blindSpots.map(s => (
               <li key={s} className="flex items-start gap-2 text-sm text-ink">
@@ -153,7 +153,7 @@ export default function SpendingResultPage() {
             <div className="mb-4 flex items-center justify-center gap-4">
               <div className="text-center">
                 <span className="text-3xl">{myType.emoji}</span>
-                <p className="mt-1 text-xs font-bold text-ink">Kamu</p>
+                <p className="mt-1 text-xs font-bold text-ink">You</p>
               </div>
               <Sparkles className="h-5 w-5 text-purple-400" />
               <div className="text-center">
@@ -177,21 +177,21 @@ export default function SpendingResultPage() {
         ) : (
           <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/30 p-5 text-center">
             <Users className="mx-auto mb-2 h-8 w-8 text-purple-400" />
-            <p className="text-sm font-semibold text-ink">Pasanganmu belum tes</p>
-            <p className="mt-1 text-xs text-ink-muted">Ajak {partnerName} tes juga untuk lihat compatibility kalian!</p>
+            <p className="text-sm font-semibold text-ink">{partnerName} hasn&apos;t taken it yet</p>
+            <p className="mt-1 text-xs text-ink-muted">Once they do, you&apos;ll see how your money styles fit.</p>
           </div>
         )}
 
         {/* Actions */}
         <div className="space-y-3">
           <Button onClick={() => router.push('/app/about-me/spending-habits/questions')} variant="secondary" size="lg">
-            Tes Ulang
+            Retake test
           </Button>
           <button
             onClick={() => router.push('/app/about-me')}
             className="w-full py-3 text-center text-sm font-medium text-ink-muted hover:text-ink"
           >
-            Kembali ke About Me
+            Back to About Me
           </button>
         </div>
       </div>

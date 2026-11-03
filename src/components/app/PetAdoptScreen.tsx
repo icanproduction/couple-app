@@ -15,42 +15,42 @@ interface Props {
 const PET_OPTIONS = [
   {
     type: 'cat' as PetType,
-    name: 'Kucing',
-    desc: 'Moody tapi sayang kalau dirawat bareng',
+    name: 'Cat',
+    desc: 'Moody, but sweet when you both look after it',
     emoji: '🐱',
     difficulty: 2,
     diffLabel: 'Medium',
-    badge: { text: '⭐ Popular', className: 'bg-[#FFE8E8] text-[#C04050]' },
+    badge: { text: 'Popular', className: 'bg-[#FFE8E8] text-[#C04050]' },
     locked: false,
   },
   {
     type: 'dog' as PetType,
-    name: 'Anjing',
-    desc: 'Energetic, butuh perhatian tiap hari',
+    name: 'Dog',
+    desc: 'Full of energy, needs attention every day',
     emoji: '🐶',
     difficulty: 3,
     diffLabel: 'Challenging',
-    badge: { text: 'FREE', className: 'bg-[#E8F5EE] text-[#3D9E6A]' },
+    badge: { text: 'Free', className: 'bg-[#E8F5EE] text-[#3D9E6A]' },
     locked: false,
   },
   {
     type: 'cat' as PetType,
     name: 'Parrot',
-    desc: 'Bisa belajar kata dari kalian',
+    desc: 'Picks up words from the two of you',
     emoji: '🦜',
     difficulty: 1,
     diffLabel: 'Easy',
-    badge: { text: 'Rp 29rb', className: 'bg-[#FFF6DC] text-[#906010]' },
+    badge: { text: 'Rp 29.000', className: 'bg-[#FFF6DC] text-[#906010]' },
     locked: true,
   },
   {
     type: 'cat' as PetType,
-    name: 'Ikan',
-    desc: 'Tenang, low pressure, tank bisa didekorasi',
+    name: 'Fish',
+    desc: 'Calm and low pressure, with a tank you can decorate',
     emoji: '🐟',
     difficulty: 0,
     diffLabel: 'Chill',
-    badge: { text: 'Rp 19rb', className: 'bg-[#FFF6DC] text-[#906010]' },
+    badge: { text: 'Rp 19.000', className: 'bg-[#FFF6DC] text-[#906010]' },
     locked: true,
   },
 ]
@@ -76,7 +76,7 @@ export default function PetAdoptScreen({ coupleId, userId, partnerId }: Props) {
       router.replace('/app/pet')
       router.refresh()
     } catch {
-      setError('Gagal adopt, coba lagi ya.')
+      setError("Couldn't adopt the pet. Try again.")
       setLoading(false)
     }
   }
@@ -86,15 +86,15 @@ export default function PetAdoptScreen({ coupleId, userId, partnerId }: Props) {
       {/* Hero */}
       <div className="relative overflow-hidden px-5 pt-6 pb-7 text-center" style={{ background: 'linear-gradient(160deg, #FFE4D0 0%, #FFF2E8 100%)' }}>
         <div className="absolute w-[200px] h-[200px] rounded-full bg-white/25 top-[-80px] left-1/2 -translate-x-1/2" />
-        <button onClick={() => router.back()} className="absolute top-5 left-4 z-10 p-1.5 rounded-full bg-white/60 backdrop-blur">
+        <button onClick={() => router.back()} aria-label="Back" className="absolute top-5 left-4 z-10 p-1.5 rounded-full bg-white/60 backdrop-blur">
           <ArrowLeft className="w-5 h-5 text-ink" />
         </button>
         <div className="text-[56px] relative z-[1] mb-2.5 drop-shadow-md">🐾</div>
         <h1 className="text-2xl font-light text-ink mb-1 relative z-[1]" style={{ fontFamily: 'serif' }}>
-          {step === 'choose' ? 'Adopt a Pet' : `Namain ${selectedPet.emoji}`}
+          {step === 'choose' ? 'Adopt a pet' : `Name your ${selectedPet.name.toLowerCase()}`}
         </h1>
         <p className="text-xs text-ink-muted relative z-[1]">
-          {step === 'choose' ? 'Pilih hewan peliharaan kalian berdua' : 'Kasih nama yang lucu ya!'}
+          {step === 'choose' ? 'Pick a pet for the two of you' : 'Give it a cute name'}
         </p>
       </div>
 
@@ -155,7 +155,7 @@ export default function PetAdoptScreen({ coupleId, userId, partnerId }: Props) {
               className="w-full py-4 rounded-[18px] text-[15px] font-bold text-white shadow-[0_8px_24px_rgba(240,107,107,0.35)] transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, #F06B6B 0%, #F08060 100%)' }}
             >
-              Pilih {selectedPet.name} {selectedPet.emoji}
+              Pick the {selectedPet.name.toLowerCase()}
             </button>
           </div>
         </>
@@ -168,12 +168,12 @@ export default function PetAdoptScreen({ coupleId, userId, partnerId }: Props) {
               type="text"
               value={petName}
               onChange={e => setPetName(e.target.value)}
-              placeholder="Nama pet kamu..."
+              placeholder="Your pet's name..."
               maxLength={20}
               autoFocus
               className="w-full text-center text-2xl font-bold text-ink bg-transparent border-b-2 border-[#F0E4D8] focus:border-rose outline-none pb-3 placeholder:text-ink-muted/40 transition-colors"
             />
-            <p className="text-[11px] text-ink-muted mt-3">Max 20 karakter</p>
+            <p className="text-[11px] text-ink-muted mt-3">Up to 20 characters</p>
             {error && <p className="text-xs text-red-500 mt-3 font-medium">{error}</p>}
           </div>
 
@@ -185,13 +185,13 @@ export default function PetAdoptScreen({ coupleId, userId, partnerId }: Props) {
               className="w-full py-4 rounded-[18px] text-[15px] font-bold text-white shadow-[0_8px_24px_rgba(240,107,107,0.35)] transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, #F06B6B 0%, #F08060 100%)' }}
             >
-              {loading ? 'Adopting...' : `Adopt ${petName || selectedPet.name} 🐾`}
+              {loading ? 'Adopting...' : `Adopt ${petName || selectedPet.name}`}
             </button>
             <button
               onClick={() => setStep('choose')}
               className="w-full py-3 text-sm text-ink-muted font-medium"
             >
-              ← Ganti pilihan
+              ← Pick a different pet
             </button>
           </div>
         </>

@@ -43,7 +43,7 @@ export default function AdminPackEditorPage() {
   const loadData = useCallback(async () => {
     const supabase = createClient()
     const { data: p, error: packError } = await supabase.from('deep_talk_packs').select('*').eq('id', packId).maybeSingle()
-    if (packError) setError(`Gagal memuat pack: ${packError.message}`)
+    if (packError) setError(`Couldn't load the pack: ${packError.message}`)
     if (!p) { setLoading(false); return }
     setPack(p as DeepTalkPack)
     setPackTitle(p.title)
@@ -53,7 +53,7 @@ export default function AdminPackEditorPage() {
     setPackFree(p.is_free)
 
     const { data: lvls, error: levelError } = await supabase.from('deep_talk_levels').select('*').eq('pack_id', packId).order('level_number')
-    if (levelError) setError(`Gagal memuat level: ${levelError.message}`)
+    if (levelError) setError(`Couldn't load the levels: ${levelError.message}`)
     const levelList = (lvls ?? []) as DeepTalkLevel[]
 
     const withQuestions = await Promise.all(
@@ -63,7 +63,7 @@ export default function AdminPackEditorPage() {
           .select('*')
           .eq('level_id', l.id)
           .order('sort_order')
-        if (questionError) setError(`Gagal memuat pertanyaan: ${questionError.message}`)
+        if (questionError) setError(`Couldn't load the questions: ${questionError.message}`)
         return { ...l, questions: (qs ?? []) as DeepTalkQuestion[] }
       })
     )
@@ -76,7 +76,7 @@ export default function AdminPackEditorPage() {
 
   async function savePack() {
     if (saveInFlight.current) return
-    if (!packTitle.trim()) { setError('Judul pack tidak boleh kosong'); return }
+    if (!packTitle.trim()) { setError('The pack needs a title'); return }
     saveInFlight.current = true
     setSaving(true)
     setError('')
@@ -86,7 +86,7 @@ export default function AdminPackEditorPage() {
       .update({ title: packTitle.trim(), description: packDesc.trim() || null, color: packColor, icon_name: packIcon, is_free: packFree })
       .eq('id', packId)
     if (updateError) {
-      setError(`Gagal menyimpan pack: ${updateError.message}`)
+      setError(`Couldn't save the pack: ${updateError.message}`)
     } else {
       setEditingPack(false)
       await loadData()
@@ -110,7 +110,7 @@ export default function AdminPackEditorPage() {
       sort_order: maxOrder + 1,
     })
     if (insertError) {
-      setError(`Gagal menambah pertanyaan: ${insertError.message}`)
+      setError(`Couldn't add the question: ${insertError.message}`)
     } else {
       setNewQuestions(prev => ({ ...prev, [levelId]: '' }))
       await loadData()
@@ -124,7 +124,7 @@ export default function AdminPackEditorPage() {
     const supabase = createClient()
     const { error: deleteError } = await supabase.from('deep_talk_questions').delete().eq('id', questionId)
     if (deleteError) {
-      setError(`Gagal menghapus pertanyaan: ${deleteError.message}`)
+      setError(`Couldn't delete the question: ${deleteError.message}`)
       return false
     }
     await loadData()
@@ -136,7 +136,7 @@ export default function AdminPackEditorPage() {
     const supabase = createClient()
     const { error: updateError } = await supabase.from('deep_talk_questions').update({ question_text: text }).eq('id', questionId)
     if (updateError) {
-      setError(`Gagal menyimpan pertanyaan: ${updateError.message}`)
+      setError(`Couldn't save the question: ${updateError.message}`)
       return false
     }
     setLevels(prev => prev.map(l => ({
@@ -157,7 +157,7 @@ export default function AdminPackEditorPage() {
       .update({ title: title.trim(), description: description.trim() || null })
       .eq('id', levelId)
     if (updateError) {
-      setError(`Gagal menyimpan level: ${updateError.message}`)
+      setError(`Couldn't save the level: ${updateError.message}`)
       return false
     }
     setLevels(prev => prev.map(l => l.id === levelId ? { ...l, title: title.trim(), description: description.trim() || null } : l))
@@ -172,7 +172,7 @@ export default function AdminPackEditorPage() {
     const { error: insertError } = await createClient()
       .from('deep_talk_levels')
       .insert({ pack_id: packId, level_number: next, title: `Level ${next}` })
-    if (insertError) setError(`Gagal menambah level: ${insertError.message}`)
+    if (insertError) setError(`Couldn't add a level: ${insertError.message}`)
     else await loadData()
     setAddingNewLevel(false)
   }
@@ -184,7 +184,7 @@ export default function AdminPackEditorPage() {
     // Levels, questions and couples' progress for this pack cascade.
     const { error: deleteError } = await createClient().from('deep_talk_packs').delete().eq('id', packId)
     if (deleteError) {
-      setError(`Gagal menghapus pack: ${deleteError.message}`)
+      setError(`Couldn't delete the pack: ${deleteError.message}`)
       setDeletingPack(false)
       setConfirmDelete(false)
       return
@@ -206,12 +206,12 @@ export default function AdminPackEditorPage() {
         <div className="mb-4 flex items-start gap-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
           <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <span className="flex-1">{error}</span>
-          <button onClick={() => setError('')} className="text-xs font-semibold">Tutup</button>
+          <button onClick={() => setError('')} className="text-xs font-semibold">Dismiss</button>
         </div>
       )}
 
       {!pack ? (
-        <p className="py-12 text-center text-sm text-ink-muted">Pack tidak ditemukan.</p>
+        <p className="py-12 text-center text-sm text-ink-muted">Pack not found.</p>
       ) : (
         <>
           {/* Pack header */}
@@ -227,29 +227,29 @@ export default function AdminPackEditorPage() {
                   value={packDesc}
                   onChange={e => setPackDesc(e.target.value)}
                   className="w-full rounded-xl border border-border px-3 py-2 text-sm outline-none focus:border-rose"
-                  placeholder="Deskripsi"
+                  placeholder="Description"
                 />
                 <div className="flex flex-wrap items-center gap-2 py-1">
-                  <span className="text-xs text-ink-muted">Warna</span>
+                  <span className="text-xs text-ink-muted">Color</span>
                   {PACK_COLORS.map(c => (
                     <button
                       key={c}
                       type="button"
                       onClick={() => setPackColor(c)}
-                      aria-label={`Warna ${c}`}
+                      aria-label={`Colour ${c}`}
                       className={`h-7 w-7 rounded-full border-2 ${packColor === c ? 'border-ink' : 'border-transparent'}`}
                       style={{ background: c }}
                     />
                   ))}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 py-1">
-                  <span className="text-xs text-ink-muted">Ikon</span>
+                  <span className="text-xs text-ink-muted">Icon</span>
                   {DEEP_TALK_ICON_NAMES.map(name => (
                     <button
                       key={name}
                       type="button"
                       onClick={() => setPackIcon(name)}
-                      aria-label={`Ikon ${name}`}
+                      aria-label={`Icon ${name}`}
                       className={`flex h-8 w-8 items-center justify-center rounded-lg border-2 ${packIcon === name ? 'border-ink bg-cream' : 'border-transparent'}`}
                     >
                       <DeepTalkPackIcon name={name} className="h-4 w-4 text-ink" />
@@ -259,20 +259,20 @@ export default function AdminPackEditorPage() {
                 <label className="flex items-start gap-2 py-1 text-xs text-ink">
                   <input type="checkbox" checked={packFree} onChange={e => setPackFree(e.target.checked)} className="mt-0.5 accent-rose" />
                   <span>
-                    <span className="font-semibold">Gratis, semua level terbuka</span>
-                    <span className="block text-ink-muted">Semua pasangan bisa main level mana saja tanpa Premium dan tanpa urutan.</span>
+                    <span className="font-semibold">Free, all levels open</span>
+                    <span className="block text-ink-muted">Every couple can play any level, in any order, without Premium.</span>
                   </span>
                 </label>
                 <div className="flex gap-2">
                   <button onClick={savePack} disabled={saving} className="flex items-center gap-1.5 rounded-xl bg-rose px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
-                    <Check className="h-3.5 w-3.5" /> {saving ? 'Menyimpan...' : 'Simpan'}
+                    <Check className="h-3.5 w-3.5" /> {saving ? 'Saving…' : 'Save'}
                   </button>
                   <button
                     onClick={() => { setEditingPack(false); setPackTitle(pack.title); setPackDesc(pack.description ?? ''); setPackColor(pack.color); setPackIcon(pack.icon_name); setPackFree(pack.is_free) }}
                     disabled={saving}
                     className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-xs text-ink-muted"
                   >
-                    <X className="h-3.5 w-3.5" /> Batal
+                    <X className="h-3.5 w-3.5" /> Cancel
                   </button>
                 </div>
               </div>
@@ -280,9 +280,9 @@ export default function AdminPackEditorPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h1 className="text-xl font-bold text-ink">{pack.title}</h1>
-                  <p className="mt-1 text-sm text-ink-muted">{pack.description ?? '—'}</p>
+                  <p className="mt-1 text-sm text-ink-muted">{pack.description ?? 'No description'}</p>
                   {pack.is_free && (
-                    <span className="mt-2 inline-block rounded-full bg-sage/10 px-2 py-0.5 text-[10px] font-bold text-sage-dark">Gratis · semua level terbuka</span>
+                    <span className="mt-2 inline-block rounded-full bg-sage/10 px-2 py-0.5 text-[10px] font-bold text-sage-dark">Free · all levels open</span>
                   )}
                 </div>
                 <button onClick={() => setEditingPack(true)} className="flex-shrink-0 text-xs font-medium text-rose hover:underline">Edit</button>
@@ -305,7 +305,7 @@ export default function AdminPackEditorPage() {
                     </span>
                     <div className="text-left">
                       <p className="text-sm font-semibold text-ink">{level.title}</p>
-                      <p className="text-xs text-ink-muted">{level.questions.length} pertanyaan</p>
+                      <p className="text-xs text-ink-muted">{level.questions.length} {level.questions.length === 1 ? 'question' : 'questions'}</p>
                     </div>
                   </div>
                   {level.open ? <ChevronUp className="h-4 w-4 text-ink-muted" /> : <ChevronDown className="h-4 w-4 text-ink-muted" />}
@@ -327,7 +327,7 @@ export default function AdminPackEditorPage() {
                         />
                       ))}
                       {level.questions.length === 0 && (
-                        <p className="py-2 text-xs text-ink-muted">Belum ada pertanyaan di level ini.</p>
+                        <p className="py-2 text-xs text-ink-muted">No questions in this level yet.</p>
                       )}
                     </div>
 
@@ -339,13 +339,13 @@ export default function AdminPackEditorPage() {
                       <input
                         value={newQuestions[level.id] ?? ''}
                         onChange={e => setNewQuestions(prev => ({ ...prev, [level.id]: e.target.value }))}
-                        placeholder="Ketik pertanyaan baru, Enter untuk simpan..."
+                        placeholder="Type a new question, press Enter to save…"
                         className="min-w-0 flex-1 rounded-xl border border-border bg-gray-50 px-3 py-2 text-xs outline-none focus:border-rose focus:bg-white"
                       />
                       <button
                         type="submit"
                         disabled={addingLevel === level.id || !(newQuestions[level.id] ?? '').trim()}
-                        aria-label="Tambah pertanyaan"
+                        aria-label="Add question"
                         className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-rose text-white disabled:opacity-50"
                       >
                         <Plus className="h-4 w-4" />
@@ -362,7 +362,7 @@ export default function AdminPackEditorPage() {
             disabled={addingNewLevel}
             className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-rose/30 py-3 text-sm font-semibold text-rose disabled:opacity-50"
           >
-            <Plus className="h-4 w-4" /> {addingNewLevel ? 'Menambah...' : 'Tambah Level'}
+            <Plus className="h-4 w-4" /> {addingNewLevel ? 'Adding…' : 'Add level'}
           </button>
 
           {/* Danger zone */}
@@ -370,26 +370,26 @@ export default function AdminPackEditorPage() {
             {confirmDelete ? (
               <div className="flex flex-wrap items-center gap-2">
                 <p className="flex-1 text-sm text-ink">
-                  Hapus &ldquo;{pack.title}&rdquo; beserta semua level, pertanyaan, dan progres pasangan?
+                  Delete &ldquo;{pack.title}&rdquo;? Its levels, its questions and every couple&apos;s progress go with it.
                 </p>
                 <button
                   onClick={deletePack}
                   disabled={deletingPack}
                   className="rounded-xl bg-danger px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
                 >
-                  {deletingPack ? 'Menghapus...' : 'Ya, hapus'}
+                  {deletingPack ? 'Deleting…' : 'Yes, delete'}
                 </button>
                 <button
                   onClick={() => setConfirmDelete(false)}
                   disabled={deletingPack}
                   className="rounded-xl border border-border px-3 py-1.5 text-xs text-ink-muted"
                 >
-                  Batal
+                  Cancel
                 </button>
               </div>
             ) : (
               <button onClick={() => setConfirmDelete(true)} className="flex items-center gap-1.5 text-sm font-semibold text-danger">
-                <Trash2 className="h-4 w-4" /> Hapus pack ini
+                <Trash2 className="h-4 w-4" /> Delete this pack
               </button>
             )}
           </div>
@@ -423,13 +423,13 @@ function LevelMeta({
       <input
         value={title}
         onChange={e => setTitle(e.target.value)}
-        placeholder="Judul level"
+        placeholder="Level title"
         className="w-full rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold outline-none focus:border-rose"
       />
       <input
         value={description}
         onChange={e => setDescription(e.target.value)}
-        placeholder="Deskripsi singkat level (opsional)"
+        placeholder="Short level description (optional)"
         className="w-full rounded-lg border border-border bg-white px-3 py-1.5 text-xs outline-none focus:border-rose"
       />
       {dirty && (
@@ -438,7 +438,7 @@ function LevelMeta({
           disabled={busy || !title.trim()}
           className="flex items-center gap-1 rounded-lg bg-rose px-3 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
         >
-          <Check className="h-3 w-3" /> {busy ? 'Menyimpan...' : 'Simpan level'}
+          <Check className="h-3 w-3" /> {busy ? 'Saving…' : 'Save level'}
         </button>
       )}
     </div>
@@ -500,11 +500,11 @@ function QuestionRow({
             autoFocus
             className="min-w-0 flex-1 rounded-lg border border-rose px-2 py-1 text-xs outline-none"
           />
-          <button type="submit" disabled={busy} aria-label="Simpan" className="text-rose disabled:opacity-50"><Check className="h-4 w-4" /></button>
+          <button type="submit" disabled={busy} aria-label="Save" className="text-rose disabled:opacity-50"><Check className="h-4 w-4" /></button>
           <button
             type="button"
             onClick={() => { setEditing(false); setText(question.question_text) }}
-            aria-label="Batal"
+            aria-label="Cancel"
             className="text-ink-muted"
           >
             <X className="h-4 w-4" />
@@ -512,11 +512,11 @@ function QuestionRow({
         </form>
       ) : confirming ? (
         <div className="flex flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-          <span className="text-ink">Hapus pertanyaan ini?</span>
+          <span className="text-ink">Delete this question?</span>
           <button onClick={remove} disabled={busy} className="font-semibold text-red-500 hover:text-red-700 disabled:opacity-50">
-            {busy ? 'Menghapus...' : 'Ya, hapus'}
+            {busy ? 'Deleting…' : 'Yes, delete'}
           </button>
-          <button onClick={() => setConfirming(false)} disabled={busy} className="text-ink-muted hover:text-ink">Batal</button>
+          <button onClick={() => setConfirming(false)} disabled={busy} className="text-ink-muted hover:text-ink">Cancel</button>
         </div>
       ) : (
         <>
@@ -529,7 +529,7 @@ function QuestionRow({
           {/* Always visible on touch screens; hover-reveal only with a mouse (lg+). */}
           <button
             onClick={() => setConfirming(true)}
-            aria-label="Hapus pertanyaan"
+            aria-label="Delete question"
             className="ml-1 text-red-400 transition-opacity hover:text-red-600 focus-visible:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
           >
             <Trash2 className="h-3.5 w-3.5" />

@@ -36,7 +36,7 @@ export default function ActivityBell({ coupleId, userId, className }: ActivityBe
   return (
     <Link
       href="/app/aktivitas"
-      aria-label={unread > 0 ? `Aktivitas, ${unread} belum dilihat` : 'Aktivitas'}
+      aria-label={unread > 0 ? `Activity, ${unread} new` : 'Activity'}
       className={cn(
         'relative flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-white text-ink-light shadow-card transition-all active:scale-95',
         className,

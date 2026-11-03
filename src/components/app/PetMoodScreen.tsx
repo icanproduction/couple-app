@@ -33,11 +33,11 @@ const MOOD_RING_SHADOWS: Record<PetMood, string> = {
 // Matches the model in lib/pet: mood = average of the three needs, each need
 // drops DECAY_PER_HOUR (1.25) points per hour without care.
 const MOOD_STATES: { mood: PetMood; trigger: string }[] = [
-  { mood: 'thriving', trigger: 'Semua kebutuhan hampir penuh — rajin dirawat berdua' },
-  { mood: 'happy', trigger: 'Kebutuhannya terpenuhi' },
-  { mood: 'neutral', trigger: 'Ada kebutuhan yang mulai menurun' },
-  { mood: 'lonely', trigger: 'Sekitar 1 hari tidak dirawat' },
-  { mood: 'sad', trigger: 'Sekitar 2 hari tidak dirawat — butuh kalian berdua' },
+  { mood: 'thriving', trigger: 'Every need is close to full. You two are on it.' },
+  { mood: 'happy', trigger: 'Its needs are met' },
+  { mood: 'neutral', trigger: 'One of its needs is starting to drop' },
+  { mood: 'lonely', trigger: 'About 1 day without care' },
+  { mood: 'sad', trigger: 'About 2 days without care. It needs you both.' },
 ]
 
 export default function PetMoodScreen({ pet, moodState }: Props) {
@@ -57,13 +57,13 @@ export default function PetMoodScreen({ pet, moodState }: Props) {
       {/* Top */}
       <div className="px-5 pt-5 pb-6 text-center" style={{ background: 'linear-gradient(160deg, #E0F0FF 0%, #F4F8FF 100%)' }}>
         <div className="flex items-center mb-4">
-          <button onClick={() => router.back()} className="p-1">
+          <button onClick={() => router.back()} aria-label="Back" className="p-1">
             <ArrowLeft className="w-5 h-5 text-ink" />
           </button>
         </div>
 
         <div className="text-[10px] font-bold tracking-[0.12em] uppercase text-[#8AAAD0] mb-3.5">
-          Status {pet.name} Hari Ini
+          {pet.name} today
         </div>
 
         {/* Big mood ring */}
@@ -89,7 +89,7 @@ export default function PetMoodScreen({ pet, moodState }: Props) {
       {/* Mood timeline */}
       <div className="px-4 pt-4">
         <div className="text-[10px] font-bold tracking-[0.1em] uppercase text-ink-muted mb-3">
-          Semua Mood States
+          All moods
         </div>
 
         <div className="flex flex-col">
@@ -120,7 +120,7 @@ export default function PetMoodScreen({ pet, moodState }: Props) {
                 {/* Current chip */}
                 {isActive && (
                   <div className="text-[9px] font-extrabold bg-[#E0F5EC] text-[#3D9E6A] px-2.5 py-1 rounded-[9px] uppercase tracking-wider">
-                    Sekarang
+                    Now
                   </div>
                 )}
               </div>
@@ -132,14 +132,14 @@ export default function PetMoodScreen({ pet, moodState }: Props) {
       {/* Needs grid */}
       <div className="px-4 pt-3.5 pb-6">
         <div className="text-[10px] font-bold tracking-[0.1em] uppercase text-ink-muted mb-3">
-          Kebutuhan Saat Ini
+          Needs right now
         </div>
 
         <div className="grid grid-cols-3 gap-2">
           {[
-            { emoji: '🍖', name: 'Makan', value: decayed.hunger, gradient: 'linear-gradient(90deg, #F09060, #F06B6B)' },
+            { emoji: '🍖', name: 'Food', value: decayed.hunger, gradient: 'linear-gradient(90deg, #F09060, #F06B6B)' },
             { emoji: '💛', name: 'Happy', value: decayed.happiness, gradient: 'linear-gradient(90deg, #F06B6B, #F090B0)' },
-            { emoji: '🫧', name: 'Bersih', value: decayed.cleanliness, gradient: 'linear-gradient(90deg, #7EC4A0, #5BA882)' },
+            { emoji: '🫧', name: 'Clean', value: decayed.cleanliness, gradient: 'linear-gradient(90deg, #7EC4A0, #5BA882)' },
           ].map(need => (
             <div key={need.name} className="bg-white rounded-[14px] p-2.5 text-center border border-[#F0E8E0]">
               <div className="text-xl mb-1.5">{need.emoji}</div>

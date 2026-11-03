@@ -23,16 +23,17 @@ function timeAgo(dateStr: string | null): string {
   if (!dateStr) return ''
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'baru saja'
-  if (mins < 60) return `${mins} menit yang lalu`
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins} min ago`
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours} jam yang lalu`
-  return `${Math.floor(hours / 24)} hari yang lalu`
+  if (hours < 24) return `${hours} h ago`
+  const days = Math.floor(hours / 24)
+  return days === 1 ? 'yesterday' : `${days} days ago`
 }
 
 /**
  * Shows the partner's latest unanswered "Kangen" (last 24h) on home, with a
- * "Kangen kamu juga" reply. Replying marks it responded as the receiver (the
+ * "Miss you too" reply. Replying marks it responded as the receiver (the
  * only update RLS allows) and pings the partner; it does not send a new
  * Kangen back, so it doesn't use up my own cooldown or start a ping-pong.
  */
@@ -92,7 +93,7 @@ export default function MissYouToast({ myId, myName, partnerId, partnerName, cou
       .eq('responded', false)
 
     if (updateError) {
-      setError('Gagal membalas. Coba lagi ya.')
+      setError("Couldn't send your reply. Try again.")
       setResponding(false)
       return
     }
@@ -104,8 +105,8 @@ export default function MissYouToast({ myId, myName, partnerId, partnerName, cou
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           recipientId: partnerId,
-          title: '💓 Nanti Kita',
-          body: `${myName} kangen kamu juga!`,
+          title: 'Nanti Kita',
+          body: `${myName} misses you too`,
           url: '/app/home',
           kind: 'kangen',
         }),
@@ -123,7 +124,7 @@ export default function MissYouToast({ myId, myName, partnerId, partnerName, cou
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-rose/10 to-rose/5 border border-rose/20 p-4">
         <button
           onClick={() => setDismissed(true)}
-          aria-label="Tutup"
+          aria-label="Close"
           className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-rose/10 text-rose"
         >
           <X className="h-3 w-3" />
@@ -135,14 +136,14 @@ export default function MissYouToast({ myId, myName, partnerId, partnerName, cou
           </div>
           <div className="flex-1">
             <p className="text-sm font-bold text-ink">
-              {partnerName ?? 'Pasangan'} kangen kamu
+              {partnerName ?? 'Your partner'} sent you a Kangen
             </p>
             <p className="text-xs text-ink-muted mt-0.5">
               {timeAgo(latestMissYou.created_at)}
             </p>
 
             {responded ? (
-              <p className="mt-2 text-xs font-semibold text-rose">Terkirim: kangen kamu juga!</p>
+              <p className="mt-2 text-xs font-semibold text-rose">Sent: miss you too</p>
             ) : (
               <button
                 onClick={handleRespond}
@@ -150,7 +151,7 @@ export default function MissYouToast({ myId, myName, partnerId, partnerName, cou
                 className="mt-2.5 flex items-center gap-1.5 rounded-xl bg-rose px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all active:scale-[0.97] disabled:opacity-60"
               >
                 <Heart className="h-3 w-3" fill="currentColor" />
-                {responding ? 'Mengirim...' : 'Kangen kamu juga'}
+                {responding ? 'Sending...' : 'Miss you too'}
               </button>
             )}
             {error && <p className="mt-1.5 text-xs font-medium text-red-500">{error}</p>}

@@ -27,8 +27,8 @@ interface AddTransactionModalProps {
 const QUICK_AMOUNTS = [500_000, 1_000_000, 2_000_000, 5_000_000]
 
 function fmtQuick(n: number): string {
-  if (n >= 1_000_000) return `${n / 1_000_000}jt`
-  return `${n / 1_000}rb`
+  if (n >= 1_000_000) return `${n / 1_000_000}M`
+  return `${n / 1_000}K`
 }
 
 function fmtRpFull(n: number): string {
@@ -37,8 +37,8 @@ function fmtRpFull(n: number): string {
 
 function fmtRpNotif(n: number): string {
   const abs = Math.abs(n)
-  if (abs >= 1_000_000) return `Rp${(abs / 1_000_000).toFixed(1)}jt`
-  if (abs >= 1_000) return `Rp${(abs / 1_000).toFixed(0)}rb`
+  if (abs >= 1_000_000) return `Rp${(abs / 1_000_000).toFixed(1)}M`
+  if (abs >= 1_000) return `Rp${(abs / 1_000).toFixed(0)}K`
   return `Rp${abs.toLocaleString('id-ID')}`
 }
 
@@ -49,25 +49,25 @@ export default function AddTransactionModal({
   const [type, setType] = useState<'deposit' | 'withdrawal'>(initialType)
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
-  const [category, setCategory] = useState('tabungan')
+  const [category, setCategory] = useState('tabungan') // copy-ok: stored value
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (isOpen) {
       setType(initialType)
-      setCategory(initialType === 'withdrawal' ? 'lainnya' : 'tabungan')
+      setCategory(initialType === 'withdrawal' ? 'lainnya' : 'tabungan') // copy-ok: stored value
     }
   }, [isOpen, initialType])
 
   function resetForm() {
-    setType('deposit'); setAmount(''); setNote(''); setCategory('tabungan'); setError('')
+    setType('deposit'); setAmount(''); setNote(''); setCategory('tabungan'); setError('') // copy-ok: stored value
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const numAmount = parseInt(amount.replace(/\D/g, ''), 10)
-    if (!numAmount || numAmount <= 0) { setError('Masukkan jumlah yang valid'); return }
+    if (!numAmount || numAmount <= 0) { setError('Enter a valid amount'); return }
 
     if (loading) return
     setLoading(true); setError('')
@@ -83,13 +83,13 @@ export default function AddTransactionModal({
     if (type === 'withdrawal' && goalId) {
       const { data: goal, error: goalError } = await supabase
         .from('savings_goals').select('current_amount').eq('id', goalId).maybeSingle()
-      if (goalError) { setError('Gagal cek saldo. Coba lagi ya.'); setLoading(false); return }
+      if (goalError) { setError("Couldn't check your balance. Try again."); setLoading(false); return }
       if (!goal) { goalGone(); return }
       const available = Number(goal.current_amount)
       if (numAmount > available) {
         setError(available > 0
-          ? `Saldo tabungan cuma ${fmtRpFull(available)}. Kurangi jumlah pengeluarannya ya.`
-          : 'Saldo tabungan masih kosong, belum bisa mencatat pengeluaran.')
+          ? `Your savings balance is only ${fmtRpFull(available)}. Lower the amount.`
+          : "Your savings balance is empty, so there's nothing to take out yet.")
         setLoading(false)
         return
       }
@@ -98,13 +98,13 @@ export default function AddTransactionModal({
     const finalAmount = type === 'withdrawal' ? -numAmount : numAmount
 
     // The goal's current_amount is recomputed by a DB trigger from all of its
-    // transactions — no client-side read-modify-write here.
+    // transactions; no client-side read-modify-write here.
     const { error: txError } = await supabase.from('couple_transactions').insert({
       couple_id: coupleId,
       goal_id: goalId,
       amount: finalAmount,
       type,
-      category: type === 'deposit' ? 'tabungan' : category,
+      category: type === 'deposit' ? 'tabungan' : category, // copy-ok: stored value
       note: note.trim() || null,
       created_by: userId,
     })
@@ -116,17 +116,17 @@ export default function AddTransactionModal({
           .from('savings_goals').select('id').eq('id', goalId).maybeSingle()
         if (!checkError && !stillThere) { goalGone(); return }
       }
-      setError(transactionErrorMessage(txError, 'Gagal menyimpan transaksi. Coba lagi ya.')); setLoading(false); return
+      setError(transactionErrorMessage(txError, "Couldn't save the transaction. Try again.")); setLoading(false); return
     }
 
     // Notify partner about the transaction (best-effort, never blocks the sheet)
     if (partnerId) {
       const numAmt = parseInt(amount.replace(/\D/g, ''), 10)
-      const name = userName || 'Pasanganmu'
-      const target = goalName || 'tabungan'
+      const name = userName || 'Your partner'
+      const target = goalName || 'your savings'
       const notifBody = type === 'deposit'
-        ? `${name} menambahkan ${fmtRpNotif(numAmt)} ke ${target}`
-        : `${name} mencatat pengeluaran ${fmtRpNotif(numAmt)}${note ? ` — ${note}` : ''}`
+        ? `${name} added ${fmtRpNotif(numAmt)} to ${target}`
+        : `${name} logged ${fmtRpNotif(numAmt)} going out${note ? `: ${note}` : ''}`
 
       void fetch('/api/push/send', {
         method: 'POST',
@@ -148,13 +148,13 @@ export default function AddTransactionModal({
   }
 
   return (
-    <Modal open={isOpen} onClose={() => { onClose(); resetForm() }} title="Tambah Transaksi">
+    <Modal open={isOpen} onClose={() => { onClose(); resetForm() }} title="Add transaction">
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Type toggle */}
         <div className="flex rounded-xl border border-border bg-cream p-1">
           <button
             type="button"
-            onClick={() => { setType('deposit'); setCategory('tabungan') }}
+            onClick={() => { setType('deposit'); setCategory('tabungan') }} // copy-ok: stored value
             className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors ${
               type === 'deposit'
                 ? 'bg-sage text-white shadow-sm'
@@ -162,11 +162,11 @@ export default function AddTransactionModal({
             }`}
           >
             <ArrowDownLeft className="h-4 w-4" />
-            Uang Masuk
+            Money in
           </button>
           <button
             type="button"
-            onClick={() => { setType('withdrawal'); setCategory('lainnya') }}
+            onClick={() => { setType('withdrawal'); setCategory('lainnya') }} // copy-ok: stored value
             className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors ${
               type === 'withdrawal'
                 ? 'bg-rose text-white shadow-sm'
@@ -174,13 +174,13 @@ export default function AddTransactionModal({
             }`}
           >
             <ArrowUpRight className="h-4 w-4" />
-            Uang Keluar
+            Money out
           </button>
         </div>
 
         {/* Amount */}
         <div className="space-y-1.5">
-          <label htmlFor="add-tx-amount" className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Jumlah</label>
+          <label htmlFor="add-tx-amount" className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Amount</label>
           <div className="relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base font-bold text-ink-muted">Rp</span>
             <input
@@ -204,14 +204,14 @@ export default function AddTransactionModal({
             ))}
           </div>
           {type === 'withdrawal' && balance != null && (
-            <p className="text-xs text-ink-muted">Saldo tabungan: <span className="font-semibold text-ink">{fmtRpFull(balance)}</span></p>
+            <p className="text-xs text-ink-muted">Savings balance: <span className="font-semibold text-ink">{fmtRpFull(balance)}</span></p>
           )}
         </div>
 
         {/* Category (withdrawal only) */}
         {type === 'withdrawal' && (
           <div className="space-y-1.5">
-            <p id="add-tx-category" className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Kategori</p>
+            <p id="add-tx-category" className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Category</p>
             <div className="flex flex-wrap gap-1.5" role="group" aria-labelledby="add-tx-category">
               {WITHDRAWAL_CATEGORIES.map(cat => (
                 <button key={cat.value} type="button"
@@ -231,9 +231,9 @@ export default function AddTransactionModal({
 
         {/* Note */}
         <div className="space-y-1">
-          <label htmlFor="add-tx-note" className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Catatan</label>
+          <label htmlFor="add-tx-note" className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Note</label>
           <input id="add-tx-note" type="text"
-            placeholder={type === 'deposit' ? 'Contoh: Gaji bulan April' : 'Contoh: Makan malam anniversary'}
+            placeholder={type === 'deposit' ? 'e.g. April salary' : 'e.g. Anniversary dinner'}
             value={note} onChange={e => setNote(e.target.value)}
             className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
           />
@@ -242,7 +242,7 @@ export default function AddTransactionModal({
         {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
 
         <Button type="submit" loading={loading} size="lg">
-          {type === 'deposit' ? 'Tambah Tabungan' : 'Catat Pengeluaran'}
+          {type === 'deposit' ? 'Add to savings' : 'Log money out'}
         </Button>
       </form>
     </Modal>

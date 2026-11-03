@@ -130,7 +130,7 @@ const MomentsMap = forwardRef<MomentsMapHandle, Props>(function MomentsMap({ mom
         if (cover?.url) popup.appendChild(photoImg(cover.url, cover.storage_path, m.title))
         popup.appendChild(el('p', 'nk-popup__title', m.title))
         popup.appendChild(el('p', 'nk-popup__meta', [formatDateID(m.moment_date), m.location_name].filter(Boolean).join(' · ')))
-        const link = el('a', 'nk-popup__link', 'Buka moment →')
+        const link = el('a', 'nk-popup__link', 'Open moment →')
         link.href = `/app/moments/${m.id}`
         link.addEventListener('click', (e) => {
           e.preventDefault()
@@ -225,7 +225,7 @@ const MomentsMap = forwardRef<MomentsMapHandle, Props>(function MomentsMap({ mom
     <>
       <style>{PIN_STYLE}</style>
       {/* `isolate` keeps Leaflet's high z-index panes below the fixed bottom nav. */}
-      <div ref={container} className={`isolate ${className ?? ''}`} role="region" aria-label="Peta moment kalian" />
+      <div ref={container} className={`isolate ${className ?? ''}`} role="region" aria-label="Map of your moments" />
     </>
   )
 })

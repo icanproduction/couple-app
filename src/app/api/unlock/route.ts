@@ -18,12 +18,12 @@ export async function POST() {
     const { data: membership } = await supabase
       .from('couple_members').select('couple_id').eq('profile_id', user.id).maybeSingle()
     if (!membership?.couple_id) {
-      return NextResponse.json({ error: 'Belum punya pasangan' }, { status: 400 })
+      return NextResponse.json({ error: 'You\'re not connected with a partner yet' }, { status: 400 })
     }
 
     if (process.env.PAYMENT_DUMMY?.trim() !== 'true') {
       return NextResponse.json(
-        { error: 'Pembayaran belum tersedia. Coba lagi nanti ya.' },
+        { error: 'Payments aren\'t available yet. Try again later.' },
         { status: 501 }
       )
     }
@@ -37,12 +37,12 @@ export async function POST() {
 
     if (error) {
       console.error('[unlock] update failed:', error.message)
-      return NextResponse.json({ error: 'Gagal membuka premium, coba lagi' }, { status: 500 })
+      return NextResponse.json({ error: 'Couldn\'t turn on Premium. Try again.' }, { status: 500 })
     }
 
     return NextResponse.json({ ok: true, isPremium: true })
   } catch (err) {
     console.error('[unlock] unhandled:', err)
-    return NextResponse.json({ error: 'Gagal membuka premium, coba lagi' }, { status: 500 })
+    return NextResponse.json({ error: 'Couldn\'t turn on Premium. Try again.' }, { status: 500 })
   }
 }

@@ -55,13 +55,13 @@ export function shiftMonth(monthKey: string, delta: number): string {
   return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`
 }
 
-/** "Oktober 2026" */
+/** "October 2026" (en-GB) */
 export function monthLabelID(monthKey: string): string {
   const [y, m] = monthKey.split('-').map(Number)
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('id-ID', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 }
 
-/** The earliest month worth showing: jadian date or when the couple was created. */
+/** The earliest month worth showing: the relationship start date or when the couple was created. */
 export async function earliestRecapMonth(info: CoupleInfo): Promise<string | null> {
   if (!info.coupleId) return null
   const supabase = createClient()
@@ -77,11 +77,16 @@ export async function earliestRecapMonth(info: CoupleInfo): Promise<string | nul
   return candidates.sort()[0] ?? null
 }
 
-/** "a", "a dan b", "a, b, dan c" */
-function listID(parts: string[]): string {
+/** "a", "a and b", "a, b and c" */
+function joinList(parts: string[]): string {
   if (parts.length <= 1) return parts[0] ?? ''
-  if (parts.length === 2) return `${parts[0]} dan ${parts[1]}`
-  return `${parts.slice(0, -1).join(', ')}, dan ${parts[parts.length - 1]}`
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+}
+
+/** "1 photo", "3 photos" */
+function count(n: number, one: string, many = `${one}s`): string {
+  return `${n} ${n === 1 ? one : many}`
 }
 
 type HeadlineInput = Omit<MonthRecap, 'headline' | 'bestPhoto' | 'month' | 'partners' | 'places' | 'bucketDoneTitles'> & { places: number }
@@ -89,25 +94,25 @@ type HeadlineInput = Omit<MonthRecap, 'headline' | 'bestPhoto' | 'month' | 'part
 /** A short line made from the month's numbers. */
 export function recapHeadline(r: HeadlineInput): string {
   const parts: string[] = []
-  if (r.moments) parts.push(`${r.moments} moment`)
-  if (r.photos) parts.push(`${r.photos} foto`)
-  if (r.kangenTotal) parts.push(`${r.kangenTotal}x kangen`)
-  if (r.dailyBothDays) parts.push(`${r.dailyBothDays} hari kompak menjawab`)
-  if (r.bucketDone) parts.push(`${r.bucketDone} impian tercentang`)
-  if (r.gamesCompleted) parts.push(`${r.gamesCompleted} game Samakan`)
-  if (r.lettersWritten) parts.push(`${r.lettersWritten} surat`)
-  if (r.gratitudeNotes) parts.push(`${r.gratitudeNotes} apresiasi`)
-  if (r.savingsIn) parts.push(`tabungan bertambah ${formatRupiah(r.savingsIn)}`)
-  if (parts.length === 0) return 'Bulan yang tenang. Yuk, bikin cerita baru bareng!'
+  if (r.moments) parts.push(count(r.moments, 'moment'))
+  if (r.photos) parts.push(count(r.photos, 'photo'))
+  if (r.kangenTotal) parts.push(`${r.kangenTotal}x Kangen`)
+  if (r.dailyBothDays) parts.push(`${count(r.dailyBothDays, 'day')} of answering together`)
+  if (r.bucketDone) parts.push(`${count(r.bucketDone, 'dream')} ticked off`)
+  if (r.gamesCompleted) parts.push(`${count(r.gamesCompleted, 'game')} of Samakan`)
+  if (r.lettersWritten) parts.push(count(r.lettersWritten, 'letter'))
+  if (r.gratitudeNotes) parts.push(count(r.gratitudeNotes, 'Toples note'))
+  if (r.savingsIn) parts.push(`savings up ${formatRupiah(r.savingsIn)}`)
+  if (parts.length === 0) return 'A quiet month. Time to make some new stories together.'
 
   const theme =
-    r.moments >= 3 || r.places >= 3 ? 'Bulan penuh petualangan'
-    : r.kangenTotal >= 20 ? 'Bulan penuh rindu'
-    : r.dailyBothDays >= 15 ? 'Bulan yang kompak'
-    : r.bucketDone >= 2 ? 'Bulan penuh pencapaian'
-    : r.savingsIn > r.savingsOut && r.savingsIn > 0 && r.moments === 0 ? 'Bulan rajin menabung'
-    : 'Bulan yang manis'
-  return `${theme}: ${listID(parts.slice(0, 3))}`
+    r.moments >= 3 || r.places >= 3 ? 'A month of adventures'
+    : r.kangenTotal >= 20 ? 'A month of missing each other'
+    : r.dailyBothDays >= 15 ? 'A month in sync'
+    : r.bucketDone >= 2 ? 'A month of wins'
+    : r.savingsIn > r.savingsOut && r.savingsIn > 0 && r.moments === 0 ? 'A month of saving up'
+    : 'A sweet month'
+  return `${theme}: ${joinList(parts.slice(0, 3))}`
 }
 
 export async function loadRecap(info: CoupleInfo, monthKey: string): Promise<MonthRecap> {
@@ -166,7 +171,7 @@ export async function loadRecap(info: CoupleInfo, monthKey: string): Promise<Mon
   const ids = [info.userId, ...(info.partnerId ? [info.partnerId] : [])]
   const partners: PartnerRecap[] = ids.map((id) => ({
     id,
-    name: id === info.userId ? 'Kamu' : info.names[id] ?? 'Pasangan',
+    name: id === info.userId ? 'You' : info.names[id] ?? 'Your partner',
     isMe: id === info.userId,
     kangenSent: 0,
     kangenReceived: 0,
@@ -230,22 +235,22 @@ export async function loadRecap(info: CoupleInfo, monthKey: string): Promise<Mon
 
 /** Plain-text summary for sharing. */
 export function recapShareText(r: MonthRecap, partnerNames: Record<string, string>): string {
-  const name = (p: PartnerRecap) => (p.isMe ? partnerNames[p.id] ?? 'Aku' : p.name)
-  const lines = [`Recap ${monthLabelID(r.month)} di Nanti Kita`, r.headline, '']
+  const name = (p: PartnerRecap) => (p.isMe ? partnerNames[p.id] ?? 'Me' : p.name)
+  const lines = [`Our ${monthLabelID(r.month)} recap on Nanti Kita`, r.headline, '']
   if (r.moments) {
-    lines.push(`• ${r.moments} moment, ${r.photos} foto${r.places.length ? `, ${r.places.length} tempat` : ''}`)
+    lines.push(`• ${count(r.moments, 'moment')}, ${count(r.photos, 'photo')}${r.places.length ? `, ${count(r.places.length, 'place')}` : ''}`)
   }
   if (r.kangenTotal) lines.push(`• Kangen: ${r.partners.map((p) => `${name(p)} ${p.kangenSent}x`).join(', ')}`)
-  if (r.dailyBothDays) lines.push(`• ${r.dailyBothDays} hari kompak menjawab pertanyaan harian`)
-  if (r.bucketDone) lines.push(`• ${r.bucketDone} bucket list tercentang`)
+  if (r.dailyBothDays) lines.push(`• ${count(r.dailyBothDays, 'day')} we both answered the daily question`)
+  if (r.bucketDone) lines.push(`• ${count(r.bucketDone, 'bucket list item')} ticked off`)
   if (r.savingsIn || r.savingsOut) {
-    lines.push(`• Tabungan: masuk ${formatRupiah(r.savingsIn)}${r.savingsOut ? `, keluar ${formatRupiah(r.savingsOut)}` : ''}`)
+    lines.push(`• Savings: ${formatRupiah(r.savingsIn)} in${r.savingsOut ? `, ${formatRupiah(r.savingsOut)} out` : ''}`)
   }
   const extras = [
-    r.lettersWritten ? `${r.lettersWritten} surat` : '',
-    r.gratitudeNotes ? `${r.gratitudeNotes} apresiasi` : '',
-    r.gamesCompleted ? `${r.gamesCompleted} game Samakan` : '',
+    r.lettersWritten ? count(r.lettersWritten, 'letter') : '',
+    r.gratitudeNotes ? count(r.gratitudeNotes, 'Toples note') : '',
+    r.gamesCompleted ? `${count(r.gamesCompleted, 'game')} of Samakan` : '',
   ].filter(Boolean)
-  if (extras.length) lines.push(`• ${listID(extras)}`)
+  if (extras.length) lines.push(`• ${joinList(extras)}`)
   return lines.join('\n').trim()
 }

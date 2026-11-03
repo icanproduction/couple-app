@@ -88,11 +88,12 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
     const room = MAX_MOMENT_PHOTOS - photosRef.current.length
     const files = Array.from(list)
     if (room <= 0) {
-      setError(`Sudah ${MAX_MOMENT_PHOTOS} foto. Hapus satu dulu kalau mau ganti.`)
+      setError(`You already have ${MAX_MOMENT_PHOTOS} photos. Remove one first to swap it.`)
       return
     }
     if (files.length > room) {
-      setError(`Maksimal ${MAX_MOMENT_PHOTOS} foto per moment — ${files.length - room} foto tidak ditambahkan.`)
+      const skipped = files.length - room
+      setError(`Up to ${MAX_MOMENT_PHOTOS} photos per moment, so ${skipped} ${skipped === 1 ? 'photo was' : 'photos were'} not added.`)
     }
 
     setProcessing(true)
@@ -107,11 +108,11 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
           const image = await compressImage(file)
           added.push({ key: crypto.randomUUID(), kind: 'new', image, url: URL.createObjectURL(image.blob), meta })
         } catch (e) {
-          setError(e instanceof Error ? e.message : 'Ada foto yang gagal diproses.')
+          setError(e instanceof Error ? e.message : "One of the photos couldn't be processed.")
         }
       }
     } catch {
-      setError('Foto belum bisa diproses. Cek koneksimu, lalu coba lagi.')
+      setError("Couldn't process the photos. Check your connection and try again.")
     } finally {
       setProcessing(false)
     }
@@ -139,7 +140,7 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
       setCoordsSource('gps')
       await fillPlaceName(c)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Gagal mengambil lokasi.')
+      setError(e instanceof Error ? e.message : "Couldn't get your location.")
     } finally {
       setLocating(false)
     }
@@ -164,10 +165,10 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
     e.preventDefault()
     if (busy) return
     const cleanTitle = title.trim()
-    if (!cleanTitle) return setError('Kasih judul moment-nya dulu ya.')
-    if (!date) return setError('Pilih tanggal moment-nya.')
-    if (date > today) return setError('Tanggal moment tidak boleh di masa depan.')
-    if (photos.length === 0) return setError('Tambahkan minimal 1 foto.')
+    if (!cleanTitle) return setError('Give this moment a title first.')
+    if (!date) return setError('Pick a date for this moment.')
+    if (date > today) return setError("A moment's date can't be in the future.")
+    if (photos.length === 0) return setError('Add at least 1 photo.')
     setError('')
 
     const input = {
@@ -181,7 +182,7 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
 
     let id = momentId
     try {
-      setProgress('Menyimpan moment...')
+      setProgress('Saving moment...')
       if (id) {
         await updateMoment(id, input)
       } else {
@@ -192,7 +193,7 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
       }
 
       if (removed.length > 0) {
-        setProgress('Menghapus foto...')
+        setProgress('Removing photos...')
         await removeMomentPhotos(removed)
         setRemoved([])
       }
@@ -205,14 +206,14 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
       for (let i = 0; i < current.length; i++) {
         const item = current[i]
         if (item.kind !== 'new') continue
-        setProgress(`Mengunggah foto ${++done}/${total}...`)
+        setProgress(`Uploading photo ${++done}/${total}...`)
         const saved = await addMomentPhoto(info.coupleId, id, item.image, i, item.meta.takenAt)
         const next: FormPhoto = { key: saved.id, kind: 'saved', photo: saved, url: item.url }
         current[i] = next
         setPhotos((prev) => prev.map((p) => (p.key === item.key ? next : p)))
       }
 
-      setProgress('Menyusun foto...')
+      setProgress('Ordering photos...')
       const photoIds = current.map((p) => (p.kind === 'saved' ? p.photo.id : '')).filter(Boolean)
       await setPhotoOrder(photoIds)
 
@@ -227,7 +228,7 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
       // moment is already saved, so a failure here must not block the user.
       if (bucketId && !bucketLinked.current) {
         bucketLinked.current = true
-        setProgress('Mencentang bucket list...')
+        setProgress('Ticking off your bucket list...')
         await completeBucketItemWithMoment(bucketId, id).catch(() => undefined)
       }
 
@@ -239,7 +240,7 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
           body: JSON.stringify({
             recipientId: info.partnerId,
             title: 'Nanti Kita',
-            body: `${info.names[info.userId] ?? 'Pasanganmu'} menyimpan moment "${input.title}"`,
+            body: `${info.names[info.userId] ?? 'Your partner'} saved a moment: "${input.title}"`,
             url: `/app/moments/${id}`,
             kind: 'moments',
           }),
@@ -250,7 +251,7 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
       router.refresh()
     } catch (err) {
       setProgress(null)
-      setError(err instanceof Error ? err.message : 'Gagal menyimpan moment. Coba lagi.')
+      setError(err instanceof Error ? err.message : "Couldn't save the moment. Try again.")
     }
   }
 
@@ -261,36 +262,36 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
           href={initial ? `/app/moments/${initial.id}` : '/app/moments'}
           className="mb-3 flex items-center gap-1 text-sm text-ink-muted"
         >
-          <ArrowLeft className="h-4 w-4" /> {initial ? 'Kembali ke moment' : 'Moment Kita'}
+          <ArrowLeft className="h-4 w-4" /> {initial ? 'Back to moment' : 'Moments'}
         </Link>
-        <h1 className="text-xl font-bold text-ink">{isEdit ? 'Edit Moment' : 'Moment Baru'}</h1>
-        <p className="text-sm text-ink-muted">Abadikan date kalian — nanti bisa jadi scrapbook</p>
+        <h1 className="text-xl font-bold text-ink">{isEdit ? 'Edit moment' : 'New moment'}</h1>
+        <p className="text-sm text-ink-muted">Save your dates here. Later they can become a scrapbook.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 px-6 pt-5">
         {bucketId && (
           <p className="flex items-start gap-2 rounded-2xl bg-sage/15 px-4 py-3 text-xs leading-relaxed text-sage-dark">
             <ListChecks className="mt-0.5 h-4 w-4 shrink-0" />
-            Setelah disimpan, item bucket list ini otomatis dicentang dan terhubung ke moment ini.
+            Once you save, this bucket list item gets ticked off and linked to this moment.
           </p>
         )}
 
         {/* Photos */}
         <section>
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Foto</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Photos</p>
             <span className="text-xs text-ink-muted">{photos.length}/{MAX_MOMENT_PHOTOS}</span>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {photos.map((p, i) => (
               <div key={p.key} className="relative aspect-square overflow-hidden rounded-xl bg-rose-50">
                 {p.kind === 'saved' && p.url ? (
-                  <SignedPhoto src={p.url} path={p.photo.storage_path} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />
+                  <SignedPhoto src={p.url} path={p.photo.storage_path} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
                 ) : p.url ? (
                   // eslint-disable-next-line @next/next/no-img-element -- local blob preview
-                  <img src={p.url} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />
+                  <img src={p.url} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-[11px] text-ink-muted">Foto</div>
+                  <div className="flex h-full items-center justify-center text-[11px] text-ink-muted">Photo</div>
                 )}
                 {i === 0 ? (
                   <span className="absolute left-1.5 top-1.5 rounded-full bg-rose px-2 py-0.5 text-[10px] font-bold text-white">
@@ -301,7 +302,7 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
                     type="button"
                     onClick={() => makeCover(p.key)}
                     disabled={busy}
-                    aria-label="Jadikan cover"
+                    aria-label="Make cover"
                     className="absolute left-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-white"
                   >
                     <Star className="h-3.5 w-3.5" />
@@ -311,7 +312,7 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
                   type="button"
                   onClick={() => removePhoto(p.key)}
                   disabled={busy}
-                  aria-label="Hapus foto"
+                  aria-label="Remove photo"
                   className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-white"
                 >
                   <X className="h-4 w-4" />
@@ -328,7 +329,7 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
                   className="flex flex-1 items-center justify-center gap-1 text-xs font-semibold text-rose"
                 >
                   {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-                  Galeri
+                  Gallery
                 </button>
                 <div className="h-px bg-rose/15" />
                 <button
@@ -337,13 +338,13 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
                   disabled={busy}
                   className="flex flex-1 items-center justify-center gap-1 text-xs font-semibold text-rose"
                 >
-                  <Camera className="h-4 w-4" /> Kamera
+                  <Camera className="h-4 w-4" /> Camera
                 </button>
               </div>
             )}
           </div>
           <p className="mt-2 text-[11px] leading-snug text-ink-muted">
-            Foto pertama jadi cover. Tanggal & lokasi diisi otomatis dari foto kalau tersedia.
+            The first photo is the cover. Date and place fill in from the photo when it has them.
           </p>
           <input
             ref={galleryInput}
@@ -366,14 +367,14 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
         {/* Title */}
         <div>
           <label htmlFor="moment-title" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-muted">
-            Judul Moment
+            Title
           </label>
           <input
             id="moment-title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={MAX_TITLE}
-            placeholder="Contoh: Dinner pertama di Kemang"
+            placeholder="e.g. First dinner in Kemang"
             className={fieldClass}
           />
         </div>
@@ -381,7 +382,7 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
         {/* Date */}
         <div>
           <label htmlFor="moment-date" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-muted">
-            Tanggal
+            Date
           </label>
           <input
             id="moment-date"
@@ -396,7 +397,7 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
         {/* Location */}
         <div>
           <label htmlFor="moment-location" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-muted">
-            Lokasi
+            Place
           </label>
           <div className="relative">
             <MapPin className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
@@ -405,7 +406,7 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
               value={locationName}
               onChange={(e) => setLocationName(e.target.value)}
               maxLength={200}
-              placeholder="Nama tempat"
+              placeholder="Place name"
               className={`${fieldClass} pl-10`}
             />
           </div>
@@ -417,17 +418,17 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
               className="flex items-center gap-1.5 rounded-xl border border-border bg-white px-3 py-2 text-xs font-semibold text-ink-light disabled:opacity-50"
             >
               {locating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LocateFixed className="h-3.5 w-3.5 text-rose" />}
-              {locating ? 'Mencari lokasi...' : 'Pakai lokasi sekarang'}
+              {locating ? 'Finding you...' : 'Use my location'}
             </button>
             {coords && (
               <span className="flex items-center gap-1 rounded-xl bg-sage/15 px-3 py-2 text-[11px] font-medium text-sage-dark">
                 {formatCoords(coords)}
-                {coordsSource === 'photo' && ' · dari foto'}
+                {coordsSource === 'photo' && ' · from photo'}
                 {coordsSource === 'gps' && ' · GPS'}
                 <button
                   type="button"
                   onClick={() => { setCoords(null); setCoordsSource(null) }}
-                  aria-label="Hapus koordinat"
+                  aria-label="Clear coordinates"
                   className="ml-1"
                 >
                   <X className="h-3 w-3" />
@@ -441,7 +442,7 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
         <div>
           <div className="mb-1.5 flex items-center justify-between">
             <label htmlFor="moment-desc" className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
-              Cerita
+              Story
             </label>
             <span className={`text-xs ${description.length > MAX_DESCRIPTION * 0.9 ? 'text-rose' : 'text-ink-muted'}`}>
               {description.length}/{MAX_DESCRIPTION}
@@ -453,7 +454,7 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
             onChange={(e) => setDescription(e.target.value)}
             maxLength={MAX_DESCRIPTION}
             rows={5}
-            placeholder="Apa yang paling berkesan dari hari ini?"
+            placeholder="What stuck with you most from this day?"
             className={`${fieldClass} resize-none leading-relaxed`}
           />
         </div>
@@ -466,7 +467,7 @@ export default function MomentForm({ info, initial, prefill: prefillProp }: Prop
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rose py-4 text-sm font-bold text-white shadow-elevated transition-all active:scale-[0.98] disabled:opacity-60"
         >
           {progress && <Loader2 className="h-4 w-4 animate-spin" />}
-          {progress ?? (isEdit ? 'Simpan Perubahan' : 'Simpan Moment')}
+          {progress ?? (isEdit ? 'Save changes' : 'Save moment')}
         </button>
       </form>
     </div>

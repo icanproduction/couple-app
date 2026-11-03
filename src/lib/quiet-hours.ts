@@ -51,7 +51,7 @@ export function isPushMuted(
   return inQuietHours(prefs.quiet_start, prefs.quiet_end, now)
 }
 
-/** "22.00" — how hours are written in the app. */
+/** "22:00": how hours are written in the app (24-hour, en-GB style). */
 export function hourLabel(hour: number): string {
-  return `${String(hour).padStart(2, '0')}.00`
+  return `${String(hour).padStart(2, '0')}:00`
 }

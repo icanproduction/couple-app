@@ -80,7 +80,7 @@ export default function SpendingQuestionsPage() {
       .from('couple_members').select('couple_id').eq('profile_id', user.id).maybeSingle()
 
     if (!membership?.couple_id) {
-      setSubmitError('Hubungkan akunmu dengan pasangan dulu supaya hasilnya bisa disimpan.')
+      setSubmitError('Connect with your partner first so your result can be saved.')
       setSubmitting(false)
       return false
     }
@@ -95,7 +95,7 @@ export default function SpendingQuestionsPage() {
       }, { onConflict: 'couple_id,profile_id' })
 
       if (error) {
-        setSubmitError('Hasil belum tersimpan. Jawabanmu masih aman — coba lagi ya.')
+        setSubmitError("Your result wasn't saved. Your answers are still here, so try again.")
         setSubmitting(false)
         return false
       }
@@ -117,7 +117,7 @@ export default function SpendingQuestionsPage() {
           body: JSON.stringify({
             recipientId: partnerMembers[0].profile_id,
             title: 'Nanti Kita',
-            body: `${myProfile?.name ?? 'Pasanganmu'} baru selesai tes Spending Habits! Cek hasilnya dan tes kamu juga`,
+            body: `${myProfile?.name ?? 'Your partner'} finished the Spending Habits test. Take it too and compare.`,
             url: '/app/about-me/spending-habits',
             kind: 'activity',
           }),
@@ -145,7 +145,7 @@ export default function SpendingQuestionsPage() {
     return (
       <div className="flex min-h-[80vh] flex-col items-center justify-center">
         <div className="h-10 w-10 animate-spin rounded-full border-3 border-amber-200 border-t-amber-600" />
-        <p className="mt-4 text-sm text-ink-muted">Lagi analisa pola spending kamu...</p>
+        <p className="mt-4 text-sm text-ink-muted">Reading your spending pattern...</p>
       </div>
     )
   }
@@ -155,7 +155,7 @@ export default function SpendingQuestionsPage() {
       {/* Header */}
       <div className="mb-6">
         <div className="mb-3 flex items-center justify-between">
-          <span className="text-xs font-medium text-ink-muted">{qIndex + 1} dari {SPENDING_QUESTIONS.length}</span>
+          <span className="text-xs font-medium text-ink-muted">{qIndex + 1} of {SPENDING_QUESTIONS.length}</span>
           <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">Spending Habits</span>
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-border">
@@ -211,7 +211,7 @@ export default function SpendingQuestionsPage() {
             }}
             className="mt-2 text-sm font-bold text-rose underline"
           >
-            Coba simpan lagi
+            Try saving again
           </button>
         </div>
       )}
@@ -222,7 +222,7 @@ export default function SpendingQuestionsPage() {
           onClick={goBack}
           className="mt-6 flex items-center justify-center gap-1.5 text-sm text-ink-muted hover:text-ink"
         >
-          <ArrowLeft className="h-3.5 w-3.5" /> Kembali
+          <ArrowLeft className="h-3.5 w-3.5" /> Back
         </button>
       )}
     </div>

@@ -49,7 +49,7 @@ export default function PhotoLightbox({ photos, startIndex, onClose }: Props) {
       className="fixed inset-0 z-[60] flex flex-col bg-black/95"
       role="dialog"
       aria-modal="true"
-      aria-label="Foto moment"
+      aria-label="Moment photo"
       onTouchStart={(e) => { touchX.current = e.touches[0].clientX }}
       onTouchEnd={(e) => {
         if (touchX.current === null) return
@@ -60,7 +60,7 @@ export default function PhotoLightbox({ photos, startIndex, onClose }: Props) {
     >
       <div className="flex items-center justify-between px-4 py-3 text-white">
         <span className="text-sm font-medium">{current + 1} / {count}</span>
-        <button onClick={onClose} aria-label="Tutup" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+        <button onClick={onClose} aria-label="Close" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
           <X className="h-5 w-5" />
         </button>
       </div>
@@ -68,21 +68,21 @@ export default function PhotoLightbox({ photos, startIndex, onClose }: Props) {
         <SignedPhoto
           src={photo.url}
           path={photo.storage_path}
-          alt={`Foto ${current + 1}`}
+          alt={`Photo ${current + 1}`}
           className="max-h-full max-w-full rounded-lg object-contain"
         />
         {count > 1 && (
           <>
             <button
               onClick={() => go(-1)}
-              aria-label="Foto sebelumnya"
+              aria-label="Previous photo"
               className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
             <button
               onClick={() => go(1)}
-              aria-label="Foto berikutnya"
+              aria-label="Next photo"
               className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white"
             >
               <ChevronRight className="h-5 w-5" />

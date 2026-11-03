@@ -7,9 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  __InternalSupabase: {
-    PostgrestVersion: "14.4"
-  }
   public: {
     Tables: {
       activities: {
@@ -990,6 +987,45 @@ export type Database = {
           },
         ]
       }
+      love_language_results: {
+        Row: {
+          answers: number[]
+          couple_id: string
+          profile_id: string
+          scores: Json
+          taken_at: string
+        }
+        Insert: {
+          answers: number[]
+          couple_id: string
+          profile_id: string
+          scores: Json
+          taken_at?: string
+        }
+        Update: {
+          answers?: number[]
+          couple_id?: string
+          profile_id?: string
+          scores?: Json
+          taken_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "love_language_results_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "love_language_results_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mbti_results: {
         Row: {
           answers: Json
@@ -1713,6 +1749,112 @@ export type Database = {
           },
         ]
       }
+      truth_or_dare_cards: {
+        Row: {
+          body: string
+          couple_id: string
+          created_at: string
+          created_by: string
+          heat: string
+          id: string
+          kind: string
+        }
+        Insert: {
+          body: string
+          couple_id: string
+          created_at?: string
+          created_by: string
+          heat: string
+          id?: string
+          kind: string
+        }
+        Update: {
+          body?: string
+          couple_id?: string
+          created_at?: string
+          created_by?: string
+          heat?: string
+          id?: string
+          kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "truth_or_dare_cards_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "truth_or_dare_cards_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      two_truths_rounds: {
+        Row: {
+          author_id: string | null
+          couple_id: string
+          created_at: string
+          guess_index: number | null
+          guessed_at: string | null
+          guessed_by: string | null
+          id: string
+          lie_index: number
+          statements: string[]
+          story: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          couple_id: string
+          created_at?: string
+          guess_index?: number | null
+          guessed_at?: string | null
+          guessed_by?: string | null
+          id?: string
+          lie_index: number
+          statements: string[]
+          story?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          couple_id?: string
+          created_at?: string
+          guess_index?: number | null
+          guessed_at?: string | null
+          guessed_by?: string | null
+          id?: string
+          lie_index?: number
+          statements?: string[]
+          story?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "two_truths_rounds_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "two_truths_rounds_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "two_truths_rounds_guessed_by_fkey"
+            columns: ["guessed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wedding_budget_items: {
         Row: {
           actual_cost: number | null
@@ -1880,10 +2022,19 @@ export type Database = {
           model: string
         }[]
       }
+      love_language_in_open_couple: {
+        Args: { p_couple: string }
+        Returns: boolean
+      }
+      love_language_result_valid: {
+        Args: { p_answers: number[]; p_scores: Json }
+        Returns: boolean
+      }
       moment_in_couple: {
         Args: { p_couple: string; p_moment: string }
         Returns: boolean
       }
+      mood_feed_summary: { Args: { p_mood: string }; Returns: string }
       my_couple_is_premium: { Args: never; Returns: boolean }
       my_role: { Args: never; Returns: string }
       perform_pet_care: {
@@ -1932,6 +2083,20 @@ export type Database = {
         Returns: undefined
       }
       shares_couple_with: { Args: { pid: string }; Returns: boolean }
+      truth_or_dare_in_open_couple: {
+        Args: { p_couple: string }
+        Returns: boolean
+      }
+      two_truths_cancel: { Args: { p_round_id: string }; Returns: undefined }
+      two_truths_create: {
+        Args: { p_lie_index: number; p_statements: string[]; p_story?: string }
+        Returns: string
+      }
+      two_truths_guess: {
+        Args: { p_index: number; p_round_id: string }
+        Returns: Json
+      }
+      two_truths_list: { Args: never; Returns: Json }
     }
     Enums: {
       [_ in never]: never

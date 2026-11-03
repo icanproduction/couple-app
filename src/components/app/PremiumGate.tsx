@@ -19,12 +19,12 @@ interface PremiumGateProps {
  * Posts /api/unlock; on success calls onUnlocked().
  */
 export function PremiumGate({
-  title = 'Buka Fitur Premium',
-  subtitle = 'Sekali buka, berlaku untuk kalian berdua selamanya.',
+  title = 'Get Premium',
+  subtitle = 'Pay once and it covers both of you, for good.',
   perks = [
-    'Semua level Deep Talk',
-    'Hasil assessment lengkap + area bertumbuh',
-    'Kartu hasil yang bisa dibagikan',
+    'Every Deep Talk level',
+    'Full assessment results and areas to grow',
+    'A results card you can share',
   ],
   onUnlocked,
 }: PremiumGateProps) {
@@ -37,10 +37,10 @@ export function PremiumGate({
     try {
       const res = await fetch('/api/unlock', { method: 'POST' })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? 'Gagal membuka premium')
+      if (!res.ok) throw new Error(json.error ?? "Couldn't turn on Premium. Try again.")
       onUnlocked?.()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Gagal membuka premium')
+      setError(e instanceof Error ? e.message : "Couldn't turn on Premium. Try again.")
     } finally {
       setLoading(false)
     }
@@ -78,7 +78,7 @@ export function PremiumGate({
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
         ) : (
           <>
-            <Sparkles className="h-4 w-4" /> Buka Premium
+            <Sparkles className="h-4 w-4" /> Get Premium
           </>
         )}
       </button>

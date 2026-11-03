@@ -8,8 +8,8 @@ import { monthLabel, sortPhotos, type Moment, type MomentPhoto } from '@/lib/mom
 export type ScrapbookStyle = 'polaroid' | 'majalah'
 
 export const SCRAPBOOK_STYLES: { id: ScrapbookStyle; label: string; hint: string }[] = [
-  { id: 'polaroid', label: 'Polaroid', hint: 'Hangat, foto bergaya instan' },
-  { id: 'majalah', label: 'Majalah', hint: 'Rapi, seperti edisi khusus' },
+  { id: 'polaroid', label: 'Polaroid', hint: 'Warm, instant-photo look' },
+  { id: 'majalah', label: 'Magazine', hint: 'Clean, like a special edition' },
 ]
 
 export type RangeKind = 'this-month' | 'month' | 'year' | 'all' | 'manual'
@@ -62,25 +62,25 @@ export function filterByRange(moments: ScrapbookMoment[], range: ScrapbookRange,
 /** "Sep 2026" */
 function shortMonth(dateKey: string): string {
   const [y, m] = dateKey.split('-').map(Number)
-  return new Date(y, m - 1, 1).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })
+  return new Date(y, m - 1, 1).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
 }
 
-/** Human label for the cover: "Oktober 2026", "Tahun 2025", "Jan 2025 – Okt 2026". */
+/** Human label for the cover: "October 2026", "2025", "Jan 2025 – Oct 2026". */
 export function rangeLabel(range: ScrapbookRange, selected: ScrapbookMoment[], now: Date = new Date()): string {
   if (range.kind === 'this-month') return monthLabel(`${monthKeyJakarta(now)}-01`)
   if (range.kind === 'month') return monthLabel(`${range.month}-01`)
-  if (range.kind === 'year') return `Tahun ${range.year}`
+  if (range.kind === 'year') return String(range.year)
   if (selected.length === 0) return ''
   const first = selected[0].moment_date
   const last = selected[selected.length - 1].moment_date
   if (first.slice(0, 7) === last.slice(0, 7)) return monthLabel(first)
   if (first.slice(0, 4) === last.slice(0, 4) && first.slice(5, 7) === '01' && last.slice(5, 7) === '12') {
-    return `Tahun ${first.slice(0, 4)}`
+    return first.slice(0, 4)
   }
   return `${shortMonth(first)} – ${shortMonth(last)}`
 }
 
-/** Photo used on the cover: a favourite's cover if there is one, else the first cover. */
+/** Photo used on the cover: a favorite's cover if there is one, else the first cover. */
 export function coverPhoto(selected: ScrapbookMoment[]): MomentPhoto | null {
   const withPhotos = selected.filter((m) => m.photos.length > 0)
   return (withPhotos.find((m) => m.is_favorite) ?? withPhotos[0])?.photos[0] ?? null

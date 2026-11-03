@@ -16,12 +16,12 @@ interface SavingsWizardProps {
 }
 
 const GOAL_PRESETS = [
-  { icon: Heart, label: 'Dana Nikah', color: 'bg-rose/10 text-rose' },
-  { icon: Plane, label: 'Liburan Bareng', color: 'bg-blue-50 text-blue-600' },
-  { icon: Home, label: 'Rumah / DP Rumah', color: 'bg-sage/10 text-sage-dark' },
-  { icon: Car, label: 'Mobil / Motor', color: 'bg-purple-50 text-purple-600' },
-  { icon: Gift, label: 'Dana Darurat', color: 'bg-amber-50 text-amber-600' },
-  { icon: Sparkles, label: 'Lainnya', color: 'bg-gray-100 text-ink-muted' },
+  { icon: Heart, label: 'Wedding fund', color: 'bg-rose/10 text-rose' },
+  { icon: Plane, label: 'Trip together', color: 'bg-blue-50 text-blue-600' },
+  { icon: Home, label: 'House / down payment', color: 'bg-sage/10 text-sage-dark' },
+  { icon: Car, label: 'Car / motorbike', color: 'bg-purple-50 text-purple-600' },
+  { icon: Gift, label: 'Emergency fund', color: 'bg-amber-50 text-amber-600' },
+  { icon: Sparkles, label: 'Other', color: 'bg-gray-100 text-ink-muted' },
 ]
 
 function fmtInput(val: string): string {
@@ -30,8 +30,8 @@ function fmtInput(val: string): string {
 }
 function parseRp(val: string): number { return parseInt(val.replace(/\D/g, ''), 10) || 0 }
 function fmtRp(n: number): string {
-  if (n >= 1_000_000_000) return `Rp ${(n / 1_000_000_000).toFixed(1)}M`
-  if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(0)}jt`
+  if (n >= 1_000_000_000) return `Rp ${(n / 1_000_000_000).toFixed(1)}B`
+  if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(0)}M`
   return `Rp ${n.toLocaleString('id-ID')}`
 }
 
@@ -68,7 +68,7 @@ export default function SavingsWizard({ coupleId, userId, onComplete, embedded =
     }).select('id').single()
 
     if (goalError || !goal) {
-      setError('Gagal membuat target. Coba lagi ya.')
+      setError("Couldn't create the goal. Try again.")
       setLoading(false)
       return
     }
@@ -82,13 +82,13 @@ export default function SavingsWizard({ coupleId, userId, onComplete, embedded =
         amount: parsedSavings,
         type: 'deposit',
         category: 'tabungan',
-        note: 'Saldo awal',
+        note: 'Opening balance',
         created_by: userId,
       })
       if (txError) {
         // Roll back so a retry doesn't leave a goal with a missing balance
         await supabase.from('savings_goals').delete().eq('id', goal.id)
-        setError('Gagal mencatat saldo awal. Coba lagi ya.')
+        setError("Couldn't record the opening balance. Try again.")
         setLoading(false)
         return
       }
@@ -109,9 +109,9 @@ export default function SavingsWizard({ coupleId, userId, onComplete, embedded =
             </div>
           )}
           <h2 className={embedded ? 'text-base font-bold text-ink' : 'text-xl font-extrabold text-ink'}>
-            {embedded ? 'Mau nabung untuk apa lagi?' : 'Buat Target Tabungan'}
+            {embedded ? 'What else are you saving for?' : 'Create a savings goal'}
           </h2>
-          {!embedded && <p className="mt-1 text-sm text-ink-muted">Nabung bareng pasangan untuk apa?</p>}
+          {!embedded && <p className="mt-1 text-sm text-ink-muted">What are you two saving for?</p>}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -121,7 +121,7 @@ export default function SavingsWizard({ coupleId, userId, onComplete, embedded =
               <button
                 key={preset.label}
                 onClick={() => {
-                  setGoalName(preset.label === 'Lainnya' ? '' : preset.label)
+                  setGoalName(preset.label === 'Other' ? '' : preset.label)
                   setStep('detail')
                 }}
                 className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-white p-5 text-center transition-all hover:border-rose hover:shadow-card active:scale-[0.98]"
@@ -136,7 +136,7 @@ export default function SavingsWizard({ coupleId, userId, onComplete, embedded =
         </div>
         {onCancel && (
           <button type="button" onClick={onCancel} className="w-full py-2 text-sm text-ink-muted hover:text-ink">
-            Batal
+            Cancel
           </button>
         )}
       </div>
@@ -147,19 +147,19 @@ export default function SavingsWizard({ coupleId, userId, onComplete, embedded =
   return (
     <div className="animate-fade-in space-y-5">
       <div className="text-center">
-        <h2 className="text-xl font-extrabold text-ink">Detail Tabungan</h2>
-        <p className="mt-1 text-sm text-ink-muted">Isi detail target tabungan kalian</p>
+        <h2 className="text-xl font-extrabold text-ink">Goal details</h2>
+        <p className="mt-1 text-sm text-ink-muted">Fill in your savings goal</p>
       </div>
 
       <div>
         <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-muted">
-          <Target className="mr-1 inline h-3.5 w-3.5" /> Nama Target
+          <Target className="mr-1 inline h-3.5 w-3.5" /> Goal name
         </label>
         <input
           type="text"
           value={goalName}
           onChange={e => setGoalName(e.target.value)}
-          placeholder="mis. Dana Nikah, DP Rumah, dll"
+          placeholder="e.g. Wedding fund, house down payment"
           className="w-full rounded-2xl border border-border bg-white px-4 py-3.5 text-sm focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
           required
         />
@@ -167,7 +167,7 @@ export default function SavingsWizard({ coupleId, userId, onComplete, embedded =
 
       <div>
         <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-muted">
-          Target Jumlah
+          Target amount
         </label>
         <div className="relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-ink-muted">Rp</span>
@@ -176,7 +176,7 @@ export default function SavingsWizard({ coupleId, userId, onComplete, embedded =
             inputMode="numeric"
             value={targetAmount}
             onChange={e => setTargetAmount(fmtInput(e.target.value))}
-            placeholder="100,000,000"
+            placeholder="100.000.000"
             className="w-full rounded-2xl border border-border bg-white py-3.5 pl-11 pr-4 text-lg font-bold text-ink focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
             required
           />
@@ -185,7 +185,7 @@ export default function SavingsWizard({ coupleId, userId, onComplete, embedded =
 
       <div>
         <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-muted">
-          <Calendar className="mr-1 inline h-3.5 w-3.5" /> Target Tanggal (opsional)
+          <Calendar className="mr-1 inline h-3.5 w-3.5" /> Target date (optional)
         </label>
         <input
           type="date"
@@ -197,7 +197,7 @@ export default function SavingsWizard({ coupleId, userId, onComplete, embedded =
 
       <div>
         <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-muted">
-          Tabungan Sekarang (opsional)
+          Saved so far (optional)
         </label>
         <div className="relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-ink-muted">Rp</span>
@@ -221,18 +221,18 @@ export default function SavingsWizard({ coupleId, userId, onComplete, embedded =
           </div>
           {parsedSavings > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-ink-muted">Sudah ada</span>
+              <span className="text-ink-muted">Already saved</span>
               <span className="font-bold text-sage-dark">{fmtRp(parsedSavings)}</span>
             </div>
           )}
           <div className="flex justify-between text-sm">
-            <span className="text-ink-muted">Masih perlu</span>
+            <span className="text-ink-muted">Still needed</span>
             <span className="font-bold text-rose">{fmtRp(remaining)}</span>
           </div>
           {monthlyNeeded != null && monthlyNeeded > 0 && (
             <div className="flex justify-between text-sm border-t border-border pt-2 mt-2">
-              <span className="text-ink-muted">Per bulan</span>
-              <span className="font-bold text-ink">{fmtRp(monthlyNeeded)}/bln ({monthsRemaining} bulan)</span>
+              <span className="text-ink-muted">Per month</span>
+              <span className="font-bold text-ink">{fmtRp(monthlyNeeded)}/mo ({monthsRemaining} {monthsRemaining === 1 ? 'month' : 'months'})</span>
             </div>
           )}
         </div>
@@ -242,12 +242,12 @@ export default function SavingsWizard({ coupleId, userId, onComplete, embedded =
 
       <Button onClick={handleCreate} loading={loading} size="lg" disabled={!goalName.trim() || parsedTarget <= 0}>
         <span className="flex items-center gap-2">
-          Mulai Nabung! <ArrowRight className="h-4 w-4" />
+          Start saving <ArrowRight className="h-4 w-4" />
         </span>
       </Button>
 
       <button onClick={() => setStep('pick')} className="w-full py-2 text-sm text-ink-muted hover:text-ink">
-        ← Kembali
+        ← Back
       </button>
     </div>
   )

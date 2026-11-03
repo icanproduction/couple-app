@@ -1,4 +1,4 @@
-// "Perjalanan Kita" (F22): one newest-first timeline merging the couple's
+// "Our Story" (F22, route /app/perjalanan): one newest-first timeline merging the couple's
 // start date, passed milestones, moments, finished bucket items, opened
 // letters (metadata only), completed date/anniversary/milestone events, the
 // day the partner joined, and pet adoptions.
@@ -30,11 +30,11 @@ export interface Timeline {
 
 const COMPLETED_EVENT_TYPES = ['date_plan', 'anniversary', 'milestone']
 const EVENT_SUBTITLE: Record<string, string> = {
-  date_plan: 'Rencana date terlaksana',
-  anniversary: 'Anniversary dirayakan',
-  milestone: 'Milestone tercapai',
+  date_plan: 'Date plan done',
+  anniversary: 'Anniversary celebrated',
+  milestone: 'Milestone reached',
 }
-const PET_TYPES: Record<string, string> = { cat: 'kucing', dog: 'anjing' }
+const PET_TYPES: Record<string, string> = { cat: 'cat', dog: 'dog' }
 
 const atDate = (date: string, time = '12:00:00') => Date.parse(`${date}T${time}+07:00`)
 const jakartaDate = (iso: string) => todayJakarta(new Date(iso))
@@ -44,7 +44,7 @@ export async function loadTimeline(info: CoupleInfo): Promise<Timeline> {
   if (!coupleId) return { entries: [], startDate: null }
   const supabase = createClient()
   const memberIds = Object.keys(info.names)
-  const nameOf = (id: string | null) => (id && info.names[id]) || 'Pasangan'
+  const nameOf = (id: string | null, fallback = 'Your partner') => (id && info.names[id]) || fallback
 
   const [profiles, members, moments, bucket, letters, events, pets] = await Promise.all([
     supabase.from('profiles').select('id, relationship_start_date').in('id', memberIds.length ? memberIds : [info.userId]),
@@ -70,14 +70,14 @@ export async function loadTimeline(info: CoupleInfo): Promise<Timeline> {
   if (startDate && startDate <= today) {
     entries.push({
       id: 'start', kind: 'start', date: startDate, at: atDate(startDate, '00:00:00'),
-      title: 'Hari jadian', subtitle: 'Awal perjalanan kalian', href: null, imageUrl: null,
+      title: 'The day you got together', subtitle: 'Where your story began', href: null, imageUrl: null,
     })
     const { passed, next } = milestoneStatus(startDate, today)
     const reached = next && next.daysLeft === 0 ? [...passed, next] : passed
     for (const m of reached) {
       entries.push({
         id: `milestone-${m.key}`, kind: 'milestone', date: m.date, at: atDate(m.date, '00:00:01'),
-        title: m.caption, subtitle: m.kind === 'years' ? `${m.label} bersama` : `${m.label} sejak jadian`,
+        title: m.caption, subtitle: m.kind === 'years' ? `${m.label} together` : `${m.label} since you got together`,
         href: null, imageUrl: null,
       })
     }
@@ -88,7 +88,7 @@ export async function loadTimeline(info: CoupleInfo): Promise<Timeline> {
     const second = joined[1]
     entries.push({
       id: `joined-${second.profile_id}`, kind: 'joined', date: jakartaDate(second.joined_at), at: Date.parse(second.joined_at),
-      title: 'Terhubung di Nanti Kita', subtitle: `${nameOf(second.profile_id)} bergabung`, href: null, imageUrl: null,
+      title: 'Connected on Nanti Kita', subtitle: `${nameOf(second.profile_id)} joined`, href: null, imageUrl: null,
     })
   }
 
@@ -96,7 +96,7 @@ export async function loadTimeline(info: CoupleInfo): Promise<Timeline> {
     entries.push({
       id: `moment-${m.id}`, kind: 'moment', date: m.moment_date, at: atDate(m.moment_date),
       title: m.title,
-      subtitle: m.location_name || (m.photos.length ? `${m.photos.length} foto` : null),
+      subtitle: m.location_name || (m.photos.length ? `${m.photos.length} ${m.photos.length === 1 ? 'photo' : 'photos'}` : null),
       href: `/app/moments/${m.id}`,
       imageUrl: m.photos[0]?.url ?? null,
     })
@@ -106,7 +106,7 @@ export async function loadTimeline(info: CoupleInfo): Promise<Timeline> {
     if (!b.done_at) continue
     entries.push({
       id: `bucket-${b.id}`, kind: 'bucket', date: jakartaDate(b.done_at), at: Date.parse(b.done_at),
-      title: b.title, subtitle: 'Bucket list tercentang', href: '/app/bucket-list', imageUrl: null,
+      title: b.title, subtitle: 'Ticked off the bucket list', href: '/app/bucket-list', imageUrl: null,
     })
   }
 
@@ -114,7 +114,7 @@ export async function loadTimeline(info: CoupleInfo): Promise<Timeline> {
     if (!l.opened_at) continue
     entries.push({
       id: `letter-${l.id}`, kind: 'letter', date: jakartaDate(l.opened_at), at: Date.parse(l.opened_at),
-      title: 'Surat dibuka', subtitle: `Dari ${nameOf(l.sender_id)} untuk ${nameOf(l.receiver_id)}`,
+      title: 'Letter opened', subtitle: `From ${nameOf(l.sender_id)} to ${nameOf(l.receiver_id, 'your partner')}`,
       href: `/app/letters/${l.id}`, imageUrl: null,
     })
   }
@@ -123,7 +123,7 @@ export async function loadTimeline(info: CoupleInfo): Promise<Timeline> {
     if (e.event_scope === 'personal' || e.event_date > today) continue
     entries.push({
       id: `event-${e.id}`, kind: 'event', date: e.event_date, at: atDate(e.event_date, '18:00:00'),
-      title: e.title, subtitle: EVENT_SUBTITLE[e.event_type] ?? 'Acara selesai', href: '/app/calendar', imageUrl: null,
+      title: e.title, subtitle: EVENT_SUBTITLE[e.event_type] ?? 'Event done', href: '/app/calendar', imageUrl: null,
     })
   }
 
@@ -131,7 +131,7 @@ export async function loadTimeline(info: CoupleInfo): Promise<Timeline> {
     if (!p.created_at) continue
     entries.push({
       id: `pet-${p.id}`, kind: 'pet', date: jakartaDate(p.created_at), at: Date.parse(p.created_at),
-      title: `Mengadopsi ${p.name}`, subtitle: PET_TYPES[p.pet_type] ? `Peliharaan ${PET_TYPES[p.pet_type]} kalian` : 'Peliharaan kalian',
+      title: `Adopted ${p.name}`, subtitle: PET_TYPES[p.pet_type] ? `Your pet ${PET_TYPES[p.pet_type]}` : 'Your pet',
       href: '/app/pet', imageUrl: null,
     })
   }

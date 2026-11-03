@@ -12,15 +12,15 @@ export const BUCKET_NOTE_MAX = 500
 /** Moments cap their title at 100 characters */
 const MOMENT_TITLE_MAX = 100
 
-/** Same keys as the DB check on bucket_items.category */
+/** Same keys as the DB check on bucket_items.category (stored values, keep them) */
 export const BUCKET_CATEGORIES = [
-  { key: 'petualangan', emoji: '🧗', label: 'Petualangan' },
-  { key: 'kuliner', emoji: '🍜', label: 'Kuliner' },
-  { key: 'traveling', emoji: '✈️', label: 'Traveling' },
-  { key: 'romantis', emoji: '💕', label: 'Romantis' },
-  { key: 'belajar', emoji: '📚', label: 'Belajar' },
-  { key: 'rumah', emoji: '🏡', label: 'Rumah' },
-  { key: 'lainnya', emoji: '✨', label: 'Lainnya' },
+  { key: 'petualangan', emoji: '🧗', label: 'Adventure' },
+  { key: 'kuliner', emoji: '🍜', label: 'Food' },
+  { key: 'traveling', emoji: '✈️', label: 'Travel' },
+  { key: 'romantis', emoji: '💕', label: 'Romantic' },
+  { key: 'belajar', emoji: '📚', label: 'Learning' },
+  { key: 'rumah', emoji: '🏡', label: 'At home' },
+  { key: 'lainnya', emoji: '✨', label: 'Other' },
 ] as const
 
 export type BucketCategory = (typeof BUCKET_CATEGORIES)[number]['key']
@@ -36,14 +36,14 @@ export interface BucketInput {
   estimated_cost: number | null
 }
 
-/** Trims and checks an input; returns an Indonesian error message or null */
+/** Trims and checks an input; returns an English error message or null */
 export function validateBucketInput(input: BucketInput): string | null {
   const title = input.title.trim()
-  if (!title) return 'Judulnya diisi dulu ya'
-  if (title.length > BUCKET_TITLE_MAX) return `Judul maksimal ${BUCKET_TITLE_MAX} karakter`
-  if ((input.note?.trim().length ?? 0) > BUCKET_NOTE_MAX) return `Catatan maksimal ${BUCKET_NOTE_MAX} karakter`
+  if (!title) return 'Add a title first'
+  if (title.length > BUCKET_TITLE_MAX) return `Titles can be up to ${BUCKET_TITLE_MAX} characters`
+  if ((input.note?.trim().length ?? 0) > BUCKET_NOTE_MAX) return `Notes can be up to ${BUCKET_NOTE_MAX} characters`
   if (input.estimated_cost !== null && (!Number.isFinite(input.estimated_cost) || input.estimated_cost < 0)) {
-    return 'Perkiraan biaya tidak valid'
+    return 'That cost estimate doesn\'t look right'
   }
   return null
 }

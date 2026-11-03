@@ -9,8 +9,8 @@ import {
 const TESTS = [
   {
     id: 'mbti',
-    title: 'Tes MBTI',
-    desc: 'Temukan tipe kepribadianmu (INTJ, ENFP, dll)',
+    title: 'MBTI Test',
+    desc: 'Find your personality type (INTJ, ENFP and others)',
     icon: Brain,
     color: 'bg-purple-50 text-purple-600',
     available: true,
@@ -20,42 +20,42 @@ const TESTS = [
   {
     id: 'love-language',
     title: 'Love Language',
-    desc: 'Cara kamu memberi & menerima cinta',
+    desc: 'How you give and receive love',
     icon: Heart,
     color: 'bg-rose/10 text-rose',
     available: false,
     href: '#',
-    badge: 'Segera',
+    badge: 'Soon',
   },
   {
     id: 'apology-language',
-    title: 'Bahasa Maaf',
-    desc: 'Cara terbaik kamu minta & memberi maaf',
+    title: 'Apology Language',
+    desc: 'How you say sorry and forgive',
     icon: HandHeart,
     color: 'bg-sage/15 text-sage-dark',
     available: false,
     href: '#',
-    badge: 'Segera',
+    badge: 'Soon',
   },
   {
     id: 'spending-habits',
     title: 'Spending Habits',
-    desc: 'Gaya kamu mengelola & membelanjakan uang',
+    desc: 'How you manage and spend money',
     icon: Wallet,
     color: 'bg-gold/15 text-yellow-700',
     available: true,
     href: '/app/about-me/spending-habits',
-    badge: 'BARU',
+    badge: 'NEW',
   },
   {
     id: 'attachment-style',
     title: 'Attachment Style',
-    desc: 'Pola kelekatan dalam hubunganmu',
+    desc: 'How you bond with a partner',
     icon: Sparkles,
     color: 'bg-blue-50 text-blue-600',
     available: false,
     href: '#',
-    badge: 'Segera',
+    badge: 'Soon',
   },
 ]
 
@@ -72,7 +72,7 @@ export default function AboutMePage() {
           </button>
           <div>
             <h1 className="text-xl font-bold text-ink">About Me</h1>
-            <p className="text-sm text-ink-muted">Kenali dirimu & pasanganmu lebih dalam</p>
+            <p className="text-sm text-ink-muted">Get to know yourself and your partner</p>
           </div>
         </div>
       </div>
@@ -80,7 +80,7 @@ export default function AboutMePage() {
       <div className="px-6 pt-5">
         {/* Readiness Assessment — the couple-level test (was unreachable from the app) */}
         <p className="mb-4 text-xs font-bold uppercase tracking-widest text-ink-muted/50">
-          Kesiapan Hubungan
+          Relationship readiness
         </p>
         <button
           onClick={() => router.push('/assessment')}
@@ -90,16 +90,16 @@ export default function AboutMePage() {
             <ClipboardCheck className="h-6 w-6" strokeWidth={1.5} />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-bold text-ink">Tes Kesiapan Hubungan</p>
+            <p className="text-sm font-bold text-ink">Relationship Readiness Test</p>
             <p className="mt-0.5 text-xs text-ink-muted">
-              Cek kesiapan kalian: komunikasi, nilai &amp; visi, keuangan, keluarga, komitmen
+              How ready are you two? Communication, values and vision, money, family, commitment
             </p>
           </div>
           <ChevronRight className="h-4 w-4 text-rose" />
         </button>
 
         <p className="mb-4 text-xs font-bold uppercase tracking-widest text-ink-muted/50">
-          Tes Kepribadian
+          Personality tests
         </p>
 
         <div className="space-y-3">
@@ -143,8 +143,8 @@ export default function AboutMePage() {
         {/* Info card */}
         <div className="mt-6 rounded-2xl bg-cream p-4 text-center">
           <p className="text-xs text-ink-muted">
-            Hasil tes akan tersimpan di profilmu dan bisa dilihat oleh pasanganmu.
-            Tes baru ditambahkan secara berkala.
+            Your results are saved to your profile, and your partner can see them.
+            New tests are added from time to time.
           </p>
         </div>
       </div>

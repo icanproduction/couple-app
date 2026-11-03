@@ -69,7 +69,7 @@ export default function MbtiCard({ mbtiType, scores, showLink, linkHref }: MbtiC
 
       {/* Strengths */}
       <div className="border-t border-border px-4 py-3">
-        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-muted/60">Kekuatan</p>
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-muted/60">Strengths</p>
         <div className="flex flex-wrap gap-1.5">
           {info.strengths.map(s => (
             <span key={s} className="rounded-full bg-purple-50 px-2.5 py-0.5 text-[10px] font-semibold text-purple-600">{s}</span>
@@ -79,7 +79,7 @@ export default function MbtiCard({ mbtiType, scores, showLink, linkHref }: MbtiC
 
       {/* Love style */}
       <div className="border-t border-border px-4 py-3">
-        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-muted/60">Gaya Cinta</p>
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-muted/60">Love style</p>
         <p className="text-xs text-ink-muted">{info.loveStyle}</p>
       </div>
 
@@ -87,7 +87,7 @@ export default function MbtiCard({ mbtiType, scores, showLink, linkHref }: MbtiC
       {showLink && linkHref && (
         <a href={linkHref}
           className="flex items-center justify-center gap-1 border-t border-border py-2.5 text-xs font-semibold text-purple-600 hover:bg-purple-50 transition-colors">
-          Tes Ulang MBTI <ChevronRight className="h-3 w-3" />
+          Retake MBTI <ChevronRight className="h-3 w-3" />
         </a>
       )}
     </div>

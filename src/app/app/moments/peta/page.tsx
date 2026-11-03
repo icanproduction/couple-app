@@ -33,8 +33,8 @@ export default function MomentsMapPage() {
       setRefreshError('')
     } catch {
       // Only the first load may replace the page; a failed refresh keeps the map.
-      if (loaded.current) setRefreshError('Gagal memperbarui peta. Yang tampil mungkin belum yang terbaru.')
-      else setError('Gagal memuat peta moment. Coba buka ulang halaman ini.')
+      if (loaded.current) setRefreshError("Couldn't refresh the map. What you see may be out of date.")
+      else setError("Couldn't load the map. Try opening this page again.")
     }
   }, [])
 
@@ -49,7 +49,7 @@ export default function MomentsMapPage() {
         setCoupleId(info.coupleId)
         await load(info.coupleId)
       } catch {
-        if (!cancelled) setError('Gagal memuat peta moment. Coba buka ulang halaman ini.')
+        if (!cancelled) setError("Couldn't load the map. Try opening this page again.")
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -70,11 +70,13 @@ export default function MomentsMapPage() {
     <div className="animate-fade-in pb-8">
       <div className="border-b border-border bg-white px-6 pb-5 pt-5">
         <Link href="/app/moments" className="mb-3 flex items-center gap-1 text-sm text-ink-muted">
-          <ArrowLeft className="h-4 w-4" /> Moment Kita
+          <ArrowLeft className="h-4 w-4" /> Moments
         </Link>
-        <h1 className="text-xl font-bold text-ink">Peta Moment</h1>
+        <h1 className="text-xl font-bold text-ink">Moments Map</h1>
         <p className="text-sm text-ink-muted">
-          {mapped.length > 0 ? `${mapped.length} moment · ${placeCount} tempat` : 'Jejak semua date kalian'}
+          {mapped.length > 0
+            ? `${mapped.length} ${mapped.length === 1 ? 'moment' : 'moments'} · ${placeCount} ${placeCount === 1 ? 'place' : 'places'}`
+            : 'Every place your dates have taken you'}
         </p>
       </div>
 
@@ -91,25 +93,27 @@ export default function MomentsMapPage() {
         <p className="mx-6 mt-5 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
       ) : !hasCouple ? (
         <div className="px-8 pt-16 text-center">
-          <p className="text-sm text-ink-muted">Hubungkan akunmu dengan pasangan dulu untuk mulai menyimpan moment.</p>
-          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Ke Profil</Link>
+          <p className="text-sm text-ink-muted">Connect with your partner first to start saving moments.</p>
+          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Go to Profile</Link>
         </div>
       ) : mapped.length === 0 ? (
         <div className="flex flex-col items-center px-8 pt-16 text-center">
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-sage/15">
             <MapIcon className="h-8 w-8 text-sage-dark" />
           </div>
-          <h2 className="text-lg font-bold text-ink">Belum ada moment dengan lokasi</h2>
+          <h2 className="text-lg font-bold text-ink">No moments with a location yet</h2>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-muted">
             {moments.length > 0
-              ? 'Moment kalian belum punya titik GPS. Edit moment lalu ketuk "Pakai lokasi sekarang", atau pakai foto yang ada lokasinya.'
-              : 'Simpan moment dengan foto yang ada lokasinya, atau ketuk "Pakai lokasi sekarang" saat date.'}
+              ? "Your moments don't have a GPS point yet. Edit one and add your current location, or use a photo that has location data."
+              : 'Save a moment with a photo that has location data, or add your current location while you are on the date.'}
           </p>
           <Link
-            href={moments.length > 0 ? '/app/moments' : '/app/moments/baru'}
+            href={
+              moments.length > 0 ? '/app/moments' : '/app/moments/baru'
+            }
             className="mt-6 w-full max-w-xs rounded-2xl bg-rose py-3.5 text-sm font-bold text-white shadow-elevated"
           >
-            {moments.length > 0 ? 'Ke Moment Kita' : 'Simpan Moment'}
+            {moments.length > 0 ? 'Back to Moments' : 'Save a moment'}
           </Link>
         </div>
       ) : (
@@ -120,11 +124,13 @@ export default function MomentsMapPage() {
           {withoutGps > 0 && (
             <p className="mt-2 flex items-center gap-1.5 text-[11px] text-ink-muted">
               <LocateFixed className="h-3.5 w-3.5 shrink-0" />
-              {withoutGps} moment belum punya titik GPS, jadi tidak muncul di peta.
+              {withoutGps === 1
+                ? "1 moment has no GPS point, so it isn't on the map."
+                : `${withoutGps} moments have no GPS point, so they aren't on the map.`}
             </p>
           )}
 
-          <p className="mb-3 mt-6 text-xs font-semibold uppercase tracking-wider text-ink-muted">Tempat-tempat kalian</p>
+          <p className="mb-3 mt-6 text-xs font-semibold uppercase tracking-wider text-ink-muted">Your places</p>
           <ul className="space-y-2.5">
             {mapped.map((m) => {
               const cover = m.photos[0]
@@ -133,7 +139,7 @@ export default function MomentsMapPage() {
                   <button
                     type="button"
                     onClick={() => mapHandle.current?.focus(m.id)}
-                    aria-label={`Tunjukkan "${m.title}" di peta`}
+                    aria-label={`Show "${m.title}" on the map`}
                     className="flex min-w-0 flex-1 items-center gap-3 text-left"
                   >
                     <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-rose-50">
@@ -145,19 +151,19 @@ export default function MomentsMapPage() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-1 text-sm font-bold text-ink">
-                        {m.is_favorite && <Star className="h-3.5 w-3.5 shrink-0 fill-gold text-gold" aria-label="Favorit" />}
+                        {m.is_favorite && <Star className="h-3.5 w-3.5 shrink-0 fill-gold text-gold" aria-label="Favorite" />}
                         <span className="truncate">{m.title}</span>
                       </span>
                       <span className="mt-0.5 flex items-center gap-1 text-xs text-ink-muted">
                         <MapPin className="h-3 w-3 shrink-0 text-rose" />
-                        <span className="truncate">{m.location_name || 'Lokasi tanpa nama'}</span>
+                        <span className="truncate">{m.location_name || 'Unnamed place'}</span>
                       </span>
                       <span className="block text-[11px] text-ink-muted">{formatDateID(m.moment_date)}</span>
                     </span>
                   </button>
                   <Link
                     href={`/app/moments/${m.id}`}
-                    aria-label={`Buka moment "${m.title}"`}
+                    aria-label={`Open "${m.title}"`}
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose"
                   >
                     <ChevronRight className="h-4 w-4" />

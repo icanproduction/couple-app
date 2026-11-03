@@ -22,25 +22,25 @@ export default function ErrorBoundary({
       <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose/10">
         <HeartCrack className="h-8 w-8 text-rose" />
       </div>
-      <h1 className="text-xl font-bold text-ink">Ups, ada yang error</h1>
+      <h1 className="text-xl font-bold text-ink">Something went wrong</h1>
       <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-muted">
-        Halaman ini gagal dimuat. Coba lagi, atau kembali ke beranda.
+        This page didn&apos;t load. Try again, or go back to Home.
       </p>
       <div className="mt-8 flex w-full max-w-xs flex-col gap-3">
         <button
           onClick={reset}
           className="flex items-center justify-center gap-2 rounded-2xl bg-rose py-3.5 text-sm font-bold text-white shadow-elevated active:scale-[0.98]"
         >
-          <RotateCcw className="h-4 w-4" /> Coba Lagi
+          <RotateCcw className="h-4 w-4" /> Try again
         </button>
         <Link
           href="/app/home"
           className="rounded-2xl border border-border bg-white py-3.5 text-sm font-semibold text-ink-light"
         >
-          Ke Beranda
+          Go to Home
         </Link>
       </div>
-      {error.digest && <p className="mt-6 text-[11px] text-ink-muted/70">Kode: {error.digest}</p>}
+      {error.digest && <p className="mt-6 text-[11px] text-ink-muted/70">Error code: {error.digest}</p>}
     </div>
   )
 }

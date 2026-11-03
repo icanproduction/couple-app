@@ -13,13 +13,13 @@ import { cn } from '@/lib/utils'
 type Filter = 'semua' | 'moment' | 'milestone' | 'bucket' | 'letter' | 'event' | 'spesial'
 
 const FILTERS: { key: Filter; label: string; kinds: TimelineKind[] }[] = [
-  { key: 'semua', label: 'Semua', kinds: [] },
-  { key: 'moment', label: 'Moment', kinds: ['moment'] },
-  { key: 'milestone', label: 'Milestone', kinds: ['milestone'] },
+  { key: 'semua', label: 'All', kinds: [] }, // copy-ok: internal filter key, never shown
+  { key: 'moment', label: 'Moments', kinds: ['moment'] },
+  { key: 'milestone', label: 'Milestones', kinds: ['milestone'] },
   { key: 'bucket', label: 'Bucket List', kinds: ['bucket'] },
-  { key: 'letter', label: 'Surat', kinds: ['letter'] },
-  { key: 'event', label: 'Kalender', kinds: ['event'] },
-  { key: 'spesial', label: 'Momen Spesial', kinds: ['start', 'joined', 'pet'] },
+  { key: 'letter', label: 'Letters', kinds: ['letter'] },
+  { key: 'event', label: 'Calendar', kinds: ['event'] },
+  { key: 'spesial', label: 'Special days', kinds: ['start', 'joined', 'pet'] },
 ]
 
 const KIND_STYLE: Record<TimelineKind, { icon: typeof Heart; tone: string }> = {
@@ -75,7 +75,7 @@ export default function PerjalananPage() {
   const [hasCouple, setHasCouple] = useState(true)
   const [entries, setEntries] = useState<TimelineEntry[]>([])
   const [startDate, setStartDate] = useState<string | null>(null)
-  const [filter, setFilter] = useState<Filter>('semua')
+  const [filter, setFilter] = useState<Filter>('semua') // copy-ok: internal filter key, never shown
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -90,7 +90,7 @@ export default function PerjalananPage() {
       setStartDate(timeline.startDate)
       setError('')
     } catch {
-      if (isInitial) setError('Gagal memuat perjalanan kalian. Coba buka ulang halaman ini.')
+      if (isInitial) setError("Couldn't load your story. Try reopening this page.")
     } finally {
       if (isInitial) setLoading(false)
     }
@@ -110,9 +110,9 @@ export default function PerjalananPage() {
   return (
     <div className="animate-fade-in pb-8">
       <div className="border-b border-border bg-white px-6 pb-5 pt-6">
-        <h1 className="text-xl font-bold text-ink">Perjalanan Kita</h1>
+        <h1 className="text-xl font-bold text-ink">Our Story</h1>
         <p className="text-sm text-ink-muted">
-          {startDate ? `Sejak ${formatDateID(startDate)} · ${entries.length} cerita` : 'Semua cerita kalian dalam satu garis waktu'}
+          {startDate ? `Since ${formatDateID(startDate)} · ${entries.length} ${entries.length === 1 ? 'story' : 'stories'}` : 'All your stories on one timeline'}
         </p>
       </div>
 
@@ -125,29 +125,29 @@ export default function PerjalananPage() {
         <p className="mx-6 mt-5 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
       ) : !hasCouple ? (
         <div className="px-8 pt-16 text-center">
-          <p className="text-sm text-ink-muted">Hubungkan akunmu dengan pasangan dulu untuk melihat perjalanan kalian.</p>
-          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Ke Profil</Link>
+          <p className="text-sm text-ink-muted">Connect with your partner first to see your story.</p>
+          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Go to Profile</Link>
         </div>
       ) : entries.length === 0 ? (
         <div className="flex flex-col items-center px-8 pt-16 text-center">
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose/10">
             <Route className="h-8 w-8 text-rose" />
           </div>
-          <h2 className="text-lg font-bold text-ink">Perjalanan kalian baru dimulai</h2>
+          <h2 className="text-lg font-bold text-ink">Your story is just starting</h2>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-muted">
-            Isi tanggal jadian di profil dan simpan moment pertama. Semuanya akan tersusun di sini.
+            Add your start date in Profile and save your first Moment. Everything will line up here.
           </p>
           <Link
             href="/app/moments/baru"
             className="mt-6 w-full max-w-xs rounded-2xl bg-rose py-3.5 text-sm font-bold text-white shadow-elevated"
           >
-            Simpan Moment Pertama
+            Save your first Moment
           </Link>
-          <Link href="/app/profile" className="mt-3 text-sm font-semibold text-rose">Atur tanggal jadian</Link>
+          <Link href="/app/profile" className="mt-3 text-sm font-semibold text-rose">Set your start date</Link>
         </div>
       ) : (
         <>
-          <div className="flex gap-2 overflow-x-auto px-6 pb-1 pt-4 [scrollbar-width:none]" role="group" aria-label="Saring perjalanan">
+          <div className="flex gap-2 overflow-x-auto px-6 pb-1 pt-4 [scrollbar-width:none]" role="group" aria-label="Filter your story">
             {FILTERS.filter((f) => f.key === 'semua' || (counts.get(f.key) ?? 0) > 0).map((f) => (
               <button
                 key={f.key}
@@ -167,7 +167,7 @@ export default function PerjalananPage() {
           {visible.length === 0 ? (
             <div className="px-8 pt-12 text-center">
               <Flag className="mx-auto h-6 w-6 text-rose/50" />
-              <p className="mt-2 text-sm text-ink-muted">Belum ada cerita untuk kategori ini.</p>
+              <p className="mt-2 text-sm text-ink-muted">Nothing in this category yet.</p>
             </div>
           ) : (
             <div className="space-y-7 px-6 pt-5">

@@ -5,15 +5,15 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Home, Compass, Wallet, CalendarDays, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// Pasangan moved into Jelajah (the hub of every feature) to make room.
+// The partner page moved into Jelajah (the hub of every feature) to make room.
 const leftTabs = [
-  { href: '/app/home',     icon: Home,     label: 'Beranda' },
+  { href: '/app/home',     icon: Home,     label: 'Home' },
   { href: '/app/jelajah',  icon: Compass,  label: 'Jelajah' },
 ]
 
 const rightTabs = [
-  { href: '/app/calendar', icon: CalendarDays, label: 'Kalender' },
-  { href: '/app/profile',  icon: User,         label: 'Profil' },
+  { href: '/app/calendar', icon: CalendarDays, label: 'Calendar' },
+  { href: '/app/profile',  icon: User,         label: 'Profile' },
 ]
 
 function BottomNavInner() {
@@ -76,7 +76,7 @@ function BottomNavInner() {
         <div className="flex flex-1 flex-col items-center -mt-5">
           <button
             onClick={() => navigate('/app/finance')}
-            aria-label="Keuangan"
+            aria-label="Money"
             aria-current={pathname.startsWith('/app/finance') ? 'page' : undefined}
             className={cn(
               'flex h-14 w-14 items-center justify-center rounded-full shadow-elevated transition-all active:scale-95',
@@ -89,7 +89,7 @@ function BottomNavInner() {
             'mt-1 text-[10px] font-medium leading-none',
             pathname.startsWith('/app/finance') ? 'text-rose' : 'text-ink-muted'
           )}>
-            Keuangan
+            Money
           </span>
         </div>
 

@@ -49,20 +49,20 @@ export function daysUntil(dateStr: string): number {
   return dayDiff(todayJakarta(), dateStr)
 }
 
-/** Format a date string to Indonesian locale: "22 Maret 2026" */
+/** Format a date string for display: "22 March 2026" (en-GB) */
 export function formatDateID(dateStr: string): string {
   const date = parseLocalDate(dateStr)
-  return date.toLocaleDateString('id-ID', {
+  return date.toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   })
 }
 
-/** Format a date string to short Indonesian: "22 Mar" */
+/** Format a date string short: "22 Mar" (en-GB) */
 export function formatDateShortID(dateStr: string): string {
   const date = parseLocalDate(dateStr)
-  return date.toLocaleDateString('id-ID', {
+  return date.toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'short',
   })
@@ -88,7 +88,8 @@ export function getNextOccurrence(eventDateStr: string): string {
 }
 
 /**
- * Couple relationship level based on days together.
+ * Couple relationship level based on days together. The returned value is a
+ * key (CoupleProfileHero styles by it); show relationshipLevelLabel(level).
  * Benih: 0–90d | Tumbuh: 91–365d | Mekar: 366–730d | Abadi: 731d+
  */
 export function getRelationshipLevel(days: number): RelationshipLevel {
@@ -98,12 +99,25 @@ export function getRelationshipLevel(days: number): RelationshipLevel {
   return 'Benih'
 }
 
-/** Human-readable countdown label in Indonesian */
+/** English display name for a relationship level key */
+export const RELATIONSHIP_LEVEL_LABEL: Record<RelationshipLevel, string> = {
+  Benih: 'Seed',
+  Tumbuh: 'Growing',
+  Mekar: 'Blooming',
+  Abadi: 'Forever',
+}
+
+export function relationshipLevelLabel(level: RelationshipLevel): string {
+  return RELATIONSHIP_LEVEL_LABEL[level]
+}
+
+/** Human-readable countdown label: "Today", "Tomorrow", "3 days to go", "2 days ago" */
 export function countdownLabel(days: number): string {
-  if (days === 0) return 'Hari ini'
-  if (days === 1) return 'Besok'
-  if (days < 0) return `${Math.abs(days)} hari lalu`
-  return `${days} hari lagi`
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Tomorrow'
+  if (days === -1) return 'Yesterday'
+  if (days < 0) return `${Math.abs(days)} days ago`
+  return `${days} days to go`
 }
 
 /** Return the ISO first-of-month string for a given date: "YYYY-MM-01" */

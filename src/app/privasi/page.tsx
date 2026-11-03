@@ -1,54 +1,54 @@
 import Link from 'next/link'
 import { ArrowLeft, Shield } from 'lucide-react'
 
-export const metadata = { title: 'Privasi & Data — Nanti Kita' }
+export const metadata = { title: 'Privacy & Data | Nanti Kita' }
 
 // Plain-language summary of how the app handles data, written from what the
 // code actually does. Review with the owner before each deploy if features change.
 const SECTIONS = [
   {
-    title: 'Data yang disimpan',
+    title: 'What we store',
     items: [
-      'Akun: email dan password (password disimpan terenkripsi oleh layanan login).',
-      'Profil: nama, gender, tanggal lahir, tanggal jadian, dan foto profil.',
-      'Data berdua: jawaban pertanyaan dan quiz, Surat Rahasia, kalender, tabungan dan wishlist, pet, hasil game, serta Moment (foto, judul, tanggal, nama tempat, koordinat GPS, dan cerita).',
-      'Perangkat: alamat notifikasi push, hanya jika kamu mengaktifkan notifikasi.',
+      'Account: your email and password (the password is stored encrypted by the login service).',
+      'Profile: name, gender, date of birth, the date you got together, and profile photo.',
+      'Shared data: answers to questions and quizzes, Letters, the calendar, savings and wishlist, the pet, game results, and Moments (photo, title, date, place name, GPS coordinates, and story).',
+      'Device: your push notification address, only if you turn on notifications.',
     ],
   },
   {
-    title: 'Siapa yang bisa melihat',
+    title: 'Who can see it',
     items: [
-      'Data berdua hanya bisa dilihat kamu dan pasanganmu.',
-      'Foto Moment disimpan di penyimpanan privat dan hanya ditampilkan lewat tautan sementara untuk kalian berdua.',
-      'Isi Surat Rahasia tidak bisa dibuka penerima sebelum waktunya, termasuk lewat aplikasi lain.',
-      'Admin aplikasi bisa melihat data profil akun untuk mengelola pengguna, tapi tidak bisa membuka data berdua, foto Moment, atau isi surat kalian.',
+      'Only you and your partner can see your shared data.',
+      'Moment photos are kept in private storage and shown only through temporary links, to the two of you.',
+      'The recipient of a letter can\'t read it before its opening time, including through another app.',
+      'The app admin can see account profile data in order to manage users, but can\'t open your shared data, your Moment photos, or the contents of your letters.',
     ],
   },
   {
-    title: 'Lokasi',
+    title: 'Location',
     items: [
-      'Lokasi hanya dipakai saat kamu menekan "Pakai lokasi sekarang", atau saat foto yang kamu pilih menyimpan lokasi.',
-      'Koordinat hanya disimpan di Moment itu. Untuk mencari nama tempat, koordinat dikirim ke OpenStreetMap.',
+      'Your location is used only when you tap the button to use your current location, or when a photo you choose has a location saved in it.',
+      'The coordinates are stored only in that Moment. To look up the place name, they are sent to OpenStreetMap.',
     ],
   },
   {
-    title: 'Layanan pihak ketiga',
+    title: 'Third-party services',
     items: [
-      'Supabase: database, login, dan penyimpanan foto.',
-      'Vercel: hosting aplikasi.',
-      'OpenRouter, yang meneruskannya ke model GPT Luna buatan OpenAI: membuat Pertanyaan AI. Yang dikirim: nama panggilan, gender, usia, tipe MBTI, lama bersama, nama hari, judul dan tanggal acara mendatang di kalender, dan 7 Pertanyaan AI terakhir kalian.',
-      'OpenRouter dan OpenAI (GPT Luna) juga membuat Ide Date AI. Yang dikirim: pilihan budget, suasana, dan tempat, kota (kalau diisi), tanggal hari ini, dan judul-judul bucket list kalian. Nama dan data profil tidak ikut dikirim.',
-      'OpenStreetMap: nama tempat dan peta di Moment.',
-      'Layanan push bawaan browser (Google, Apple, atau Mozilla): mengantar notifikasi.',
+      'Supabase: database and login, plus photo storage.',
+      'Vercel: app hosting.',
+      'OpenRouter, which passes the request on to OpenAI\'s GPT Luna model: writes the AI questions. What is sent: your nicknames, gender, age, MBTI type, how long you\'ve been together, the day of the week, the titles and dates of upcoming calendar events, and your last 7 AI questions.',
+      'OpenRouter and OpenAI (GPT Luna) also write the AI date ideas. What is sent: the filters you picked (budget, vibe, type of place), your city if you enter one, today\'s date, and the titles on your Bucket List. Names and profile data are not sent.',
+      'OpenStreetMap: place names and maps in Moments.',
+      'Your browser\'s built-in push service (Google, Apple, or Mozilla): delivers notifications.',
     ],
   },
   {
-    title: 'Menghapus data',
+    title: 'Deleting your data',
     items: [
-      'Moment, foto, transaksi, dan data lain bisa kamu hapus langsung dari aplikasi.',
-      'Unduh data saya (Profil → Pengaturan) memberimu salinan datamu dalam satu file.',
-      'Keluar dari pasangan (Profil → Zona bahaya) menutup ruang kalian: kenangan bersama tetap tersimpan untuk pasanganmu, tapi tidak ada orang baru yang bisa bergabung ke ruang itu.',
-      'Hapus akun (Profil → Zona bahaya) menghapus akun, profil, foto profil, serta surat dan apresiasi yang melibatkanmu. Kalau kamu anggota terakhir, seluruh ruang beserta fotonya ikut terhapus.',
+      'You can delete Moments, photos, transactions and other data directly in the app.',
+      'Export my data (Profile → Settings) gives you a copy of your data in one file.',
+      'Leave this couple (Profile → Danger zone) closes your shared space: your shared memories stay saved for your partner, but no one new can join that space.',
+      'Delete account (Profile → Danger zone) deletes your account, your profile, your profile photo, and the letters and Toples notes that involve you. If you are the last member, the whole space and its photos are deleted too.',
     ],
   },
 ]
@@ -57,15 +57,15 @@ export default function PrivacyPage() {
   return (
     <div className="animate-fade-in px-6 pb-12 pt-6">
       <Link href="/app/profile" className="mb-5 flex items-center gap-1 text-sm text-ink-muted">
-        <ArrowLeft className="h-4 w-4" /> Kembali
+        <ArrowLeft className="h-4 w-4" /> Back
       </Link>
       <div className="mb-6 flex items-center gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sage/15">
           <Shield className="h-5 w-5 text-sage-dark" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-ink">Privasi & Data</h1>
-          <p className="text-xs text-ink-muted">Bagaimana Nanti Kita menjaga data kalian</p>
+          <h1 className="text-xl font-bold text-ink">Privacy & Data</h1>
+          <p className="text-xs text-ink-muted">How Nanti Kita handles your data</p>
         </div>
       </div>
 
@@ -85,7 +85,7 @@ export default function PrivacyPage() {
         ))}
       </div>
 
-      <p className="mt-8 text-[11px] text-ink-muted/70">Terakhir diperbarui 26 Oktober 2026</p>
+      <p className="mt-8 text-[11px] text-ink-muted/70">Last updated 26 October 2026</p>
     </div>
   )
 }

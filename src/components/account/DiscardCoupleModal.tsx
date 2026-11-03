@@ -18,7 +18,7 @@ interface DiscardCoupleModalProps {
 
 /**
  * Shown when joining a partner's code would delete the space I'm in now
- * (join_couple said COUPLE_HAS_DATA). Joining only goes ahead after typing HAPUS.
+ * (join_couple said COUPLE_HAS_DATA). Joining only goes ahead after typing DELETE.
  */
 export function DiscardCoupleModal({ open, onClose, onConfirm, loading, error, closed }: DiscardCoupleModalProps) {
   const { exporting, ready, exportData, shareReady } = useDataExport()
@@ -29,7 +29,7 @@ export function DiscardCoupleModal({ open, onClose, onConfirm, loading, error, c
     try {
       setExportNote(exportOutcomeMessage(await step()) ?? '')
     } catch (e: unknown) {
-      setExportNote(`Gagal mengunduh data: ${e instanceof Error && e.message ? e.message : 'coba lagi'}`)
+      setExportNote(`Couldn't export your data: ${e instanceof Error && e.message ? e.message : 'try again'}`)
     }
   }
 
@@ -37,24 +37,24 @@ export function DiscardCoupleModal({ open, onClose, onConfirm, loading, error, c
     <TypedConfirmModal
       open={open}
       onClose={onClose}
-      title="Hapus ruang yang sekarang?"
-      phrase="HAPUS"
-      confirmLabel="Hapus dan gabung"
+      title="Delete your current space?"
+      phrase="DELETE"
+      confirmLabel="Delete and join"
       loading={loading}
       error={error}
       onConfirm={onConfirm}
     >
       <p>
         {closed
-          ? 'Kamu masih menyimpan arsip kenangan dengan pasanganmu sebelumnya.'
-          : 'Ruang pasanganmu yang sekarang sudah berisi kenangan.'}{' '}
-        Untuk bergabung dengan kode ini,
-        <span className="font-semibold text-danger"> ruang itu beserta semua isinya dihapus permanen</span>:
-        moment dan fotonya, surat, tabungan, kalender, bucket list, toples, mood, dan lainnya.
+          ? 'You still keep a memory archive with your previous partner.'
+          : 'Your current couple space already has memories in it.'}{' '}
+        To join with this code,
+        <span className="font-semibold text-danger"> that space and everything in it is deleted for good</span>:
+        moments with their photos, letters, savings, the calendar, the bucket list, Toples, moods, all of it.
       </p>
-      <p>Penghapusan ini tidak bisa dibatalkan. Akunmu sendiri tetap ada.</p>
+      <p>This can&apos;t be undone. Your own account stays.</p>
       <div className="rounded-xl bg-cream px-3 py-2.5">
-        <p className="text-xs">Mau simpan salinan dulu?</p>
+        <p className="text-xs">Want to save a copy first?</p>
         <button
           type="button"
           onClick={() => run(ready ? shareReady : exportData)}
@@ -62,7 +62,7 @@ export function DiscardCoupleModal({ open, onClose, onConfirm, loading, error, c
           className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-rose hover:text-rose-dark disabled:opacity-60"
         >
           <Download className="h-3.5 w-3.5" />
-          {exporting ? 'Menyiapkan data...' : ready ? 'Simpan file' : 'Unduh data saya'}
+          {exporting ? 'Preparing your data...' : ready ? 'Save file' : 'Export my data'}
         </button>
         {exportNote && <p className="mt-1.5 text-[11px] leading-relaxed">{exportNote}</p>}
       </div>

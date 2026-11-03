@@ -25,7 +25,7 @@ export default async function PetPage() {
     .eq('couple_id', membership.couple_id)
     .maybeSingle()
 
-  if (petError) throw new Error('Gagal memuat pet')
+  if (petError) throw new Error("Couldn't load your pet")
   if (!pet) redirect('/app/pet/adopt')
 
   // Get mood state (may be missing — the first care action creates it)

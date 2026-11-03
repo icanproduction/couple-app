@@ -24,7 +24,7 @@ export default function NewMomentPage({ searchParams }: { searchParams?: SearchP
         if (!i) router.replace('/auth/login')
         else setInfo(i)
       })
-      .catch(() => { if (!cancelled) setError('Gagal memuat halaman. Cek koneksimu, lalu buka ulang halaman ini.') })
+      .catch(() => { if (!cancelled) setError("Couldn't load this page. Check your connection and open it again.") })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [router])
@@ -36,15 +36,15 @@ export default function NewMomentPage({ searchParams }: { searchParams?: SearchP
     return (
       <div className="px-8 pt-16 text-center">
         <p className="text-sm text-red-600">{error}</p>
-        <Link href="/app/moments" className="mt-4 inline-block text-sm font-semibold text-rose">Ke Moment Kita</Link>
+        <Link href="/app/moments" className="mt-4 inline-block text-sm font-semibold text-rose">Back to Moments</Link>
       </div>
     )
   }
   if (!info?.coupleId) {
     return (
       <div className="px-8 pt-16 text-center">
-        <p className="text-sm text-ink-muted">Hubungkan akunmu dengan pasangan dulu untuk menyimpan moment.</p>
-        <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Ke Profil</Link>
+        <p className="text-sm text-ink-muted">Connect with your partner first to save a moment.</p>
+        <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Go to Profile</Link>
       </div>
     )
   }

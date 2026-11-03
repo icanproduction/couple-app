@@ -16,11 +16,11 @@ import {
 } from '@/lib/scrapbook'
 
 const RANGE_OPTIONS: { id: RangeKind; label: string }[] = [
-  { id: 'this-month', label: 'Bulan ini' },
-  { id: 'month', label: 'Pilih bulan' },
-  { id: 'year', label: 'Tahun' },
-  { id: 'all', label: 'Semua' },
-  { id: 'manual', label: 'Pilih manual' },
+  { id: 'this-month', label: 'This month' },
+  { id: 'month', label: 'Pick a month' },
+  { id: 'year', label: 'Year' },
+  { id: 'all', label: 'All' },
+  { id: 'manual', label: 'Pick moments' },
 ]
 
 const chipClass = (active: boolean) =>
@@ -86,7 +86,7 @@ export default function ScrapbookPage() {
           setYear(Number(latest.slice(0, 4)))
         }
       } catch {
-        if (!cancelled) setError('Gagal memuat moment. Coba buka ulang halaman ini.')
+        if (!cancelled) setError("Couldn't load your moments. Try opening this page again.")
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -113,7 +113,7 @@ export default function ScrapbookPage() {
   const range = useMemo(() => ({ kind, month, year, ids: manualIds }), [kind, month, year, manualIds])
   const selected = useMemo(() => filterByRange(moments, range), [moments, range])
   const label = useMemo(() => rangeLabel(range, selected), [range, selected])
-  const coverTitle = title.trim() || 'Cerita Kita'
+  const coverTitle = title.trim() || 'Our Story'
   const photoCount = selected.reduce((sum, m) => sum + m.photos.length, 0)
 
   const selectedPaths = useMemo(
@@ -129,7 +129,7 @@ export default function ScrapbookPage() {
   // Sign the photos of the moments in this scrapbook (batched, cached), and
   // again for any URL that is missing or close to expiring. Only the newest
   // request drives `signing`, so switching range mid-request can't leave the
-  // button stuck on "Memuat foto...".
+  // button stuck on "Loading photos...".
   useEffect(() => {
     const now = Date.now()
     const stale = selectedPaths.filter((p) => !isFresh(urlsRef.current[p], now))
@@ -141,9 +141,9 @@ export default function ScrapbookPage() {
       .then((signed) => {
         // URLs from an older request are still valid: keep them.
         if (Object.keys(signed).length > 0) setUrls((prev) => ({ ...prev, ...signed }))
-        if (id === signRequest.current && Object.keys(signed).length < stale.length) setSignError('Beberapa foto gagal dimuat.')
+        if (id === signRequest.current && Object.keys(signed).length < stale.length) setSignError("Some photos didn't load.")
       })
-      .catch(() => { if (id === signRequest.current) setSignError('Gagal memuat foto. Coba lagi sebentar.') })
+      .catch(() => { if (id === signRequest.current) setSignError("Couldn't load the photos. Try again in a minute.") })
       .finally(() => { if (id === signRequest.current) setSigning(false) })
   }, [selectedPaths, signTick])
 
@@ -206,10 +206,16 @@ export default function ScrapbookPage() {
     if (selectedPaths.some((p) => urls[p] && !isFresh(urls[p], now))) {
       // The device slept past the refresh timer: renew the URLs first.
       setSignTick((t) => t + 1)
-      setPrintNote('Foto perlu diperbarui dulu. Setelah selesai, ketuk Cetak sekali lagi.')
+      setPrintNote('The photos need a quick refresh. When it finishes, tap Print again.')
       return
     }
-    setPrintNote(missingPhotos > 0 ? `${missingPhotos} foto belum termuat, tapi scrapbook tetap bisa dicetak.` : '')
+    setPrintNote(
+      missingPhotos === 0
+        ? ''
+        : missingPhotos === 1
+          ? "1 photo hasn't loaded, but you can still print the scrapbook."
+          : `${missingPhotos} photos haven't loaded, but you can still print the scrapbook.`
+    )
     window.print()
   }
 
@@ -219,10 +225,10 @@ export default function ScrapbookPage() {
 
       <div className="border-b border-border bg-white px-6 pb-5 pt-5 print:hidden">
         <Link href="/app/moments" className="mb-3 flex items-center gap-1 text-sm text-ink-muted">
-          <ArrowLeft className="h-4 w-4" /> Moment Kita
+          <ArrowLeft className="h-4 w-4" /> Moments
         </Link>
         <h1 className="text-xl font-bold text-ink">Scrapbook</h1>
-        <p className="text-sm text-ink-muted">Kumpulan date kalian, siap dicetak atau disimpan jadi PDF</p>
+        <p className="text-sm text-ink-muted">Your dates in one book, ready to print or save as a PDF</p>
       </div>
 
       {loading ? (
@@ -234,23 +240,23 @@ export default function ScrapbookPage() {
         <p className="mx-6 mt-5 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600 print:hidden">{error}</p>
       ) : !hasCouple ? (
         <div className="px-8 pt-16 text-center print:hidden">
-          <p className="text-sm text-ink-muted">Hubungkan akunmu dengan pasangan dulu untuk mulai menyimpan moment.</p>
-          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Ke Profil</Link>
+          <p className="text-sm text-ink-muted">Connect with your partner first to start saving moments.</p>
+          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Go to Profile</Link>
         </div>
       ) : moments.length === 0 ? (
         <div className="flex flex-col items-center px-8 pt-16 text-center print:hidden">
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose/10">
             <BookHeart className="h-8 w-8 text-rose" />
           </div>
-          <h2 className="text-lg font-bold text-ink">Scrapbook masih kosong</h2>
+          <h2 className="text-lg font-bold text-ink">Your scrapbook is empty</h2>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-muted">
-            Simpan moment dari date kalian dulu. Setiap moment jadi satu halaman di scrapbook.
+            Save a few moments from your dates first. Each moment becomes one page.
           </p>
           <Link
             href="/app/moments/baru"
             className="mt-6 w-full max-w-xs rounded-2xl bg-rose py-3.5 text-sm font-bold text-white shadow-elevated"
           >
-            Simpan Moment
+            Save a moment
           </Link>
         </div>
       ) : (
@@ -258,8 +264,8 @@ export default function ScrapbookPage() {
           {/* Controls */}
           <div className="space-y-5 px-6 pt-5 print:hidden">
             <section>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Rentang</p>
-              <div className="-mx-6 flex gap-2 overflow-x-auto px-6 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Rentang scrapbook">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Range</p>
+              <div className="-mx-6 flex gap-2 overflow-x-auto px-6 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Scrapbook range">
                 {RANGE_OPTIONS.map((o) => (
                   <button key={o.id} type="button" onClick={() => chooseKind(o.id)} aria-pressed={kind === o.id} className={chipClass(kind === o.id)}>
                     {o.label}
@@ -269,18 +275,18 @@ export default function ScrapbookPage() {
 
               {kind === 'month' && (
                 <div className="mt-3">
-                  <label htmlFor="sb-month" className="sr-only">Bulan</label>
+                  <label htmlFor="sb-month" className="sr-only">Month</label>
                   <select id="sb-month" value={month} onChange={(e) => setMonth(e.target.value)} className={fieldClass}>
                     {!months.some((m) => m.key === month) && <option value={month}>{monthLabel(`${month}-01`)} (0)</option>}
                     {months.map((m) => (
-                      <option key={m.key} value={m.key}>{monthLabel(`${m.key}-01`)} ({m.count} moment)</option>
+                      <option key={m.key} value={m.key}>{monthLabel(`${m.key}-01`)} ({m.count} {m.count === 1 ? 'moment' : 'moments'})</option>
                     ))}
                   </select>
                 </div>
               )}
 
               {kind === 'year' && (
-                <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Pilih tahun">
+                <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Pick a year">
                   {years.map((y) => (
                     <button key={y} type="button" onClick={() => setYear(y)} aria-pressed={year === y} className={chipClass(year === y)}>
                       {y}
@@ -292,13 +298,13 @@ export default function ScrapbookPage() {
               {kind === 'manual' && (
                 <div className="mt-3 rounded-2xl border border-border bg-white">
                   <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-                    <span className="text-xs text-ink-muted">{manualIds.size} dari {moments.length} dipilih</span>
+                    <span className="text-xs text-ink-muted">{manualIds.size} of {moments.length} selected</span>
                     <div className="flex gap-3">
                       <button type="button" onClick={() => setManualIds(new Set(moments.map((m) => m.id)))} className="text-xs font-semibold text-rose">
-                        Pilih semua
+                        Select all
                       </button>
                       <button type="button" onClick={() => setManualIds(new Set())} className="text-xs font-semibold text-ink-muted">
-                        Kosongkan
+                        Clear
                       </button>
                     </div>
                   </div>
@@ -320,7 +326,7 @@ export default function ScrapbookPage() {
                             </span>
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-sm font-semibold text-ink">{m.title}</span>
-                              <span className="block text-[11px] text-ink-muted">{formatDateID(m.moment_date)} · {m.photos.length} foto</span>
+                              <span className="block text-[11px] text-ink-muted">{formatDateID(m.moment_date)} · {m.photos.length} {m.photos.length === 1 ? 'photo' : 'photos'}</span>
                             </span>
                           </label>
                         </li>
@@ -332,8 +338,8 @@ export default function ScrapbookPage() {
             </section>
 
             <section>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Gaya</p>
-              <div className="grid grid-cols-2 gap-3" role="group" aria-label="Gaya scrapbook">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Style</p>
+              <div className="grid grid-cols-2 gap-3" role="group" aria-label="Scrapbook style">
                 {SCRAPBOOK_STYLES.map((s) => (
                   <button
                     key={s.id}
@@ -354,24 +360,26 @@ export default function ScrapbookPage() {
 
             <section>
               <label htmlFor="sb-title" className="mb-2 block text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                Judul sampul <span className="font-normal normal-case tracking-normal">(opsional)</span>
+                Cover title <span className="font-normal normal-case tracking-normal">(optional)</span>
               </label>
               <input
                 id="sb-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={MAX_COVER_TITLE}
-                placeholder="Cerita Kita"
+                placeholder="Our Story"
                 className={fieldClass}
               />
             </section>
 
             <div className="rounded-2xl border border-border bg-white p-4 shadow-card">
               <p className="text-sm font-bold text-ink">
-                {selected.length > 0 ? `${selected.length} date · ${photoCount} foto` : 'Belum ada moment dipilih'}
+                {selected.length > 0
+                  ? `${selected.length} ${selected.length === 1 ? 'date' : 'dates'} · ${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}`
+                  : 'No moments selected yet'}
               </p>
               <p className="mt-0.5 text-xs text-ink-muted">
-                {selected.length > 0 ? `${label} · ${selected.length + 1} halaman A4` : 'Ganti rentang atau pilih moment dulu.'}
+                {selected.length > 0 ? `${label} · ${selected.length + 1} A4 pages` : 'Change the range or pick some moments first.'}
               </p>
               <button
                 type="button"
@@ -380,24 +388,24 @@ export default function ScrapbookPage() {
                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-rose py-3.5 text-sm font-bold text-white shadow-elevated transition-all active:scale-[0.98] disabled:opacity-60"
               >
                 {preparing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
-                {preparing ? 'Memuat foto...' : 'Cetak / Simpan PDF'}
+                {preparing ? 'Loading photos...' : 'Print / Save PDF'}
               </button>
               <p className="mt-2 text-center text-[11px] leading-snug text-ink-muted">
-                Di dialog cetak, pilih &ldquo;Simpan sebagai PDF&rdquo;, kertas A4, dan aktifkan grafis latar.
+                In the print dialog, choose &ldquo;Save as PDF&rdquo;, A4 paper, and turn on background graphics.
               </p>
               {printNote && !preparing && <p className="mt-2 text-center text-xs text-ink-muted">{printNote}</p>}
               {signError && <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{signError}</p>}
             </div>
 
-            <p className="pt-1 text-xs font-semibold uppercase tracking-wider text-ink-muted">Pratinjau</p>
+            <p className="pt-1 text-xs font-semibold uppercase tracking-wider text-ink-muted">Preview</p>
           </div>
 
           {/* Preview = what gets printed */}
           {selected.length === 0 ? (
             <div className="mx-6 mt-3 rounded-2xl border border-dashed border-border bg-white px-6 py-12 text-center print:hidden">
-              <p className="text-sm font-semibold text-ink">Belum ada moment di rentang ini</p>
+              <p className="text-sm font-semibold text-ink">No moments in this range</p>
               <p className="mt-1 text-xs text-ink-muted">
-                {kind === 'manual' ? 'Centang moment yang mau dimasukkan.' : 'Coba pilih bulan atau tahun lain.'}
+                {kind === 'manual' ? 'Select the moments you want to include.' : 'Try another month or year.'}
               </p>
             </div>
           ) : (

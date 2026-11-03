@@ -22,7 +22,7 @@ export default async function CarePage() {
     .eq('couple_id', membership.couple_id)
     .maybeSingle()
 
-  if (petError) throw new Error('Gagal memuat pet')
+  if (petError) throw new Error("Couldn't load your pet")
   if (!pet) redirect('/app/pet/adopt')
 
   // Get partner profile

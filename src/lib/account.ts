@@ -10,7 +10,14 @@ type AdminClient = ReturnType<typeof createServiceRoleClient>
 // that module pulls in the browser client.
 const MOMENTS_BUCKET = 'moments'
 export const AVATARS_BUCKET = 'avatars'
-export const DELETE_ACCOUNT_CONFIRM = 'HAPUS AKUN'
+export const DELETE_ACCOUNT_CONFIRM = 'DELETE ACCOUNT'
+/** The phrase app versions before the English switch send; still accepted. */
+const DELETE_ACCOUNT_CONFIRM_LEGACY = 'HAPUS AKUN' // copy-ok: legacy request value, still accepted
+
+/** True when the typed phrase confirms account deletion (current or legacy). */
+export function isDeleteAccountConfirm(value: unknown): boolean {
+  return value === DELETE_ACCOUNT_CONFIRM || value === DELETE_ACCOUNT_CONFIRM_LEGACY
+}
 
 export interface LeaveResult {
   coupleId: string
@@ -77,7 +84,7 @@ export async function leaveCoupleAs(supabase: UserClient): Promise<LeaveResult> 
   const { data, error } = await supabase.rpc('leave_couple')
   if (error) throw new Error(error.message)
   const result = (data ?? {}) as { couple_id?: string; deleted?: boolean }
-  if (!result.couple_id) throw new Error('Gagal keluar dari pasangan')
+  if (!result.couple_id) throw new Error('Couldn\'t leave this couple')
 
   let removedFiles = 0
   if (result.deleted) {
@@ -121,7 +128,7 @@ export async function joinCoupleAs(supabase: UserClient, userId: string, code: s
 
   const { data: coupleId, error } = await supabase.rpc('join_couple', { p_code: code, p_discard: discard })
   if (error) throw new JoinError(error.message, error.hint === COUPLE_HAS_DATA ? COUPLE_HAS_DATA : null)
-  if (!coupleId) throw new JoinError('Gagal bergabung', null)
+  if (!coupleId) throw new JoinError('Couldn\'t join', null)
 
   let discardedCoupleId: string | null = null
   let removedFiles = 0

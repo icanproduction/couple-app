@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Lock, Mail, MailOpen } from 'lucide-react'
 import { createClient, getClientUser } from '@/lib/supabase'
 
-// Metadata only. `content` is not selectable by clients — it comes from the
+// Metadata only. `content` is not selectable by clients: it comes from the
 // read_letter() RPC, which refuses the receiver until unlock_date.
 interface LetterMeta {
   id: string
@@ -21,18 +21,18 @@ interface LetterMeta {
 
 const OCCASION_LABELS: Record<string, string> = {
   anniversary: 'Anniversary',
-  birthday: 'Ulang Tahun',
-  wedding_day: 'Hari Nikah',
+  birthday: 'Birthday',
+  wedding_day: 'Wedding day',
   milestone: 'Milestone',
-  new_year: 'Tahun Baru',
-  custom: 'Surat Spesial',
+  new_year: 'New Year',
+  custom: 'Special letter',
 }
 
 // setTimeout can't wait longer than ~24.8 days
 const MAX_TIMEOUT_MS = 2_147_000_000
 
 function formatWIB(isoStr: string, withTime = true): string {
-  return new Date(isoStr).toLocaleString('id-ID', {
+  return new Date(isoStr).toLocaleString('en-GB', {
     timeZone: 'Asia/Jakarta',
     day: 'numeric',
     month: 'long',
@@ -52,16 +52,24 @@ function splitDuration(ms: number): { days: number; hours: number; minutes: numb
 
 function CountdownDisplay({ msLeft }: { msLeft: number }) {
   const { days, hours, minutes } = splitDuration(msLeft)
-  if (days > 0) return <p className="mt-2 text-2xl font-extrabold text-rose">{days} hari {hours} jam lagi</p>
-  if (hours > 0) return <p className="mt-2 text-2xl font-extrabold text-rose">{hours} jam {minutes} menit lagi</p>
-  if (minutes > 0) return <p className="mt-2 text-2xl font-extrabold text-rose">{minutes} menit lagi</p>
-  return <p className="mt-2 text-2xl font-extrabold text-rose">Sebentar lagi</p>
+  if (days > 0) return <p className="mt-2 text-2xl font-extrabold text-rose">{days} {days === 1 ? 'day' : 'days'}, {hours} h left</p>
+  if (hours > 0) return <p className="mt-2 text-2xl font-extrabold text-rose">{hours} h {minutes} min left</p>
+  if (minutes > 0) return <p className="mt-2 text-2xl font-extrabold text-rose">{minutes} min left</p>
+  return <p className="mt-2 text-2xl font-extrabold text-rose">Any minute now</p>
 }
 
+// read_letter() raises "locked" / "not found" (English SQL) or "terkunci" /
+// "tidak ditemukan" (older SQL). Accept both while versions are mixed.
 function readErrorMessage(message: string | undefined): string {
-  if (message?.includes('terkunci')) return 'Surat ini masih terkunci. Coba lagi sebentar ya.'
-  if (message?.includes('tidak ditemukan')) return 'Surat tidak ditemukan.'
-  return 'Gagal membuka surat. Coba lagi ya.'
+  const isLocked =
+    message?.includes('locked') ||
+    message?.includes('terkunci')
+  if (isLocked) return 'This letter is still locked. Try again a little later.'
+  const isMissing =
+    message?.includes('not found') ||
+    message?.includes('tidak ditemukan')
+  if (isMissing) return "We couldn't find this letter."
+  return "Couldn't open the letter. Try again."
 }
 
 export default function LetterDetailPage() {
@@ -71,8 +79,8 @@ export default function LetterDetailPage() {
   const [letter, setLetter] = useState<LetterMeta | null>(null)
   const [content, setContent] = useState<string | null>(null)
   const [myId, setMyId] = useState<string | null>(null)
-  const [senderName, setSenderName] = useState('Pasangan')
-  const [receiverName, setReceiverName] = useState('Pasangan')
+  const [senderName, setSenderName] = useState('your partner')
+  const [receiverName, setReceiverName] = useState('your partner')
   const [loading, setLoading] = useState(true)
   const [opening, setOpening] = useState(false)
   const [justOpened, setJustOpened] = useState(false)
@@ -110,8 +118,8 @@ export default function LetterDetailPage() {
     const { data: people } = await supabase
       .from('profiles').select('id, name').in('id', [data.sender_id, data.receiver_id])
     const nameOf = (id: string) => people?.find(p => p.id === id)?.name
-    setSenderName(nameOf(data.sender_id) ?? 'Pasangan')
-    setReceiverName(nameOf(data.receiver_id) ?? 'Pasangan')
+    setSenderName(nameOf(data.sender_id) ?? 'your partner')
+    setReceiverName(nameOf(data.receiver_id) ?? 'your partner')
 
     // The sender can always read their own letter; the receiver reads it here
     // only once it was already opened (opening is an explicit tap below).
@@ -130,7 +138,7 @@ export default function LetterDetailPage() {
     return () => { clearInterval(interval); clearTimeout(wake) }
   }, [unlockMs])
 
-  // Hide the "Surat terbuka!" overlay after a moment
+  // Hide the "Letter opened!" overlay after a moment
   useEffect(() => {
     if (!justOpened) return
     const t = setTimeout(() => setJustOpened(false), 2500)
@@ -152,8 +160,8 @@ export default function LetterDetailPage() {
   if (!letter) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-        <p className="text-sm text-ink-muted">Surat tidak ditemukan</p>
-        <button onClick={() => router.push('/app/letters')} className="mt-4 text-sm text-rose">Kembali</button>
+        <p className="text-sm text-ink-muted">We couldn&apos;t find this letter.</p>
+        <button onClick={() => router.push('/app/letters')} className="mt-4 text-sm text-rose">Back to Letters</button>
       </div>
     )
   }
@@ -162,12 +170,12 @@ export default function LetterDetailPage() {
   const isUnlocked = msLeft <= 0
   const isMine = letter.sender_id === myId
   const isOpened = !!letter.is_opened
-  const occasion = letter.occasion ? (OCCASION_LABELS[letter.occasion] ?? 'Surat') : 'Surat Rahasia'
+  const occasion = letter.occasion ? (OCCASION_LABELS[letter.occasion] ?? 'Letter') : 'Letter'
   const daysLeft = Math.ceil(msLeft / 86400000)
 
   const backButton = (
     <button onClick={() => router.push('/app/letters')} className="mb-3 flex items-center gap-1 text-sm text-ink-muted">
-      <ArrowLeft className="h-4 w-4" /> Kotak Surat
+      <ArrowLeft className="h-4 w-4" /> Letters
     </button>
   )
 
@@ -186,9 +194,9 @@ export default function LetterDetailPage() {
         <div className="border-b border-border bg-white px-6 py-5">
           {backButton}
           <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">{occasion}</p>
-          <h1 className="mt-1 text-xl font-bold text-ink">Suratmu untuk {receiverName}</h1>
+          <h1 className="mt-1 text-xl font-bold text-ink">Your letter to {receiverName}</h1>
           {letter.created_at && (
-            <p className="mt-0.5 text-xs text-ink-muted">Ditulis {formatWIB(letter.created_at, false)}</p>
+            <p className="mt-0.5 text-xs text-ink-muted">Written on {formatWIB(letter.created_at, false)}</p>
           )}
         </div>
         <div className="space-y-4 px-6 pt-6">
@@ -196,35 +204,35 @@ export default function LetterDetailPage() {
             {isOpened ? (
               <>
                 <MailOpen className="mx-auto mb-2 h-5 w-5 text-sage-dark" />
-                <p className="text-sm font-semibold text-ink">Sudah dibaca {receiverName}</p>
+                <p className="text-sm font-semibold text-ink">Read by {receiverName}</p>
                 {letter.opened_at && <p className="mt-1 text-xs text-ink-muted">{formatWIB(letter.opened_at)}</p>}
               </>
             ) : isUnlocked ? (
               <>
                 <Mail className="mx-auto mb-2 h-5 w-5 text-rose" />
-                <p className="text-sm font-semibold text-ink">Sudah bisa dibuka</p>
-                <p className="mt-1 text-xs text-ink-muted">{receiverName} belum membacanya</p>
+                <p className="text-sm font-semibold text-ink">Ready to open</p>
+                <p className="mt-1 text-xs text-ink-muted">Waiting for {receiverName} to read it</p>
               </>
             ) : (
               <>
                 <Lock className="mx-auto mb-2 h-5 w-5 text-ink-muted" />
-                <p className="text-sm text-ink-muted">Bisa dibuka {receiverName} mulai</p>
+                <p className="text-sm text-ink-muted">Opens for {receiverName} on</p>
                 <p className="mt-1 text-base font-bold text-ink">{formatWIB(letter.unlock_date)}</p>
-                <p className="mt-1 text-xs font-semibold text-rose">{daysLeft > 1 ? `${daysLeft} hari lagi` : 'Kurang dari 1 hari'}</p>
+                <p className="mt-1 text-xs font-semibold text-rose">{daysLeft > 1 ? `${daysLeft} days left` : 'Less than a day left'}</p>
               </>
             )}
           </div>
           {readError && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{readError}</p>}
           {contentCard}
           <p className="text-center text-xs text-ink-muted">
-            Surat yang sudah dikunci tidak bisa diedit atau dihapus.
+            Locked letters can&apos;t be edited or deleted.
           </p>
         </div>
       </div>
     )
   }
 
-  // ===== Receiver view — still locked =====
+  // ===== Receiver view: still locked =====
   if (!isUnlocked) {
     return (
       <div className="animate-fade-in pb-8">
@@ -234,17 +242,17 @@ export default function LetterDetailPage() {
             <Lock className={`h-10 w-10 ${daysLeft <= 7 ? 'text-rose' : 'text-ink-muted'}`} />
           </div>
           <p className="text-sm font-semibold uppercase tracking-wider text-ink-muted">{occasion}</p>
-          <p className="mt-2 text-lg font-bold text-ink">Dari {senderName}</p>
+          <p className="mt-2 text-lg font-bold text-ink">From {senderName}</p>
           <div className="mt-4 w-full rounded-2xl bg-rose/5 border border-rose/20 px-6 py-5 text-center">
-            <p className="text-sm text-ink-muted">Terkunci sampai</p>
+            <p className="text-sm text-ink-muted">Locked until</p>
             <p className="mt-1 text-xl font-bold text-ink">{formatWIB(letter.unlock_date)}</p>
             <CountdownDisplay msLeft={msLeft} />
           </div>
           {daysLeft <= 7 && (
             <div className="mt-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
-              <p className="text-sm font-semibold text-amber-700">Hampir terbuka!</p>
+              <p className="text-sm font-semibold text-amber-700">Almost time</p>
               <p className="text-xs text-amber-600 mt-0.5">
-                {daysLeft > 1 ? `Surat ini akan terbuka dalam ${daysLeft} hari` : 'Surat ini terbuka kurang dari sehari lagi'}
+                {daysLeft > 1 ? `This letter opens in ${daysLeft} days` : 'This letter opens in less than a day'}
               </p>
             </div>
           )}
@@ -253,7 +261,7 @@ export default function LetterDetailPage() {
     )
   }
 
-  // ===== Receiver view — unlocked (ready to open, or already read) =====
+  // ===== Receiver view: unlocked (ready to open, or already read) =====
   return (
     <div className="animate-fade-in pb-8">
       {justOpened && (
@@ -262,7 +270,7 @@ export default function LetterDetailPage() {
             <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-elevated">
               <MailOpen className="h-8 w-8 text-rose" />
             </div>
-            <p className="text-lg font-bold text-white bg-rose/80 px-4 py-2 rounded-full backdrop-blur-sm">Surat terbuka!</p>
+            <p className="text-lg font-bold text-white bg-rose/80 px-4 py-2 rounded-full backdrop-blur-sm">Letter opened!</p>
           </div>
         </div>
       )}
@@ -270,10 +278,10 @@ export default function LetterDetailPage() {
       <div className="border-b border-border bg-white px-6 py-5">
         {backButton}
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">{occasion}</p>
-        <h1 className="text-xl font-bold text-ink mt-1">Dari {senderName}</h1>
+        <h1 className="text-xl font-bold text-ink mt-1">From {senderName}</h1>
         <p className="text-xs text-ink-muted mt-0.5">
-          {letter.created_at && `Ditulis ${formatWIB(letter.created_at, false)}`}
-          {letter.opened_at && ` · Dibuka ${formatWIB(letter.opened_at)}`}
+          {letter.created_at && `Written on ${formatWIB(letter.created_at, false)}`}
+          {letter.opened_at && ` · Opened on ${formatWIB(letter.opened_at)}`}
         </p>
       </div>
 
@@ -282,14 +290,14 @@ export default function LetterDetailPage() {
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose/10">
             <MailOpen className="h-7 w-7 text-rose" />
           </div>
-          <p className="text-base font-bold text-ink">Surat sudah bisa dibuka!</p>
-          <p className="mt-1 text-sm text-ink-muted">Dari {senderName} — untukmu</p>
+          <p className="text-base font-bold text-ink">Your letter is ready to open</p>
+          <p className="mt-1 text-sm text-ink-muted">From {senderName}, just for you</p>
           <button
             onClick={openLetter}
             disabled={opening}
             className="mt-4 w-full rounded-2xl bg-rose py-3.5 text-sm font-bold text-white shadow-elevated transition-all active:scale-[0.98] disabled:opacity-60"
           >
-            {opening ? 'Membuka...' : 'Buka Surat'}
+            {opening ? 'Opening...' : 'Open letter'}
           </button>
         </div>
       )}
@@ -303,7 +311,7 @@ export default function LetterDetailPage() {
           {contentCard}
           {letter.opened_at && (
             <p className="mt-3 text-center text-xs text-ink-muted">
-              Dibaca pada {formatWIB(letter.opened_at)}
+              Read on {formatWIB(letter.opened_at)}
             </p>
           )}
         </div>

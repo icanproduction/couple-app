@@ -36,7 +36,7 @@ function isSignedOutError(error: unknown): boolean {
 }
 
 // The selected goal is remembered per device and per couple (F07).
-const goalStorageKey = (coupleId: string) => `nanti-kita:finance-goal:${coupleId}`
+const goalStorageKey = (coupleId: string) => `nanti-kita:finance-goal:${coupleId}` // copy-ok: localStorage key
 function readStoredGoal(coupleId: string): string | null {
   try { return window.localStorage.getItem(goalStorageKey(coupleId)) } catch { return null }
 }
@@ -57,7 +57,7 @@ export default function FinancePage() {
   const [goals, setGoals] = useState<SavingsGoal[]>([])
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null)
   const [transactions, setTransactions] = useState<TransactionItem[]>([])
-  /** Goal the "tambah transaksi" sheet writes into, fixed when it opens */
+  /** Goal the "add transaction" sheet writes into, fixed when it opens */
   const [addTxGoal, setAddTxGoal] = useState<{ id: string; name: string } | null>(null)
   const [addTxInitialType, setAddTxInitialType] = useState<'deposit' | 'withdrawal'>('deposit')
   const [editingTx, setEditingTx] = useState<TransactionItem | null>(null)
@@ -83,7 +83,7 @@ export default function FinancePage() {
   // Runs on mount, on every realtime change and when the app comes back to the
   // foreground. A failed run keeps what is on screen and offers a retry.
   const loadData = useCallback(async () => {
-    const failed = () => { setLoadError('Gagal memuat tabungan. Cek koneksi lalu coba lagi.'); setLoading(false) }
+    const failed = () => { setLoadError("Couldn't load your savings. Check your connection and try again."); setLoading(false) }
     const supabase = createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (!user) {
@@ -171,8 +171,8 @@ export default function FinancePage() {
   async function saveEditGoal(e: React.FormEvent) {
     e.preventDefault()
     if (!editGoalId || editSaving) return
-    if (!editName.trim()) { setEditError('Nama target belum diisi'); return }
-    if (parseRp(editTarget) <= 0) { setEditError('Target jumlah harus lebih dari 0'); return }
+    if (!editName.trim()) { setEditError('Give your goal a name.'); return }
+    if (parseRp(editTarget) <= 0) { setEditError('The goal amount has to be more than 0.'); return }
     setEditSaving(true); setEditError('')
     const supabase = createClient()
     const { data, error } = await supabase.from('savings_goals').update({
@@ -180,7 +180,7 @@ export default function FinancePage() {
     }).eq('id', editGoalId).select('id')
     setEditSaving(false)
     // Keep the modal (and what was typed) open when the save fails
-    if (error) { setEditError('Gagal menyimpan perubahan. Coba lagi ya.'); return }
+    if (error) { setEditError("Couldn't save your changes. Try again."); return }
     // 0 rows updated: the goal no longer exists
     if (!data?.length) { setEditModalOpen(false); handleGoalGone(); return }
     setEditModalOpen(false); loadData()
@@ -193,7 +193,7 @@ export default function FinancePage() {
     // One statement: the goal's transactions go with it (ON DELETE CASCADE).
     const { error: goalError } = await supabase.from('savings_goals').delete().eq('id', goal.id)
     setDeleting(false)
-    if (goalError) { setDeleteError('Gagal menghapus target. Coba lagi ya.'); loadData(); return }
+    if (goalError) { setDeleteError("Couldn't delete the goal. Try again."); loadData(); return }
     setConfirmDelete(false)
     if (coupleId) writeStoredGoal(coupleId, null)
     setSelectedGoalId(null)
@@ -207,13 +207,13 @@ export default function FinancePage() {
   const monthsRemaining = goal?.target_date ? Math.max(0, Math.ceil((new Date(goal.target_date).getTime() - Date.now()) / (30.44 * 86400000))) : null
   const targetAmount = goal ? Number(goal.target_amount) : 0
   const monthlyRequired = goal && monthsRemaining && monthsRemaining > 0 ? Math.ceil((targetAmount - balance) / monthsRemaining) : null
-  // Bar width only — the balance itself is shown with its real sign
+  // Bar width only: the balance itself is shown with its real sign
   const progressPercent = targetAmount > 0 ? Math.max(0, Math.min(100, Math.round((balance / targetAmount) * 100))) : 0
-  const milestoneMsg = progressPercent >= 100 ? 'Target tercapai!' : progressPercent >= 75 ? 'Hampir sampai!' : progressPercent >= 50 ? 'Setengah jalan!' : progressPercent >= 25 ? 'Seperempat terkumpul!' : null
+  const milestoneMsg = progressPercent >= 100 ? 'Goal reached!' : progressPercent >= 75 ? 'Almost there' : progressPercent >= 50 ? 'Halfway there' : progressPercent >= 25 ? 'A quarter of the way there' : null
   const shownTxs = showAllTx ? goalTxs : goalTxs.slice(0, LIST_LIMIT)
 
   if (loading) {
-    return <div className="flex items-center justify-center py-20" role="status" aria-label="Memuat tabungan"><div className="h-6 w-6 animate-spin rounded-full border-2 border-rose border-t-transparent" /></div>
+    return <div className="flex items-center justify-center py-20" role="status" aria-label="Loading your savings"><div className="h-6 w-6 animate-spin rounded-full border-2 border-rose border-t-transparent" /></div>
   }
 
   // ===== LOAD FAILED before anything was shown =====
@@ -224,7 +224,7 @@ export default function FinancePage() {
         <p className="text-sm font-semibold text-ink">{loadError}</p>
         <button onClick={() => { setLoading(true); loadData() }}
           className="mt-4 rounded-2xl bg-rose px-6 py-3 text-sm font-bold text-white shadow-card active:scale-[0.98]">
-          Coba lagi
+          Try again
         </button>
       </div>
     )
@@ -237,13 +237,13 @@ export default function FinancePage() {
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose/10">
           <PiggyBank className="h-8 w-8 text-rose" strokeWidth={1.5} />
         </div>
-        <h1 className="text-xl font-bold text-ink">Tabungan Bersama</h1>
+        <h1 className="text-xl font-bold text-ink">Savings</h1>
         <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-muted">
-          Hubungkan akunmu dengan pasangan dulu, lalu kalian bisa nabung dan catat pengeluaran bareng di sini.
+          Connect with your partner first. Then you can save up and track spending together here.
         </p>
         <Link href="/app/profile"
           className="mt-6 w-full max-w-xs rounded-2xl bg-rose py-3.5 text-sm font-bold text-white shadow-elevated transition-all active:scale-[0.98]">
-          Undang Pasangan
+          Invite your partner
         </Link>
       </div>
     )
@@ -253,7 +253,7 @@ export default function FinancePage() {
     <div role="status" className="flex items-center justify-between gap-3 rounded-xl bg-gold/10 px-3 py-2 text-sm text-yellow-800">
       <span>{GOAL_GONE_MESSAGE}</span>
       <button onClick={() => setGoalGoneNotice(false)} className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold hover:bg-gold/20">
-        Oke
+        OK
       </button>
     </div>
   )
@@ -277,10 +277,10 @@ export default function FinancePage() {
         <div className="relative">
           <div className="flex items-center justify-between">
             <div className="min-w-0">
-              <p className="truncate text-xs font-medium text-white/70">Saldo · {goal.name}</p>
+              <p className="truncate text-xs font-medium text-white/70">Balance · {goal.name}</p>
               <p className="mt-0.5 text-3xl font-extrabold tracking-tight">{fmtRpFull(balance)}</p>
             </div>
-            <button onClick={openEditGoal} aria-label={`Ubah target ${goal.name}`} className="rounded-xl bg-white/15 p-2 backdrop-blur-sm">
+            <button onClick={openEditGoal} aria-label={`Edit goal ${goal.name}`} className="rounded-xl bg-white/15 p-2 backdrop-blur-sm">
               <Pencil className="h-4 w-4 text-white" />
             </button>
           </div>
@@ -289,12 +289,12 @@ export default function FinancePage() {
           <div className="mt-3 flex gap-4">
             <div className="flex items-center gap-1.5">
               <ArrowDownLeft className="h-3.5 w-3.5 text-white/70" />
-              <span className="text-xs text-white/70">Masuk</span>
+              <span className="text-xs text-white/70">In</span>
               <span className="text-xs font-bold text-white">{fmtRp(totalIn)}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <ArrowUpRight className="h-3.5 w-3.5 text-white/70" />
-              <span className="text-xs text-white/70">Keluar</span>
+              <span className="text-xs text-white/70">Out</span>
               <span className="text-xs font-bold text-white">{fmtRp(totalOut)}</span>
             </div>
           </div>
@@ -309,8 +309,8 @@ export default function FinancePage() {
               <div className="h-full rounded-full bg-white transition-all duration-700" style={{ width: `${progressPercent}%` }} />
             </div>
             <p className="mt-1 text-xs text-white/60">
-              Target: {fmtRp(Number(goal.target_amount))}
-              {monthsRemaining != null && monthsRemaining > 0 && ` • ${monthsRemaining}bln lagi`}
+              Goal: {fmtRp(Number(goal.target_amount))}
+              {monthsRemaining != null && monthsRemaining > 0 && ` • ${monthsRemaining} ${monthsRemaining === 1 ? 'month' : 'months'} left`}
             </p>
           </div>
         </div>
@@ -322,14 +322,14 @@ export default function FinancePage() {
           <div role="alert" className="flex items-center justify-between gap-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
             <span>{loadError}</span>
             <button onClick={() => { void loadData() }} className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold text-red-700 hover:bg-red-100">
-              Coba lagi
+              Try again
             </button>
           </div>
         )}
 
         {/* ===== GOALS (F07) ===== */}
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Target kalian ({goals.length})</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Your goals ({goals.length})</p>
           <GoalSwitcher goals={goals} selectedId={goal.id} onSelect={selectGoal} onAdd={() => setNewGoalOpen(true)} />
         </div>
 
@@ -338,8 +338,8 @@ export default function FinancePage() {
           <div className="flex items-center gap-2.5 rounded-2xl bg-gold/10 px-4 py-3">
             <TrendingUp className="h-5 w-5 flex-shrink-0 text-yellow-700" />
             <div>
-              <p className="text-sm font-semibold text-yellow-800">{fmtRp(monthlyRequired)}<span className="font-normal">/bulan</span></p>
-              <p className="text-xs text-yellow-700/70">untuk mencapai target tepat waktu</p>
+              <p className="text-sm font-semibold text-yellow-800">{fmtRp(monthlyRequired)}<span className="font-normal">/month</span></p>
+              <p className="text-xs text-yellow-700/70">to reach your goal on time</p>
             </div>
           </div>
         )}
@@ -352,36 +352,36 @@ export default function FinancePage() {
           </div>
         )}
 
-        {/* ACTION BUTTONS: Masuk / Keluar */}
+        {/* ACTION BUTTONS: money in / money out */}
         <div className="flex gap-3">
           <button
             onClick={() => { setAddTxInitialType('deposit'); setAddTxGoal({ id: goal.id, name: goal.name }) }}
             className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-sage py-3.5 text-sm font-bold text-white shadow-card transition-all hover:bg-sage-dark active:scale-[0.98]"
           >
             <Plus className="h-4 w-4" />
-            Uang Masuk
+            Money in
           </button>
           <button
             onClick={() => { setAddTxInitialType('withdrawal'); setAddTxGoal({ id: goal.id, name: goal.name }) }}
             className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-rose/30 bg-white py-3.5 text-sm font-bold text-rose shadow-card transition-all hover:bg-rose-50 active:scale-[0.98]"
           >
             <Minus className="h-4 w-4" />
-            Uang Keluar
+            Money out
           </button>
         </div>
 
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-2">
-          <StatBox label="Saldo" value={fmtRp(balance)} icon={<TrendingUp className="h-3.5 w-3.5 text-rose" />} />
-          <StatBox label="Masuk" value={fmtRp(totalIn)} icon={<ArrowDownLeft className="h-3.5 w-3.5 text-sage-dark" />} />
-          <StatBox label="Keluar" value={fmtRp(totalOut)} icon={<ArrowUpRight className="h-3.5 w-3.5 text-rose" />} />
+          <StatBox label="Balance" value={fmtRp(balance)} icon={<TrendingUp className="h-3.5 w-3.5 text-rose" />} />
+          <StatBox label="Money in" value={fmtRp(totalIn)} icon={<ArrowDownLeft className="h-3.5 w-3.5 text-sage-dark" />} />
+          <StatBox label="Money out" value={fmtRp(totalOut)} icon={<ArrowUpRight className="h-3.5 w-3.5 text-rose" />} />
         </div>
 
         {/* TRANSACTION HISTORY (selected goal) */}
         <div className="rounded-2xl border border-border bg-white shadow-card overflow-hidden">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Riwayat Transaksi</h2>
-            <span className="text-xs text-ink-muted">{goalTxs.length} transaksi</span>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">History</h2>
+            <span className="text-xs text-ink-muted">{goalTxs.length} {goalTxs.length === 1 ? 'transaction' : 'transactions'}</span>
           </div>
           <TransactionList
             transactions={shownTxs}
@@ -393,7 +393,7 @@ export default function FinancePage() {
           {goalTxs.length > LIST_LIMIT && (
             <div className="border-t border-border px-4 py-2 text-center">
               <button onClick={() => setShowAllTx(v => !v)} className="text-xs font-semibold text-rose hover:underline">
-                {showAllTx ? 'Tampilkan lebih sedikit' : `Lihat semua ${goalTxs.length} transaksi`}
+                {showAllTx ? 'Show fewer' : `See all ${goalTxs.length} transactions`}
               </button>
             </div>
           )}
@@ -418,7 +418,7 @@ export default function FinancePage() {
           </div>
           <div className="flex-1">
             <p className="text-sm font-bold text-ink">Wedding Planner</p>
-            <p className="text-xs text-ink-muted">Hitung biaya nikah sendiri, item per item</p>
+            <p className="text-xs text-ink-muted">Work out your wedding costs, item by item</p>
           </div>
           <ChevronRight className="h-4 w-4 text-rose" />
         </Link>
@@ -426,23 +426,23 @@ export default function FinancePage() {
         {/* Delete selected goal (inline confirm) */}
         {confirmDelete ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-center">
-            <p className="text-sm font-semibold text-red-700">Hapus target &ldquo;{goal.name}&rdquo; &amp; semua transaksinya?</p>
-            <p className="mt-1 text-xs text-red-600/80">Riwayat tabungan ini akan hilang dan tidak bisa dikembalikan. Target lain tidak terpengaruh.</p>
+            <p className="text-sm font-semibold text-red-700">Delete &ldquo;{goal.name}&rdquo; and all its transactions?</p>
+            <p className="mt-1 text-xs text-red-600/80">This goal&apos;s history will be gone for good. Your other goals stay as they are.</p>
             {deleteError && <p className="mt-2 text-xs font-medium text-red-600">{deleteError}</p>}
             <div className="mt-3 flex gap-2">
               <button onClick={() => { setConfirmDelete(false); setDeleteError('') }} disabled={deleting}
                 className="flex-1 rounded-xl border border-border bg-white py-2.5 text-xs font-semibold text-ink-muted">
-                Batal
+                Cancel
               </button>
               <button onClick={deleteGoal} disabled={deleting}
                 className="flex-1 rounded-xl bg-red-500 py-2.5 text-xs font-bold text-white disabled:opacity-60">
-                {deleting ? 'Menghapus...' : 'Ya, hapus'}
+                {deleting ? 'Deleting...' : 'Yes, delete'}
               </button>
             </div>
           </div>
         ) : (
           <button onClick={() => setConfirmDelete(true)} className="w-full py-1 text-center text-xs text-ink-muted/40 hover:text-red-400">
-            Hapus target ini
+            Delete this goal
           </button>
         )}
 
@@ -460,20 +460,20 @@ export default function FinancePage() {
 
       <EditTransactionModal transaction={editingTx} onClose={() => setEditingTx(null)} onChanged={loadData} />
 
-      <Modal open={newGoalOpen} onClose={() => setNewGoalOpen(false)} title="Target Baru" className="max-h-[92vh] overflow-y-auto">
+      <Modal open={newGoalOpen} onClose={() => setNewGoalOpen(false)} title="New goal" className="max-h-[92vh] overflow-y-auto">
         <SavingsWizard coupleId={coupleId} userId={userId} embedded
           onComplete={handleGoalCreated} onCancel={() => setNewGoalOpen(false)} />
       </Modal>
 
-      <Modal open={editModalOpen} onClose={() => setEditModalOpen(false)} title="Ubah Target">
+      <Modal open={editModalOpen} onClose={() => setEditModalOpen(false)} title="Edit goal">
         <form onSubmit={saveEditGoal} className="space-y-4">
           <div className="space-y-1">
-            <label htmlFor="goal-name" className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Nama target</label>
-            <input id="goal-name" type="text" value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nama target"
+            <label htmlFor="goal-name" className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Goal name</label>
+            <input id="goal-name" type="text" value={editName} onChange={e => setEditName(e.target.value)} placeholder="Goal name"
               className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20" required />
           </div>
           <div className="space-y-1">
-            <label htmlFor="goal-target" className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Target jumlah</label>
+            <label htmlFor="goal-target" className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Goal amount</label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-ink-muted">Rp</span>
               <input id="goal-target" type="text" inputMode="numeric" value={editTarget} onChange={e => setEditTarget(fmtInput(e.target.value))}
@@ -481,12 +481,12 @@ export default function FinancePage() {
             </div>
           </div>
           <div className="space-y-1">
-            <label htmlFor="goal-date" className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Target tanggal (opsional)</label>
+            <label htmlFor="goal-date" className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Target date (optional)</label>
             <input id="goal-date" type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
               className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20" />
           </div>
           {editError && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{editError}</p>}
-          <Button type="submit" loading={editSaving} size="lg">Simpan</Button>
+          <Button type="submit" loading={editSaving} size="lg">Save</Button>
         </form>
       </Modal>
     </div>

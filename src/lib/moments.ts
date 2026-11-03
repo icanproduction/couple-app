@@ -77,7 +77,7 @@ export async function getCoupleInfo(): Promise<CoupleInfo | null> {
   const { data: profiles, error: profilesError } = await supabase.from('profiles').select('id, name').in('id', ids)
   if (profilesError) throw profilesError
   const names: Record<string, string> = {}
-  for (const p of profiles ?? []) names[p.id] = p.name ?? 'Pasangan'
+  for (const p of profiles ?? []) names[p.id] = p.name ?? 'Your partner'
 
   return {
     userId: user.id,
@@ -174,7 +174,7 @@ export async function listMoments(coupleId: string): Promise<MomentWithPhotos[]>
   return withSignedCovers(data)
 }
 
-/** Favourite is shared by the couple: either partner can toggle it. */
+/** Favorite is shared by the couple: either partner can toggle it. */
 export async function setMomentFavorite(momentId: string, isFavorite: boolean): Promise<void> {
   const { error } = await createClient().from('moments').update({ is_favorite: isFavorite }).eq('id', momentId)
   if (error) throw error
@@ -292,8 +292,8 @@ export async function addMomentComment(
   body: string
 ): Promise<MomentComment> {
   const clean = body.trim()
-  if (!clean) throw new Error('Komentarnya masih kosong.')
-  if (clean.length > MAX_COMMENT) throw new Error(`Komentar maksimal ${MAX_COMMENT} karakter.`)
+  if (!clean) throw new Error('Write a comment first.')
+  if (clean.length > MAX_COMMENT) throw new Error(`Comments can be up to ${MAX_COMMENT} characters.`)
   const { data, error } = await createClient()
     .from('moment_comments')
     .insert({ moment_id: momentId, couple_id: coupleId, profile_id: userId, body: clean })
@@ -482,8 +482,8 @@ export async function deleteMoment(moment: Pick<Moment, 'id' | 'couple_id'>): Pr
   if (error) throw error
 }
 
-/** "Oktober 2026" — section headers on the list */
+/** "October 2026": section headers on the list (en-GB) */
 export function monthLabel(dateKey: string): string {
   const [y, m] = dateKey.split('-').map(Number)
-  return new Date(y, m - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
+  return new Date(y, m - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
 }

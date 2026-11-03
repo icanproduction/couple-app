@@ -76,8 +76,8 @@ export default function ToplesPage() {
   }, [sentFlash])
 
   const partnerId = info?.partnerId ?? null
-  const partnerName = partnerId ? info?.names[partnerId] ?? 'Pasanganmu' : 'Pasanganmu'
-  const myName = info ? info.names[info.userId] ?? 'Pasanganmu' : 'Pasanganmu'
+  const partnerName = partnerId ? info?.names[partnerId] ?? 'your partner' : 'your partner'
+  const myName = info ? info.names[info.userId] ?? 'Your partner' : 'Your partner'
   const jar = info ? splitNotes(notes, info.userId) : null
 
   async function submit(e: React.FormEvent) {
@@ -96,14 +96,14 @@ export default function ToplesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           recipientId: partnerId,
-          title: 'Toples Apresiasi',
-          body: `${myName} menaruh apresiasi baru di toplesmu`,
+          title: 'Toples',
+          body: `${myName} put a new note of thanks in your Toples`,
           url: '/app/toples',
           kind: 'activity',
         }),
       }).catch(() => {})
     } catch {
-      setSendError('Apresiasimu belum masuk toples. Coba lagi ya.')
+      setSendError("Your note didn't make it into the Toples. Try again.")
     } finally {
       setSending(false)
     }
@@ -131,9 +131,9 @@ export default function ToplesPage() {
         setNotes(fresh)
         candidates = splitNotes(fresh, userId).waiting
       }
-      setDrawError('Toplesnya ternyata kosong. Tunggu apresiasi berikutnya ya.')
+      setDrawError('The Toples is empty after all. Wait for the next note.')
     } catch {
-      setDrawError('Gagal mengambil catatan. Coba lagi ya.')
+      setDrawError("Couldn't take a note out. Try again.")
     } finally {
       setDrawing(false)
     }
@@ -145,11 +145,11 @@ export default function ToplesPage() {
     setDeleteError('')
     try {
       const removed = await deleteNote(createClient(), confirmDelete.id)
-      if (!removed) setDeleteError(`Catatan itu sudah dibuka ${partnerName}, jadi tidak bisa dihapus lagi.`)
+      if (!removed) setDeleteError(`That note was already opened by ${partnerName}, so it can't be deleted.`)
       setConfirmDelete(null)
       await load()
     } catch {
-      setDeleteError('Gagal menghapus. Coba lagi ya.')
+      setDeleteError("Couldn't delete it. Try again.")
       setConfirmDelete(null)
     } finally {
       setDeleting(false)
@@ -162,8 +162,8 @@ export default function ToplesPage() {
         <Link href="/app/jelajah" className="mb-3 flex w-fit items-center gap-1 text-sm text-ink-muted">
           <ArrowLeft className="h-4 w-4" /> Jelajah
         </Link>
-        <h1 className="text-xl font-bold text-ink">Toples Apresiasi</h1>
-        <p className="text-sm text-ink-muted">Hal-hal kecil yang kamu syukuri dari {partnerId ? partnerName : 'pasanganmu'}</p>
+        <h1 className="text-xl font-bold text-ink">Toples</h1>
+        <p className="text-sm text-ink-muted">Little notes of thanks for {partnerName}</p>
       </div>
 
       {status === 'loading' ? (
@@ -173,8 +173,8 @@ export default function ToplesPage() {
         </div>
       ) : status === 'nocouple' ? (
         <div className="px-8 pt-16 text-center">
-          <p className="text-sm text-ink-muted">Hubungkan akunmu dengan pasangan dulu untuk mulai mengisi toples.</p>
-          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Ke Profil</Link>
+          <p className="text-sm text-ink-muted">Connect with your partner first to start filling the Toples.</p>
+          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Go to Profile</Link>
         </div>
       ) : status === 'error' && !jar ? (
         <ErrorBox onRetry={() => { setStatus('loading'); setAttempt((n) => n + 1) }} />
@@ -189,24 +189,24 @@ export default function ToplesPage() {
               {jar.waiting.length > 0 ? (
                 <>
                   <p className="text-base font-bold text-ink">
-                    {jar.waiting.length} apresiasi menunggumu
+                    {jar.waiting.length} {jar.waiting.length === 1 ? 'note' : 'notes'} waiting for you
                   </p>
-                  <p className="text-xs text-ink-muted">Ambil satu kapan saja, terutama di hari yang berat</p>
+                  <p className="text-xs text-ink-muted">Take one out anytime, especially on a hard day</p>
                   <button
                     onClick={drawOne}
                     disabled={drawing}
                     className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-rose px-6 py-3 text-sm font-bold text-white shadow-elevated active:scale-[0.98] disabled:opacity-60"
                   >
-                    {drawing ? 'Mengambil…' : 'Ambil satu'}
+                    {drawing ? 'Taking one out…' : 'Take one out'}
                   </button>
                 </>
               ) : (
                 <>
-                  <p className="text-base font-bold text-ink">Toplesmu lagi kosong</p>
+                  <p className="text-base font-bold text-ink">Your Toples is empty</p>
                   <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-ink-muted">
                     {partnerId
-                      ? `Kalau ${partnerName} menulis apresiasi untukmu, catatannya muncul di sini.`
-                      : 'Setelah pasanganmu bergabung, apresiasi darinya akan masuk ke sini.'}
+                      ? `When ${partnerName} writes you a note of thanks, it shows up here.`
+                      : 'Once your partner joins, their notes will land here.'}
                   </p>
                 </>
               )}
@@ -216,44 +216,44 @@ export default function ToplesPage() {
 
           {/* Write */}
           <section className="mx-6 rounded-2xl border border-border bg-white p-4 shadow-card">
-            <h2 className="text-sm font-bold text-ink">Tulis untuk {partnerId ? partnerName : 'pasanganmu'}</h2>
+            <h2 className="text-sm font-bold text-ink">Write a note for {partnerName}</h2>
             {partnerId ? (
               <form onSubmit={submit} className="mt-3">
-                <label htmlFor="gratitude-body" className="sr-only">Apresiasi untuk {partnerName}</label>
+                <label htmlFor="gratitude-body" className="sr-only">Note of thanks for {partnerName}</label>
                 <textarea
                   id="gratitude-body"
                   value={body}
                   onChange={(e) => setBody(e.target.value.slice(0, GRATITUDE_MAX))}
                   maxLength={GRATITUDE_MAX}
                   rows={3}
-                  placeholder={`Aku bersyukur karena ${partnerName}…`}
+                  placeholder={`I'm thankful that ${partnerName}…`}
                   className="w-full resize-none rounded-xl border border-border bg-cream px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted/60 focus:border-rose focus:outline-none focus:ring-1 focus:ring-rose/20"
                 />
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <p className="text-[11px] text-ink-muted">
-                    {body.length}/{GRATITUDE_MAX} · baru terbaca saat {partnerName} mengambilnya
+                    {body.length}/{GRATITUDE_MAX} · hidden until {partnerName} takes it out
                   </p>
                   <button
                     type="submit"
                     disabled={sending || !body.trim()}
                     className="flex shrink-0 items-center gap-1.5 rounded-xl bg-rose px-4 py-2 text-xs font-bold text-white shadow-elevated disabled:opacity-40"
                   >
-                    <Send className="h-3.5 w-3.5" /> {sending ? 'Mengirim…' : 'Masukkan'}
+                    <Send className="h-3.5 w-3.5" /> {sending ? 'Sending…' : 'Put it in'}
                   </button>
                 </div>
                 {sendError && <p className="mt-2 text-xs font-medium text-red-600">{sendError}</p>}
                 {sentFlash && (
                   <p className="mt-2 flex animate-fade-in items-center gap-1.5 rounded-xl bg-sage/10 px-3 py-2 text-xs font-semibold text-sage-dark" role="status">
-                    <Check className="h-3.5 w-3.5" /> Masuk ke toples {partnerName}
+                    <Check className="h-3.5 w-3.5" /> Added to {partnerName}&apos;s Toples
                   </p>
                 )}
               </form>
             ) : (
               <div className="mt-2 rounded-xl bg-cream px-3 py-3">
                 <p className="text-xs text-ink-muted">
-                  Pasanganmu belum bergabung. Bagikan kode undangan dari Profil supaya kalian bisa saling mengisi toples.
+                  Your partner hasn&apos;t joined yet. Share the invite code from Profile so you can fill each other&apos;s Toples.
                 </p>
-                <Link href="/app/profile" className="mt-2 inline-block text-xs font-semibold text-rose">Ke Profil</Link>
+                <Link href="/app/profile" className="mt-2 inline-block text-xs font-semibold text-rose">Go to Profile</Link>
               </div>
             )}
           </section>
@@ -262,9 +262,9 @@ export default function ToplesPage() {
           {jar.sent.length > 0 && (
             <section className="mx-6">
               <div className="mb-2 flex items-baseline justify-between">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Yang kamu kirim</h2>
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">What you sent</h2>
                 <p className="text-[11px] text-ink-muted">
-                  {jar.sent.length} terkirim · {jar.sentOpened} dibuka {partnerName}
+                  {jar.sent.length} sent · {jar.sentOpened} opened by {partnerName}
                 </p>
               </div>
               {deleteError && <p className="mb-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-600">{deleteError}</p>}
@@ -276,15 +276,15 @@ export default function ToplesPage() {
                       <p className="mt-1 text-[11px] text-ink-muted">
                         {dateOf(n.created_at)} ·{' '}
                         {n.opened_at
-                          ? <span className="font-semibold text-sage-dark">Dibuka {dateOf(n.opened_at)}</span>
-                          : 'Masih di toples'}
+                          ? <span className="font-semibold text-sage-dark">Opened {dateOf(n.opened_at)}</span>
+                          : 'Still in the Toples'}
                       </p>
                     </div>
                     {!n.opened_at && (
                       <button
                         type="button"
                         onClick={() => { setDeleteError(''); setConfirmDelete(n) }}
-                        aria-label="Hapus apresiasi ini"
+                        aria-label="Delete this note"
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-danger hover:bg-red-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -298,10 +298,10 @@ export default function ToplesPage() {
 
           {/* Opened by me */}
           <section className="mx-6">
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Sudah kamu buka</h2>
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Notes you&apos;ve opened</h2>
             {jar.opened.length === 0 ? (
               <p className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-xs text-ink-muted">
-                Catatan yang kamu ambil akan tersimpan di sini.
+                Notes you take out are kept here.
               </p>
             ) : (
               <ul className="space-y-2">
@@ -313,7 +313,7 @@ export default function ToplesPage() {
                   >
                     <p className="break-words text-sm leading-relaxed text-ink">{n.body}</p>
                     <p className="mt-2 text-[11px] text-ink-light">
-                      Dari {info?.names[n.from_id] ?? 'pasanganmu'} · ditulis {dateOf(n.created_at)}
+                      From {info?.names[n.from_id] ?? 'your partner'} · written {dateOf(n.created_at)}
                     </p>
                   </li>
                 ))}
@@ -324,16 +324,16 @@ export default function ToplesPage() {
       ) : null}
 
       {reveal && (
-        <Reveal note={reveal} fromName={info?.names[reveal.from_id] ?? 'Pasanganmu'} onClose={closeReveal} />
+        <Reveal note={reveal} fromName={info?.names[reveal.from_id] ?? 'your partner'} onClose={closeReveal} />
       )}
 
-      <Modal open={!!confirmDelete} onClose={() => !deleting && setConfirmDelete(null)} title="Hapus apresiasi ini?">
+      <Modal open={!!confirmDelete} onClose={() => !deleting && setConfirmDelete(null)} title="Delete this note?">
         <p className="mb-5 break-words text-sm text-ink-light">
-          “{confirmDelete?.body}” akan dikeluarkan dari toples {partnerName} sebelum sempat dibuka.
+          “{confirmDelete?.body}” will come out of {partnerName}&apos;s Toples before they open it.
         </p>
         <div className="flex gap-3">
-          <Button variant="secondary" onClick={() => setConfirmDelete(null)} disabled={deleting}>Batal</Button>
-          <Button variant="danger" onClick={doDelete} loading={deleting}>Hapus</Button>
+          <Button variant="secondary" onClick={() => setConfirmDelete(null)} disabled={deleting}>Cancel</Button>
+          <Button variant="danger" onClick={doDelete} loading={deleting}>Delete</Button>
         </div>
       </Modal>
     </div>
@@ -343,9 +343,9 @@ export default function ToplesPage() {
 function ErrorBox({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="mx-6 mt-5 flex items-center justify-between gap-3 rounded-xl bg-red-50 px-3 py-2">
-      <p className="text-sm text-red-600">Gagal memuat toples.</p>
+      <p className="text-sm text-red-600">Couldn&apos;t load the Toples.</p>
       <button onClick={onRetry} className="flex items-center gap-1 text-xs font-semibold text-red-600">
-        <RefreshCw className="h-3.5 w-3.5" /> Coba lagi
+        <RefreshCw className="h-3.5 w-3.5" /> Try again
       </button>
     </div>
   )
@@ -355,7 +355,7 @@ function ErrorBox({ onRetry }: { onRetry: () => void }) {
 function Jar({ count }: { count: number }) {
   const papers = Math.min(count, MAX_PAPERS)
   return (
-    <div className="relative mx-auto h-48 w-40" role="img" aria-label={`Toples berisi ${count} catatan`}>
+    <div className="relative mx-auto h-48 w-40" role="img" aria-label={`Toples holding ${count} ${count === 1 ? 'note' : 'notes'}`}>
       {/* Lid */}
       <div className="absolute left-1/2 top-0 z-10 h-5 w-28 -translate-x-1/2 rounded-lg bg-gold shadow-card" />
       <div className="absolute left-1/2 top-4 h-3 w-24 -translate-x-1/2 rounded-sm bg-gold-dark/60" />
@@ -431,29 +431,29 @@ function Reveal({ note, fromName, onClose }: { note: GratitudeNote; fromName: st
       {stage === 'folded' ? (
         <div className="relative flex h-24 w-24 animate-bounce items-center justify-center rounded-2xl bg-[#FFF4DB] text-4xl shadow-elevated motion-reduce:animate-none">
           <span aria-hidden>💌</span>
-          <span id="reveal-title" className="sr-only">Membuka apresiasi…</span>
+          <span id="reveal-title" className="sr-only">Opening the note…</span>
         </div>
       ) : (
         <div className="relative w-full max-w-sm animate-scale-in rounded-3xl bg-[#FFF4DB] p-6 shadow-elevated motion-reduce:animate-none">
           <button
             ref={closeRef}
             onClick={onClose}
-            aria-label="Tutup"
+            aria-label="Close"
             className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-xl bg-white/70 text-ink-muted"
           >
             <X className="h-4 w-4" />
           </button>
           <p className="text-3xl" aria-hidden>💌</p>
           <p id="reveal-title" className="mt-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">
-            Dari {fromName}
+            From {fromName}
           </p>
           <p className="mt-3 whitespace-pre-wrap break-words text-lg font-medium leading-relaxed text-ink">{note.body}</p>
-          <p className="mt-4 text-[11px] text-ink-light">Ditulis {dateOf(note.created_at)}</p>
+          <p className="mt-4 text-[11px] text-ink-light">Written {dateOf(note.created_at)}</p>
           <button
             onClick={onClose}
             className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-rose py-3 text-sm font-bold text-white shadow-elevated"
           >
-            <Heart className="h-4 w-4" fill="currentColor" /> Simpan di hati
+            <Heart className="h-4 w-4" fill="currentColor" /> Keep it close
           </button>
         </div>
       )}

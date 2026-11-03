@@ -35,7 +35,7 @@ export default function BucketListPage() {
   const [status, setStatus] = useState<'loading' | 'ready' | 'nocouple' | 'error'>('loading')
   const [attempt, setAttempt] = useState(0)
   const [items, setItems] = useState<BucketItem[]>([])
-  const [tab, setTab] = useState<Tab>('belum')
+  const [tab, setTab] = useState<Tab>('belum') // copy-ok: internal tab key, never shown
   const [actionError, setActionError] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
 
@@ -120,10 +120,10 @@ export default function BucketListPage() {
         ? await updateBucketItem(client, editing.id, input)
         : await createBucketItem(client, info.coupleId, info.userId, input)
       setItems((prev) => (editing ? prev.map((i) => (i.id === saved.id ? saved : i)) : [saved, ...prev]))
-      if (!editing) setTab('belum')
+      if (!editing) setTab('belum') // copy-ok: internal tab key, never shown
       setFormOpen(false)
     } catch {
-      setFormError(editing ? 'Perubahan belum tersimpan. Coba lagi ya.' : 'Belum berhasil ditambahkan. Coba lagi ya.')
+      setFormError(editing ? "Couldn't save your changes. Try again." : "Couldn't add it. Try again.")
     } finally {
       setSaving(false)
     }
@@ -138,7 +138,7 @@ export default function BucketListPage() {
       setItems((prev) => prev.map((i) => (i.id === saved.id ? saved : i)))
       if (saved.is_done && !saved.moment_id) setCelebrate(saved)
     } catch {
-      setActionError('Gagal memperbarui. Coba lagi ya.')
+      setActionError("Couldn't update it. Try again.")
     } finally {
       setBusyId(null)
     }
@@ -153,7 +153,7 @@ export default function BucketListPage() {
       setConfirmDelete(null)
       load() // deletes aren't delivered by realtime
     } catch {
-      setActionError('Gagal menghapus. Coba lagi ya.')
+      setActionError("Couldn't remove it. Try again.")
       setConfirmDelete(null)
     } finally {
       setDeleting(false)
@@ -170,7 +170,7 @@ export default function BucketListPage() {
           <div>
             <h1 className="text-xl font-bold text-ink">Bucket List</h1>
             <p className="text-sm text-ink-muted">
-              {progress.total > 0 ? `${progress.done} dari ${progress.total} tercapai` : 'Hal-hal yang mau kalian coba berdua'}
+              {progress.total > 0 ? `${progress.done} of ${progress.total} done` : 'Things you want to try together'}
             </p>
           </div>
           {status === 'ready' && (
@@ -178,7 +178,7 @@ export default function BucketListPage() {
               onClick={openCreate}
               className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-rose px-4 py-2.5 text-xs font-bold text-white shadow-elevated active:scale-[0.98]"
             >
-              <Plus className="h-4 w-4" /> Tambah
+              <Plus className="h-4 w-4" /> Add
             </button>
           )}
         </div>
@@ -189,7 +189,7 @@ export default function BucketListPage() {
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={progress.percent}
-            aria-label="Progres bucket list"
+            aria-label="Bucket list progress"
           >
             <div className="h-full rounded-full bg-sage transition-all" style={{ width: `${progress.percent}%` }} />
           </div>
@@ -202,17 +202,17 @@ export default function BucketListPage() {
         </div>
       ) : status === 'nocouple' ? (
         <div className="px-8 pt-16 text-center">
-          <p className="text-sm text-ink-muted">Hubungkan akunmu dengan pasangan dulu untuk mulai bikin bucket list.</p>
-          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Ke Profil</Link>
+          <p className="text-sm text-ink-muted">Connect with your partner first to start a bucket list.</p>
+          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Go to Profile</Link>
         </div>
       ) : status === 'error' && items.length === 0 ? (
         <div className="mx-6 mt-5 flex items-center justify-between gap-3 rounded-xl bg-red-50 px-3 py-2">
-          <p className="text-sm text-red-600">Gagal memuat bucket list.</p>
+          <p className="text-sm text-red-600">Couldn&apos;t load your bucket list.</p>
           <button
             onClick={() => { setStatus('loading'); if (info) load(); else setAttempt((n) => n + 1) }}
             className="flex items-center gap-1 text-xs font-semibold text-red-600"
           >
-            <RefreshCw className="h-3.5 w-3.5" /> Coba lagi
+            <RefreshCw className="h-3.5 w-3.5" /> Try again
           </button>
         </div>
       ) : items.length === 0 ? (
@@ -220,22 +220,22 @@ export default function BucketListPage() {
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-sage/15">
             <ListChecks className="h-8 w-8 text-sage-dark" />
           </div>
-          <h2 className="text-lg font-bold text-ink">Bucket list masih kosong</h2>
+          <h2 className="text-lg font-bold text-ink">Your bucket list is empty</h2>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-muted">
-            Tulis hal-hal yang mau kalian lakukan berdua, dari kuliner baru sampai liburan impian.
+            Write down what you want to do together, from a new food spot to a dream vacation.
           </p>
           <button
             onClick={openCreate}
             className="mt-6 w-full max-w-xs rounded-2xl bg-rose py-3.5 text-sm font-bold text-white shadow-elevated"
           >
-            Tambah Impian Pertama
+            Add the first one
           </button>
-          <Link href="/app/ide-date" className="mt-3 text-sm font-semibold text-rose">Atau minta ide date dari AI</Link>
+          <Link href="/app/ide-date" className="mt-3 text-sm font-semibold text-rose">Or get date ideas from AI</Link>
         </div>
       ) : (
         <div className="px-6 pt-5">
-          <div className="mb-4 grid grid-cols-2 gap-1 rounded-2xl bg-cream p-1" role="tablist" aria-label="Status bucket list">
-            {(['belum', 'sudah'] as const).map((t) => (
+          <div className="mb-4 grid grid-cols-2 gap-1 rounded-2xl bg-cream p-1" role="tablist" aria-label="Bucket list status">
+            {(['belum', 'sudah'] as const).map((t) => ( // copy-ok: internal tab keys, never shown
               <button
                 key={t}
                 role="tab"
@@ -246,7 +246,7 @@ export default function BucketListPage() {
                   tab === t ? 'bg-white text-ink shadow-card' : 'text-ink-muted'
                 )}
               >
-                {t === 'belum' ? `Belum (${pending.length})` : `Sudah (${done.length})`}
+                {t === 'belum' ? `To do (${pending.length})` : `Done (${done.length})`}
               </button>
             ))}
           </div>
@@ -257,11 +257,11 @@ export default function BucketListPage() {
             <div className="rounded-2xl border border-dashed border-border px-6 py-10 text-center">
               <p className="text-sm text-ink-muted">
                 {tab === 'belum'
-                  ? 'Semua sudah tercapai! Saatnya tambah impian baru.'
-                  : 'Belum ada yang tercapai. Yuk wujudkan satu!'}
+                  ? 'Everything is done. Time to add something new.'
+                  : 'Nothing done yet. Pick one and make it happen.'}
               </p>
               {tab === 'belum' && (
-                <button onClick={openCreate} className="mt-3 text-sm font-semibold text-rose">Tambah impian</button>
+                <button onClick={openCreate} className="mt-3 text-sm font-semibold text-rose">Add something</button>
               )}
             </div>
           ) : (
@@ -282,26 +282,26 @@ export default function BucketListPage() {
       )}
 
       {/* Add / edit */}
-      <Modal open={formOpen} onClose={() => !saving && setFormOpen(false)} title={editing ? 'Edit Bucket List' : 'Tambah Bucket List'}>
+      <Modal open={formOpen} onClose={() => !saving && setFormOpen(false)} title={editing ? 'Edit item' : 'Add to bucket list'}>
         <form onSubmit={submitForm} className="max-h-[65vh] space-y-4 overflow-y-auto pb-1">
           <div>
             <label htmlFor="bucket-title" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink-muted">
-              Mau ngapain?
+              What do you want to do?
             </label>
             <input
               id="bucket-title"
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value.slice(0, BUCKET_TITLE_MAX) }))}
               maxLength={BUCKET_TITLE_MAX}
-              placeholder="Contoh: Lihat sunrise di Bromo"
+              placeholder="e.g. Watch the sunrise at Bromo"
               className="w-full rounded-2xl border border-border bg-surface px-4 py-3.5 text-sm text-ink outline-none placeholder:text-ink-muted/60 focus:border-rose focus:ring-2 focus:ring-rose/10"
             />
             <p className="mt-1 text-right text-[11px] text-ink-muted">{form.title.length}/{BUCKET_TITLE_MAX}</p>
           </div>
 
           <div>
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">Kategori</p>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Kategori">
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">Category</p>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Category">
               {BUCKET_CATEGORIES.map((c) => (
                 <button
                   key={c.key}
@@ -321,7 +321,7 @@ export default function BucketListPage() {
 
           <div>
             <label htmlFor="bucket-note" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink-muted">
-              Catatan (opsional)
+              Note (optional)
             </label>
             <textarea
               id="bucket-note"
@@ -329,14 +329,14 @@ export default function BucketListPage() {
               onChange={(e) => setForm((f) => ({ ...f, note: e.target.value.slice(0, BUCKET_NOTE_MAX) }))}
               maxLength={BUCKET_NOTE_MAX}
               rows={3}
-              placeholder="Detail, tempat, atau alasan kenapa pengin"
+              placeholder="Details, the place, or why you want to"
               className="w-full resize-none rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-muted/60 focus:border-rose focus:ring-2 focus:ring-rose/10"
             />
           </div>
 
           <div>
             <label htmlFor="bucket-cost" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink-muted">
-              Perkiraan biaya (opsional)
+              Estimated cost (optional)
             </label>
             <div className="flex items-center rounded-2xl border border-border bg-surface px-4 focus-within:border-rose focus-within:ring-2 focus-within:ring-rose/10">
               <span className="text-sm text-ink-muted">Rp</span>
@@ -354,20 +354,20 @@ export default function BucketListPage() {
           {formError && <p className="text-sm font-medium text-red-600">{formError}</p>}
 
           <Button type="submit" loading={saving} disabled={!form.title.trim()}>
-            {editing ? 'Simpan Perubahan' : 'Tambahkan'}
+            {editing ? 'Save changes' : 'Add'}
           </Button>
         </form>
       </Modal>
 
       {/* Delete confirm */}
-      <Modal open={!!confirmDelete} onClose={() => !deleting && setConfirmDelete(null)} title="Hapus dari bucket list?">
+      <Modal open={!!confirmDelete} onClose={() => !deleting && setConfirmDelete(null)} title="Remove from bucket list?">
         <p className="mb-5 text-sm text-ink-light">
-          “{confirmDelete?.title}” akan dihapus untuk kalian berdua.
-          {confirmDelete?.moment_id ? ' Moment yang sudah tersimpan tetap ada.' : ''}
+          “{confirmDelete?.title}” will be removed for both of you.
+          {confirmDelete?.moment_id ? ' The saved Moment stays.' : ''}
         </p>
         <div className="flex gap-3">
-          <Button variant="secondary" onClick={() => setConfirmDelete(null)} disabled={deleting}>Batal</Button>
-          <Button variant="danger" onClick={doDelete} loading={deleting}>Hapus</Button>
+          <Button variant="secondary" onClick={() => setConfirmDelete(null)} disabled={deleting}>Cancel</Button>
+          <Button variant="danger" onClick={doDelete} loading={deleting}>Remove</Button>
         </div>
       </Modal>
 
@@ -376,18 +376,18 @@ export default function BucketListPage() {
         {celebrate && (
           <div className="text-center">
             <p className="text-4xl" aria-hidden>🎉</p>
-            <h3 className="mt-2 text-lg font-bold text-ink">Yeay, tercapai!</h3>
+            <h3 className="mt-2 text-lg font-bold text-ink">You did it!</h3>
             <p className="mt-1 text-sm text-ink-light">
-              “{celebrate.title}” sudah kalian centang. Mau diabadikan jadi Moment, lengkap dengan foto dan ceritanya?
+              You ticked off “{celebrate.title}”. Want to save it as a Moment, with photos and the story?
             </p>
             <div className="mt-5 space-y-2">
               <Link
                 href={momentPrefillHref(celebrate)}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rose py-3.5 text-sm font-bold text-white shadow-elevated"
               >
-                <Camera className="h-4 w-4" /> Abadikan jadi Moment
+                <Camera className="h-4 w-4" /> Save as a Moment
               </Link>
-              <Button variant="ghost" onClick={() => setCelebrate(null)}>Nanti saja</Button>
+              <Button variant="ghost" onClick={() => setCelebrate(null)}>Maybe later</Button>
             </div>
           </div>
         )}
@@ -414,7 +414,7 @@ function BucketRow({
           type="button"
           onClick={onToggle}
           disabled={busy}
-          aria-label={item.is_done ? `Tandai belum tercapai: ${item.title}` : `Tandai tercapai: ${item.title}`}
+          aria-label={item.is_done ? `Mark as not done: ${item.title}` : `Mark as done: ${item.title}`}
           aria-pressed={item.is_done}
           className={cn(
             'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors disabled:opacity-50',
@@ -432,7 +432,7 @@ function BucketRow({
             </span>
             {item.source === 'ai' && (
               <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-600">
-                <Sparkles className="h-3 w-3" /> Ide AI
+                <Sparkles className="h-3 w-3" /> AI idea
               </span>
             )}
             <div className="-my-1.5 -mr-2 ml-auto flex shrink-0">
@@ -447,7 +447,7 @@ function BucketRow({
               <button
                 type="button"
                 onClick={onDelete}
-                aria-label={`Hapus ${item.title}`}
+                aria-label={`Remove ${item.title}`}
                 className="flex h-8 w-8 items-center justify-center rounded-xl text-danger hover:bg-red-50"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -456,22 +456,22 @@ function BucketRow({
           </div>
           <p className={cn('mt-1.5 break-words font-bold', item.is_done ? 'text-ink-light' : 'text-ink')}>{item.title}</p>
           {item.note && <p className="mt-0.5 line-clamp-2 break-words text-xs text-ink-muted">{item.note}</p>}
-          {cost !== null && cost > 0 && <p className="mt-1 text-xs text-ink-light">Perkiraan {formatRupiah(cost)}</p>}
+          {cost !== null && cost > 0 && <p className="mt-1 text-xs text-ink-light">About {formatRupiah(cost)}</p>}
 
           {item.is_done && (
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
               {item.done_at && (
                 <span className="text-xs font-medium text-sage-dark">
-                  Tercapai {formatDateID(todayJakarta(new Date(item.done_at)))}
+                  Done on {formatDateID(todayJakarta(new Date(item.done_at)))}
                 </span>
               )}
               {item.moment_id ? (
                 <Link href={`/app/moments/${item.moment_id}`} className="flex items-center gap-1 text-xs font-semibold text-rose">
-                  <Camera className="h-3.5 w-3.5" /> Lihat Moment
+                  <Camera className="h-3.5 w-3.5" /> View Moment
                 </Link>
               ) : (
                 <Link href={momentPrefillHref(item)} className="flex items-center gap-1 text-xs font-semibold text-rose">
-                  <Camera className="h-3.5 w-3.5" /> Abadikan jadi Moment
+                  <Camera className="h-3.5 w-3.5" /> Save as a Moment
                 </Link>
               )}
             </div>

@@ -60,10 +60,10 @@ export default function NotificationToggle() {
         const perm = await getNotificationPermission()
         setPermission(perm)
         setSubscribed(success)
-        if (!success && perm === 'granted') setError('Gagal mengaktifkan notifikasi. Coba lagi, ya.')
+        if (!success && perm === 'granted') setError("Couldn't turn on notifications. Try again.")
       }
     } catch {
-      setError('Gagal mengubah notifikasi. Coba lagi, ya.')
+      setError("Couldn't change notifications. Try again.")
     }
     setLoading(false)
   }
@@ -78,9 +78,9 @@ export default function NotificationToggle() {
         <div className="flex items-center gap-3">
           <BellOff className="h-4 w-4 text-ink-muted" />
           <div>
-            <p className="text-sm font-medium text-ink-muted">Notifikasi</p>
+            <p className="text-sm font-medium text-ink-muted">Notifications</p>
             <p className="text-xs text-ink-muted/60">
-              Tidak didukung browser ini. Di iPhone, tambahkan Nanti Kita ke Home Screen dulu.
+              This browser doesn&apos;t support them. On iPhone, add Nanti Kita to your Home Screen first.
             </p>
           </div>
         </div>
@@ -94,7 +94,7 @@ export default function NotificationToggle() {
         type="button"
         role="switch"
         aria-checked={isEnabled}
-        aria-label="Notifikasi push di perangkat ini"
+        aria-label="Push notifications on this device"
         onClick={handleToggle}
         disabled={loading || isDenied}
         className="flex w-full items-center justify-between rounded-xl border border-border bg-white px-4 py-3.5 text-left transition-colors hover:bg-cream disabled:opacity-50"
@@ -105,15 +105,15 @@ export default function NotificationToggle() {
             : <BellOff className="h-4 w-4 text-ink-muted" />
           }
           <div>
-            <p className="text-sm font-medium text-ink">Notifikasi Push</p>
+            <p className="text-sm font-medium text-ink">Push notifications</p>
             <p className="text-xs text-ink-muted">
               {isDenied
-                ? 'Diblokir — aktifkan di pengaturan browser'
+                ? 'Blocked. Turn them on in your browser settings.'
                 : loading
-                ? 'Sebentar...'
+                ? 'One moment...'
                 : isEnabled
-                ? 'Aktif di perangkat ini'
-                : 'Aktifkan supaya kabar dari pasanganmu langsung sampai'}
+                ? 'On for this device'
+                : 'Turn on to hear from your partner right away'}
             </p>
           </div>
         </div>

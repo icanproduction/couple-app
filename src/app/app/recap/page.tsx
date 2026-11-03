@@ -48,10 +48,10 @@ function MoodRow({ partner }: { partner: PartnerRecap }) {
     <div>
       <div className="flex items-baseline justify-between gap-3">
         <p className="min-w-0 truncate text-sm font-semibold text-ink">{partner.name}</p>
-        <p className="shrink-0 whitespace-nowrap text-xs text-ink-muted">{partner.moodDays} hari check-in</p>
+        <p className="shrink-0 whitespace-nowrap text-xs text-ink-muted">checked in {partner.moodDays} {partner.moodDays === 1 ? 'day' : 'days'}</p>
       </div>
       {entries.length === 0 ? (
-        <p className="mt-1.5 text-xs text-ink-muted">Belum ada check-in mood bulan ini.</p>
+        <p className="mt-1.5 text-xs text-ink-muted">No mood check-ins this month.</p>
       ) : (
         <>
           <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-border/60" aria-hidden="true">
@@ -103,7 +103,7 @@ export default function RecapPage() {
         setInfo(i)
         earliestRecapMonth(i).then((m) => { if (!cancelled) setEarliest(m) }).catch(() => {})
       } catch {
-        if (!cancelled) { setError('Gagal memuat recap. Cek koneksi lalu coba lagi.'); setLoading(false) }
+        if (!cancelled) { setError("Couldn't load your recap. Check your connection and try again."); setLoading(false) }
       }
     })()
     return () => { cancelled = true }
@@ -118,7 +118,7 @@ export default function RecapPage() {
     setError('')
     loadRecap(info, month)
       .then((r) => { if (id === requestId.current) setRecap(r) })
-      .catch(() => { if (id === requestId.current) setError('Gagal memuat recap bulan ini. Cek koneksi lalu coba lagi.') })
+      .catch(() => { if (id === requestId.current) setError("Couldn't load this month's recap. Check your connection and try again.") })
       .finally(() => { if (id === requestId.current) setLoading(false) })
   }, [info, month, attempt])
 
@@ -137,7 +137,7 @@ export default function RecapPage() {
     const text = recapShareText(recap, info.names)
     if (typeof navigator.share === 'function') {
       try {
-        await navigator.share({ title: `Recap ${label}`, text })
+        await navigator.share({ title: `${label} recap`, text })
         return
       } catch (e) {
         if (e instanceof DOMException && e.name === 'AbortError') return
@@ -146,9 +146,9 @@ export default function RecapPage() {
     }
     try {
       await navigator.clipboard.writeText(text)
-      setToast('Ringkasan disalin, tinggal tempel')
+      setToast('Summary copied. Paste it anywhere.')
     } catch {
-      setToast('Gagal membagikan recap')
+      setToast("Couldn't share the recap")
     }
   }
 
@@ -160,8 +160,8 @@ export default function RecapPage() {
       <div className="border-b border-border bg-white px-6 pb-5 pt-6">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-ink">Recap Bulanan</h1>
-            <p className="text-sm text-ink-muted">Cerita kalian sebulan, dalam angka</p>
+            <h1 className="text-xl font-bold text-ink">Monthly Recap</h1>
+            <p className="text-sm text-ink-muted">Your month in numbers</p>
           </div>
           {hasCouple && (
             <button
@@ -170,7 +170,7 @@ export default function RecapPage() {
               disabled={!recap || loading}
               className="flex items-center gap-1.5 rounded-2xl bg-rose px-4 py-2.5 text-xs font-bold text-white shadow-elevated transition-all active:scale-[0.98] disabled:opacity-50"
             >
-              <Share2 className="h-4 w-4" /> Bagikan
+              <Share2 className="h-4 w-4" /> Share
             </button>
           )}
         </div>
@@ -178,8 +178,8 @@ export default function RecapPage() {
 
       {!hasCouple ? (
         <div className="px-8 pt-16 text-center">
-          <p className="text-sm text-ink-muted">Hubungkan akunmu dengan pasangan dulu untuk melihat recap kalian.</p>
-          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Ke Profil</Link>
+          <p className="text-sm text-ink-muted">Connect with your partner first to see your recap.</p>
+          <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Go to Profile</Link>
         </div>
       ) : (
         <div className="space-y-5 px-6 pt-5">
@@ -188,20 +188,20 @@ export default function RecapPage() {
               type="button"
               onClick={() => setMonth((m) => shiftMonth(m, -1))}
               disabled={!canPrev}
-              aria-label="Bulan sebelumnya"
+              aria-label="Previous month"
               className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted hover:bg-cream disabled:opacity-30"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
             <div className="text-center">
               <p className="text-sm font-bold text-ink">{label}</p>
-              {month === thisMonth && <p className="text-[11px] text-ink-muted">Bulan berjalan</p>}
+              {month === thisMonth && <p className="text-[11px] text-ink-muted">Month in progress</p>}
             </div>
             <button
               type="button"
               onClick={() => setMonth((m) => shiftMonth(m, 1))}
               disabled={!canNext}
-              aria-label="Bulan berikutnya"
+              aria-label="Next month"
               className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted hover:bg-cream disabled:opacity-30"
             >
               <ChevronRight className="h-5 w-5" />
@@ -227,7 +227,7 @@ export default function RecapPage() {
                 }}
                 className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-red-700 hover:bg-red-100"
               >
-                <RefreshCw className="h-3.5 w-3.5" /> Coba lagi
+                <RefreshCw className="h-3.5 w-3.5" /> Try again
               </button>
             </div>
           ) : recap ? (
@@ -240,7 +240,7 @@ export default function RecapPage() {
                   {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL from private storage */}
                   <img src={recap.bestPhoto.url} alt={recap.bestPhoto.title} className="h-full w-full object-cover" />
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/35 to-transparent px-4 pb-4 pt-14">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-white/80">Foto bulan ini · {recap.bestPhoto.title}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-white/80">Photo of the month · {recap.bestPhoto.title}</p>
                     <p className="mt-1 text-lg font-bold leading-snug text-white">{recap.headline}</p>
                   </div>
                 </Link>
@@ -253,19 +253,19 @@ export default function RecapPage() {
               )}
 
               <div className="grid grid-cols-2 gap-3">
-                <StatTile icon={Camera} tone="bg-rose/10 text-rose" value={recap.moments} label="moment" sub={`${recap.photos} foto`} />
-                <StatTile icon={MapPin} tone="bg-rose/10 text-rose" value={recap.places.length} label="tempat berbeda" sub={recap.places.slice(0, 2).join(', ') || null} />
-                <StatTile icon={MessageSquareHeart} tone="bg-gold/20 text-gold-dark" value={recap.dailyBothDays} label="hari kompak" sub="kalian berdua menjawab" />
-                <StatTile icon={CircleCheck} tone="bg-sage/20 text-sage-dark" value={recap.bucketDone} label="impian tercentang" sub={recap.bucketDoneTitles[0] ?? null} />
-                <StatTile icon={Mail} tone="bg-purple-100 text-purple-600" value={recap.lettersWritten} label="surat ditulis" />
-                <StatTile icon={HeartHandshake} tone="bg-gold/20 text-gold-dark" value={recap.gratitudeNotes} label="apresiasi di toples" />
-                <StatTile icon={Gamepad2} tone="bg-blue-50 text-blue-600" value={recap.gamesCompleted} label="game Samakan selesai" />
+                <StatTile icon={Camera} tone="bg-rose/10 text-rose" value={recap.moments} label={recap.moments === 1 ? 'Moment' : 'Moments'} sub={`${recap.photos} ${recap.photos === 1 ? 'photo' : 'photos'}`} />
+                <StatTile icon={MapPin} tone="bg-rose/10 text-rose" value={recap.places.length} label={recap.places.length === 1 ? 'place' : 'different places'} sub={recap.places.slice(0, 2).join(', ') || null} />
+                <StatTile icon={MessageSquareHeart} tone="bg-gold/20 text-gold-dark" value={recap.dailyBothDays} label={recap.dailyBothDays === 1 ? 'day in sync' : 'days in sync'} sub="you both answered" />
+                <StatTile icon={CircleCheck} tone="bg-sage/20 text-sage-dark" value={recap.bucketDone} label={recap.bucketDone === 1 ? 'wish ticked off' : 'wishes ticked off'} sub={recap.bucketDoneTitles[0] ?? null} />
+                <StatTile icon={Mail} tone="bg-purple-100 text-purple-600" value={recap.lettersWritten} label={recap.lettersWritten === 1 ? 'letter written' : 'letters written'} />
+                <StatTile icon={HeartHandshake} tone="bg-gold/20 text-gold-dark" value={recap.gratitudeNotes} label={recap.gratitudeNotes === 1 ? 'note in the Toples' : 'notes in the Toples'} />
+                <StatTile icon={Gamepad2} tone="bg-blue-50 text-blue-600" value={recap.gamesCompleted} label={recap.gamesCompleted === 1 ? 'Samakan game played' : 'Samakan games played'} />
                 <StatTile
                   icon={PiggyBank}
                   tone="bg-sage/20 text-sage-dark"
                   value={formatRupiah(recap.savingsIn)}
-                  label="ditabung"
-                  sub={recap.savingsOut ? `ditarik ${formatRupiah(recap.savingsOut)}` : null}
+                  label="saved"
+                  sub={recap.savingsOut ? `${formatRupiah(recap.savingsOut)} taken out` : null}
                 />
               </div>
 
@@ -279,7 +279,7 @@ export default function RecapPage() {
                     <div key={p.id}>
                       <div className="flex items-baseline justify-between gap-3 text-xs">
                         <span className="min-w-0 truncate font-semibold text-ink">{p.name}</span>
-                        <span className="shrink-0 whitespace-nowrap text-ink-muted">kirim {p.kangenSent}x · terima {p.kangenReceived}x</span>
+                        <span className="shrink-0 whitespace-nowrap text-ink-muted">sent {p.kangenSent}x · got {p.kangenReceived}x</span>
                       </div>
                       <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-rose-50" aria-hidden="true">
                         <div className="h-full rounded-full bg-rose" style={{ width: `${(p.kangenSent / maxKangen) * 100}%` }} />
@@ -290,9 +290,9 @@ export default function RecapPage() {
               </section>
 
               <section className="rounded-2xl border border-border bg-white p-4 shadow-card">
-                <h2 className="text-sm font-bold text-ink">Mood kalian</h2>
+                <h2 className="text-sm font-bold text-ink">Your moods</h2>
                 {totalMoods === 0 ? (
-                  <p className="mt-2 text-xs text-ink-muted">Belum ada check-in mood bulan ini.</p>
+                  <p className="mt-2 text-xs text-ink-muted">No mood check-ins this month.</p>
                 ) : (
                   <div className="mt-3 space-y-4">
                     {recap.partners.map((p) => <MoodRow key={p.id} partner={p} />)}

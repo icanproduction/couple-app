@@ -122,7 +122,7 @@ function quietHourCases() {
   ok('quiet 23–0: 23.30 WIB quiet', inQuietHours(23, 0, at('2026-10-27T16:30:00Z')) === true)
   ok('quiet 23–0: 00.00 WIB not quiet', inQuietHours(23, 0, at('2026-10-27T17:00:00Z')) === false)
   ok('quiet 0–1: midnight WIB is hour 0', inQuietHours(0, 1, at('2026-10-27T17:00:00Z')) === true)
-  ok('hourLabel', hourLabel(7) === '07.00' && hourLabel(22) === '22.00')
+  ok('hourLabel', hourLabel(7) === '07:00' && hourLabel(22) === '22:00')
 
   // R5: cron pushes ignore quiet hours, never the per-kind switch.
   const night = at('2026-10-27T16:00:00Z') // 23.00 WIB
@@ -155,15 +155,15 @@ async function inviteCodes() {
 
   await admin.from('couples').update({ invite_expires_at: new Date(Date.now() - 3600_000).toISOString() }).eq('id', c0.id)
   const { error: expE } = await b.rpc('join_couple', { p_code: r1.invite_code })
-  ok('expired code: join refused with kedaluwarsa message', /kedaluwarsa/i.test(expE?.message ?? ''), expE?.message)
+  ok('expired code: join refused with the expired message', /invite code has expired/i.test(expE?.message ?? ''), expE?.message)
   const { count: stillOne } = await admin.from('couple_members').select('*', { count: 'exact', head: true }).eq('couple_id', c0.id)
   ok('expired code: nobody joined', stillOne === 1, `members=${stillOne}`)
 
   // /invite/<code> explains instead of bouncing to sign-up.
   const page = await api('GET', `/invite/${r1.invite_code}`)
-  ok('/invite/<expired> renders the kedaluwarsa page', page.status === 200 && /kedaluwarsa/i.test(page.text), `status ${page.status}`)
+  ok('/invite/<expired> renders the expired page', page.status === 200 && /invite code has expired/i.test(page.text), `status ${page.status}`)
   const missing = await api('GET', '/invite/ZZZZ9999')
-  ok('/invite/<unknown> renders tidak ditemukan', missing.status === 200 && /tidak ditemukan/i.test(missing.text), `status ${missing.status}`)
+  ok('/invite/<unknown> renders the not-found page', missing.status === 200 && /find this invite code/i.test(missing.text), `status ${missing.status}`)
 
   // create_couple on a waiting couple with an expired code refreshes it.
   const { data: refreshed } = await a.rpc('create_couple')
@@ -175,11 +175,11 @@ async function inviteCodes() {
   const { error: joinE } = await b.rpc('join_couple', { p_code: refreshed.invite_code })
   ok('fresh code: partner joins', !joinE, joinE?.message)
   const { error: fullE } = await a.rpc('regenerate_invite_code')
-  ok('regenerate refused once full', /sudah terhubung/i.test(fullE?.message ?? ''), fullE?.message)
+  ok('regenerate refused once full', /partner is already connected/i.test(fullE?.message ?? ''), fullE?.message)
   const { error: fullE2 } = await b.rpc('regenerate_invite_code')
   ok('regenerate refused for the joiner too', !!fullE2)
   const { error: noneE } = await loner.rpc('regenerate_invite_code')
-  ok('regenerate refused without a couple', /belum punya pasangan/i.test(noneE?.message ?? ''), noneE?.message)
+  ok('regenerate refused without a couple', /not connected with a partner yet/i.test(noneE?.message ?? ''), noneE?.message)
   return { a, b, aid, bid, cid: c0.id }
 }
 
@@ -217,24 +217,24 @@ async function leaveWithPartner({ a, b, aid, bid, cid }) {
     new Date(after.invite_expires_at).getTime() <= new Date(after.closed_at).getTime(),
     JSON.stringify({ before: before.invite_code, ...after }))
   const { error: regenClosedE } = await b.rpc('regenerate_invite_code')
-  ok('regenerate refused for a closed couple', /ditutup/i.test(regenClosedE?.message ?? ''), regenClosedE?.message)
+  ok('regenerate refused for a closed couple', /was closed when your partner left/i.test(regenClosedE?.message ?? ''), regenClosedE?.message)
   const { data: recreated, error: recreateE } = await b.rpc('create_couple')
   ok('create_couple returns the closed couple unchanged', !recreateE && recreated?.id === cid && !!recreated.closed_at
     && recreated.invite_code === before.invite_code
     && recreated.invite_expires_at === after.invite_expires_at, recreateE?.message ?? JSON.stringify(recreated))
   const { error: rejoinE } = await a.rpc('join_couple', { p_code: before.invite_code })
-  ok('leaver cannot rejoin a closed couple', /sudah ditutup/i.test(rejoinE?.message ?? ''), rejoinE?.message)
+  ok('leaver cannot rejoin a closed couple', /couple has been closed/i.test(rejoinE?.message ?? ''), rejoinE?.message)
   const x = mk()
   const xid = await signUp(x, 'ix')
   const { error: strangerE } = await x.rpc('join_couple', { p_code: before.invite_code })
-  ok('nobody new can join a closed couple', /sudah ditutup/i.test(strangerE?.message ?? ''), strangerE?.message)
+  ok('nobody new can join a closed couple', /couple has been closed/i.test(strangerE?.message ?? ''), strangerE?.message)
   const { count: stillOneMember } = await admin.from('couple_members').select('*', { count: 'exact', head: true }).eq('couple_id', cid)
   ok('closed couple still has only the remaining partner', stillOneMember === 1, `members=${stillOneMember}`)
   const closedPage = await api('GET', `/invite/${before.invite_code}`)
-  ok('/invite/<closed> explains the space was closed', closedPage.status === 200 && /ditutup/i.test(closedPage.text) && !/kedaluwarsa/i.test(closedPage.text), `status ${closedPage.status}`)
+  ok('/invite/<closed> explains the space was closed', closedPage.status === 200 && /was closed when one of them left/i.test(closedPage.text) && !/expired/i.test(closedPage.text), `status ${closedPage.status}`)
   const aCookie = await cookieFor(a)
   const apiRejoin = await api('POST', '/api/couple/join', aCookie, { code: before.invite_code })
-  ok('API join of a closed code → 400 with message', apiRejoin.status === 400 && /sudah ditutup/i.test(apiRejoin.json?.error ?? ''), `status ${apiRejoin.status} ${apiRejoin.text.slice(0, 120)}`)
+  ok('API join of a closed code → 400 with message', apiRejoin.status === 400 && /couple has been closed/i.test(apiRejoin.json?.error ?? ''), `status ${apiRejoin.status} ${apiRejoin.text.slice(0, 120)}`)
 
   // R1: the leaver's results leave with them.
   for (const [table, r] of [['assessment_results', results.assessment], ['mbti_results', results.mbti], ['spending_results', results.spending]]) {
@@ -255,7 +255,7 @@ async function leaveWithPartner({ a, b, aid, bid, cid }) {
   const { data: xLetters } = await x.from('letters').select('id').eq('couple_id', cid)
   ok('a member who is not sender/receiver cannot list letters', (xLetters ?? []).length === 0, `saw ${xLetters?.length}`)
   const { error: xReadE } = await x.rpc('read_letter', { p_letter_id: letter?.id })
-  ok('…nor read one through read_letter', /tidak ditemukan/i.test(xReadE?.message ?? ''), xReadE?.message)
+  ok('…nor read one through read_letter', /letter not found/i.test(xReadE?.message ?? ''), xReadE?.message)
   await admin.from('couple_members').delete().eq('couple_id', cid).eq('profile_id', xid)
 
   // A closed couple counts as "has data": joining elsewhere needs discard.
@@ -281,7 +281,7 @@ async function leaveWithPartner({ a, b, aid, bid, cid }) {
   const { data: aMember } = await a.from('couple_members').select('couple_id').eq('profile_id', aid).maybeSingle()
   ok('leaver has no couple', !aMember)
   const { error: againE } = await a.rpc('leave_couple')
-  ok('leaving twice is refused', /belum punya pasangan/i.test(againE?.message ?? ''), againE?.message)
+  ok('leaving twice is refused', /not connected with a partner yet/i.test(againE?.message ?? ''), againE?.message)
 
   // Last member leaving deletes the couple and its rows.
   const { data: last, error: lastE } = await b.rpc('leave_couple')
@@ -383,7 +383,7 @@ async function joinWithData() {
   const badDiscard = await api('POST', '/api/couple/join', jCookie, { code: target.invite_code, discard: 'ya' })
   ok('API join with a non-boolean discard → 400', badDiscard.status === 400, `status ${badDiscard.status}`)
   const unknown = await api('POST', '/api/couple/join', jCookie, { code: 'ZZZZ9999' })
-  ok('API join with an unknown code → 400 tidak ditemukan', unknown.status === 400 && /tidak ditemukan/i.test(unknown.json?.error ?? ''), `status ${unknown.status}`)
+  ok('API join with an unknown code → 400 not found', unknown.status === 400 && /invite code not found/i.test(unknown.json?.error ?? ''), `status ${unknown.status}`)
 
   const first = await api('POST', '/api/couple/join', jCookie, { code: target.invite_code })
   ok('API join over data → 409 COUPLE_HAS_DATA', first.status === 409 && first.json?.code === 'COUPLE_HAS_DATA' && typeof first.json?.error === 'string', `status ${first.status} ${first.text.slice(0, 160)}`)
@@ -469,7 +469,7 @@ async function apiRoutes() {
   // R6: a non-admin must say which kind of notification it is.
   const pushBase = { recipientId: qid, title: 'Nanti Kita', body: 'Halo', url: '/app/home' }
   const noKind = await api('POST', '/api/push/send', pCookie, pushBase)
-  ok('push/send without kind (non-admin) → 400', noKind.status === 400 && /jenis/i.test(noKind.json?.error ?? ''), `status ${noKind.status} ${noKind.text.slice(0, 120)}`)
+  ok('push/send without kind (non-admin) → 400', noKind.status === 400 && /notification type is required/i.test(noKind.json?.error ?? ''), `status ${noKind.status} ${noKind.text.slice(0, 120)}`)
   const badKind = await api('POST', '/api/push/send', pCookie, { ...pushBase, kind: 'semua' })
   ok('push/send with an unknown kind → 400', badKind.status === 400, `status ${badKind.status}`)
   const adminKind = await api('POST', '/api/push/send', pCookie, { ...pushBase, kind: 'admin' })
@@ -521,48 +521,55 @@ async function apiRoutes() {
   const { data: gone } = await admin.from('couples').select('id').eq('id', cid).maybeSingle()
   ok('API leave deleted the couple', !gone)
 
-  // ---- Account deletion via the API
+  // ---- Account deletion via the API: the phrase the app sends now, and the
+  // legacy phrase that app versions before the English switch still send.
+  await accountDeletion({ phrase: 'DELETE ACCOUNT', wrongPhrase: 'delete account', tags: ['er', 'es'] })
+  await accountDeletion({ phrase: 'HAPUS AKUN', wrongPhrase: 'hapus', tags: ['dr', 'ds'] })
+}
+
+async function accountDeletion({ phrase, wrongPhrase, tags }) {
+  const t = ` [${phrase}]`
   const r = mk(), s = mk()
-  const rid = await signUp(r, 'dr'), sid = await signUp(s, 'ds')
+  const rid = await signUp(r, tags[0]), sid = await signUp(s, tags[1])
   const c2 = await newCouple(r)
   await s.rpc('join_couple', { p_code: c2.invite_code })
   const avatarPath = `${rid}/avatar.jpg`
   const { error: avE } = await r.storage.from('avatars').upload(avatarPath, jpeg, { contentType: 'image/jpeg', upsert: true })
   uploaded.push(['avatars', avatarPath])
-  ok('setup avatar', !avE, avE?.message)
+  ok('setup avatar' + t, !avE, avE?.message)
   const { data: g2 } = await r.from('savings_goals').insert({ couple_id: c2.id, name: 'Nikah', target_amount: 9000000 }).select().single()
   const { data: tx2 } = await r.from('couple_transactions').insert({ couple_id: c2.id, goal_id: g2.id, amount: 120000, type: 'deposit', created_by: rid }).select().single()
 
   const rCookie = await cookieFor(r)
-  const wrong = await api('POST', '/api/account/delete', rCookie, { confirm: 'hapus' })
-  ok('delete without exact confirmation → 400', wrong.status === 400, `status ${wrong.status}`)
+  const wrong = await api('POST', '/api/account/delete', rCookie, { confirm: wrongPhrase })
+  ok('delete without exact confirmation → 400' + t, wrong.status === 400, `status ${wrong.status}`)
   const { data: stillThere } = await admin.auth.admin.getUserById(rid)
-  ok('…and the account is untouched', stillThere?.user?.id === rid)
+  ok('…and the account is untouched' + t, stillThere?.user?.id === rid)
 
-  const del = await api('POST', '/api/account/delete', rCookie, { confirm: 'HAPUS AKUN' })
-  ok('delete account → 200', del.status === 200 && del.json?.ok === true, `status ${del.status} ${del.text.slice(0, 120)}`)
+  const del = await api('POST', '/api/account/delete', rCookie, { confirm: phrase })
+  ok('delete account → 200' + t, del.status === 200 && del.json?.ok === true, `status ${del.status} ${del.text.slice(0, 120)}`)
   const { data: afterDel } = await admin.auth.admin.getUserById(rid)
-  ok('auth user gone', !afterDel?.user)
+  ok('auth user gone' + t, !afterDel?.user)
   const { data: prof } = await admin.from('profiles').select('id').eq('id', rid).maybeSingle()
-  ok('profile gone', !prof)
-  ok('avatar files removed', (await listFolder('avatars', rid)).length === 0)
+  ok('profile gone' + t, !prof)
+  ok('avatar files removed' + t, (await listFolder('avatars', rid)).length === 0)
   const { data: c2Members } = await admin.from('couple_members').select('profile_id').eq('couple_id', c2.id)
-  ok('partner keeps the couple', c2Members?.length === 1 && c2Members[0].profile_id === sid)
+  ok('partner keeps the couple' + t, c2Members?.length === 1 && c2Members[0].profile_id === sid)
   const { data: tx2Kept } = await s.from('couple_transactions').select('id, created_by').eq('id', tx2.id).maybeSingle()
-  ok('partner keeps the deleted user\'s transaction', tx2Kept?.id === tx2.id && tx2Kept.created_by === null)
+  ok('partner keeps the deleted user\'s transaction' + t, tx2Kept?.id === tx2.id && tx2Kept.created_by === null)
   const { data: leftAct } = await s.from('activities').select('kind').eq('couple_id', c2.id).eq('kind', 'left')
-  ok("partner sees the 'left' activity", leftAct?.length === 1)
+  ok("partner sees the 'left' activity" + t, leftAct?.length === 1)
 
   // Last member deleting their account takes the couple and its photos along.
   const photo2 = await uploadMomentPhoto(s, c2.id, sid)
   const sCookie = await cookieFor(s)
-  const del2 = await api('POST', '/api/account/delete', sCookie, { confirm: 'HAPUS AKUN' })
-  ok('last member deletes account → 200', del2.status === 200, `status ${del2.status} ${del2.text.slice(0, 120)}`)
+  const del2 = await api('POST', '/api/account/delete', sCookie, { confirm: phrase })
+  ok('last member deletes account → 200' + t, del2.status === 200, `status ${del2.status} ${del2.text.slice(0, 120)}`)
   const { data: c2Gone } = await admin.from('couples').select('id').eq('id', c2.id).maybeSingle()
-  ok('their couple is deleted', !c2Gone)
-  ok('their couple photos are removed', (await listFolder('moments', `${c2.id}/${photo2.momentId}`)).length === 0)
+  ok('their couple is deleted' + t, !c2Gone)
+  ok('their couple photos are removed' + t, (await listFolder('moments', `${c2.id}/${photo2.momentId}`)).length === 0)
   const { data: sGone } = await admin.auth.admin.getUserById(sid)
-  ok('last member auth user gone', !sGone?.user)
+  ok('last member auth user gone' + t, !sGone?.user)
 }
 
 async function main() {

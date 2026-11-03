@@ -34,15 +34,15 @@ export default function RoundTebakPasangan({
       <div className="flex flex-col items-center justify-center min-h-[70vh] px-6 pt-14">
         <div className="rounded-2xl bg-white/5 border border-white/10 p-6 w-full max-w-xs">
           <div className="mb-3">
-            <p className="text-xs text-white/40 mb-1">Jawabanmu</p>
+            <p className="text-xs text-white/40 mb-1">Your answer</p>
             <p className="text-base text-white font-medium">{selfAnswer}</p>
           </div>
           <div>
-            <p className="text-xs text-white/40 mb-1">Tebakanmu untuk pasangan</p>
+            <p className="text-xs text-white/40 mb-1">Your guess for your partner</p>
             <p className="text-base text-white font-medium">{guessAnswer}</p>
           </div>
         </div>
-        <p className="mt-6 text-sm text-white/40 animate-pulse">Menunggu pasangan...</p>
+        <p className="mt-6 text-sm text-white/40 animate-pulse">Waiting for your partner...</p>
       </div>
     )
   }
@@ -61,7 +61,7 @@ export default function RoundTebakPasangan({
         {phase === 1 ? config.questionForSelf : config.questionForPartner}
       </p>
       <p className="mb-6 text-center text-xs text-white/40">
-        {phase === 1 ? 'Pilih jawabanmu' : 'Tebak jawaban pasanganmu'}
+        {phase === 1 ? 'Pick your answer' : "Guess your partner's answer"}
       </p>
 
       {/* Multiple choice grid */}
