@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Brain } from 'lucide-react'
 import { mbtiQuestions, calculateMbtiType } from '@/data/mbtiQuestions'
 import { getMbtiDescription } from '@/data/mbtiDescriptions'
-import { createClient } from '@/lib/supabase'
+import { createClient, getClientUser } from '@/lib/supabase'
 import type { Json } from '@/types/database'
 import MbtiCard from '@/components/app/MbtiCard'
 import type { MbtiScores } from '@/data/mbtiQuestions'
@@ -19,18 +19,30 @@ export default function MbtiTestPage() {
   const [answers, setAnswers] = useState<Record<number, string>>({})
   const [result, setResult] = useState<{ type: string; scores: MbtiScores } | null>(null)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [saved, setSaved] = useState(false)
+  // Taps during the 300ms slide to the next question are ignored; without
+  // this a double tap skips a question or runs past the last one.
+  const busyRef = useRef(false)
 
-  const question = mbtiQuestions[currentQ]
-  const progress = ((currentQ) / mbtiQuestions.length) * 100
+  const lastIndex = mbtiQuestions.length - 1
+  const qIndex = Math.min(Math.max(currentQ, 0), lastIndex)
+  const question = mbtiQuestions[qIndex]
+  const progress = (qIndex / mbtiQuestions.length) * 100
 
   function selectAnswer(choice: 'A' | 'B') {
+    if (busyRef.current || phase !== 'test') return
+    busyRef.current = true
     const newAnswers = { ...answers, [question.id]: choice }
     setAnswers(newAnswers)
 
-    if (currentQ < mbtiQuestions.length - 1) {
-      setTimeout(() => setCurrentQ(c => c + 1), 300)
+    if (qIndex < lastIndex) {
+      setTimeout(() => {
+        setCurrentQ(c => Math.min(c + 1, lastIndex))
+        busyRef.current = false
+      }, 300)
     } else {
-      // Done — calculate result
+      // Done — calculate result (busyRef stays set until restart)
       const res = calculateMbtiType(newAnswers)
       setResult(res)
       setPhase('result')
@@ -38,27 +50,42 @@ export default function MbtiTestPage() {
     }
   }
 
+  function goBack() {
+    if (busyRef.current) return
+    if (qIndex > 0) setCurrentQ(qIndex - 1)
+    else setPhase('intro')
+  }
+
   async function saveResult(ans: Record<number, string>, res: { type: string; scores: MbtiScores }) {
     setSaving(true)
+    setSaveError('')
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setSaving(false); return }
+    const user = await getClientUser()
+    if (!user) {
+      setSaveError('Sesi kamu habis. Masuk lagi untuk menyimpan hasil.')
+      setSaving(false)
+      return
+    }
 
     const { data: membership } = await supabase
-      .from('couple_members').select('couple_id').eq('profile_id', user.id).single()
+      .from('couple_members').select('couple_id').eq('profile_id', user.id).maybeSingle()
 
-    await supabase.from('mbti_results').insert({
+    const { error } = await supabase.from('mbti_results').insert({
       profile_id: user.id,
       couple_id: membership?.couple_id ?? null,
       mbti_type: res.type,
       answers: ans as unknown as Json,
       scores: res.scores as unknown as Json,
     })
+    // On failure the answers stay in state so "Coba simpan lagi" can retry
+    if (error) setSaveError('Hasil belum tersimpan. Coba simpan lagi ya.')
+    else setSaved(true)
     setSaving(false)
   }
 
   function restart() {
-    setAnswers({}); setCurrentQ(0); setResult(null); setPhase('intro')
+    busyRef.current = false
+    setAnswers({}); setCurrentQ(0); setResult(null); setSaveError(''); setSaved(false); setPhase('intro')
   }
 
   // ===== INTRO =====
@@ -93,7 +120,7 @@ export default function MbtiTestPage() {
             ))}
           </div>
 
-          <button onClick={() => setPhase('test')}
+          <button onClick={() => { busyRef.current = false; setPhase('test') }}
             className="mt-8 w-full rounded-2xl bg-gradient-to-r from-purple-600 to-rose py-4 text-sm font-bold text-white shadow-elevated transition-all active:scale-[0.98]">
             Mulai Tes
           </button>
@@ -119,6 +146,18 @@ export default function MbtiTestPage() {
         {saving && (
           <p className="mt-3 text-center text-xs text-ink-muted animate-pulse">Menyimpan hasil...</p>
         )}
+        {saveError && !saving && (
+          <div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-center">
+            <p className="text-xs font-medium text-red-600">{saveError}</p>
+            <button onClick={() => saveResult(answers, result)}
+              className="mt-1.5 text-xs font-bold text-rose underline">
+              Coba simpan lagi
+            </button>
+          </div>
+        )}
+        {saved && !saving && (
+          <p className="mt-3 text-center text-xs text-sage-dark">Hasil tersimpan</p>
+        )}
 
         <div className="mt-6 space-y-3">
           <button onClick={() => router.push('/app/partner')}
@@ -139,11 +178,11 @@ export default function MbtiTestPage() {
     <div className="animate-fade-in min-h-screen px-6 py-6">
       {/* Progress */}
       <div className="mb-2 flex items-center justify-between">
-        <button onClick={() => currentQ > 0 ? setCurrentQ(c => c - 1) : setPhase('intro')}
+        <button onClick={goBack} aria-label="Pertanyaan sebelumnya"
           className="text-ink-muted">
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <span className="text-xs font-semibold text-ink-muted">{currentQ + 1} / {mbtiQuestions.length}</span>
+        <span className="text-xs font-semibold text-ink-muted">{qIndex + 1} / {mbtiQuestions.length}</span>
       </div>
       <div className="mb-8 h-1.5 w-full overflow-hidden rounded-full bg-cream">
         <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-rose transition-all duration-500"

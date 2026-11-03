@@ -12,34 +12,182 @@ export type Database = {
   }
   public: {
     Tables: {
+      activities: {
+        Row: {
+          actor_id: string | null
+          couple_id: string
+          created_at: string
+          id: string
+          kind: string
+          ref_id: string | null
+          summary: string
+          url: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          couple_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          ref_id?: string | null
+          summary: string
+          url?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          couple_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          ref_id?: string | null
+          summary?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activities_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_reads: {
+        Row: {
+          last_seen_at: string
+          profile_id: string
+        }
+        Insert: {
+          last_seen_at?: string
+          profile_id: string
+        }
+        Update: {
+          last_seen_at?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_reads_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_daily_questions: {
-        Row: { id: string; couple_id: string; question_date: string; question: string; context_used: Json | null; generated_by: string; created_at: string | null }
-        Insert: { id?: string; couple_id: string; question_date?: string; question: string; context_used?: Json | null; generated_by: string; created_at?: string | null }
-        Update: { id?: string; couple_id?: string; question_date?: string; question?: string; context_used?: Json | null; generated_by?: string; created_at?: string | null }
-        Relationships: [{ foreignKeyName: "ai_daily_questions_couple_id_fkey"; columns: ["couple_id"]; isOneToOne: false; referencedRelation: "couples"; referencedColumns: ["id"] }]
+        Row: {
+          context_used: Json | null
+          couple_id: string
+          created_at: string | null
+          generated_by: string
+          id: string
+          question: string | null
+          question_date: string
+        }
+        Insert: {
+          context_used?: Json | null
+          couple_id: string
+          created_at?: string | null
+          generated_by: string
+          id?: string
+          question?: string | null
+          question_date?: string
+        }
+        Update: {
+          context_used?: Json | null
+          couple_id?: string
+          created_at?: string | null
+          generated_by?: string
+          id?: string
+          question?: string | null
+          question_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_daily_questions_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_date_idea_runs: {
+        Row: {
+          couple_id: string
+          created_at: string
+          id: string
+          ideas: Json | null
+          input: Json
+          profile_id: string | null
+          status: string
+        }
+        Insert: {
+          couple_id: string
+          created_at?: string
+          id?: string
+          ideas?: Json | null
+          input?: Json
+          profile_id?: string | null
+          status?: string
+        }
+        Update: {
+          couple_id?: string
+          created_at?: string
+          id?: string
+          ideas?: Json | null
+          input?: Json
+          profile_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_date_idea_runs_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_date_idea_runs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       assessment_results: {
         Row: {
+          answers: Json
+          couple_id: string | null
           id: string
           profile_id: string
-          couple_id: string | null
-          answers: Json
           scores: Json
           taken_at: string
         }
         Insert: {
+          answers: Json
+          couple_id?: string | null
           id?: string
           profile_id: string
-          couple_id?: string | null
-          answers: Json
           scores: Json
           taken_at?: string
         }
         Update: {
+          answers?: Json
+          couple_id?: string | null
           id?: string
           profile_id?: string
-          couple_id?: string | null
-          answers?: Json
           scores?: Json
           taken_at?: string
         }
@@ -60,51 +208,124 @@ export type Database = {
           },
         ]
       }
-      couple_events: {
+      bucket_items: {
         Row: {
-          id: string
+          category: string
           couple_id: string
-          title: string
-          event_date: string
-          event_type: string
-          is_recurring: boolean
           created_at: string
-          description: string | null
-          location: string | null
-          event_scope: string | null
-          budget: number | null
-          is_completed: boolean | null
           created_by: string | null
+          done_at: string | null
+          estimated_cost: number | null
+          id: string
+          is_done: boolean
+          moment_id: string | null
+          note: string | null
+          source: string
+          title: string
+          updated_at: string
         }
         Insert: {
-          id?: string
+          category?: string
           couple_id: string
-          title: string
-          event_date: string
-          event_type: string
-          is_recurring?: boolean
           created_at?: string
-          description?: string | null
-          location?: string | null
-          event_scope?: string | null
-          budget?: number | null
-          is_completed?: boolean | null
           created_by?: string | null
+          done_at?: string | null
+          estimated_cost?: number | null
+          id?: string
+          is_done?: boolean
+          moment_id?: string | null
+          note?: string | null
+          source?: string
+          title: string
+          updated_at?: string
         }
         Update: {
-          id?: string
+          category?: string
           couple_id?: string
-          title?: string
-          event_date?: string
-          event_type?: string
-          is_recurring?: boolean
           created_at?: string
-          description?: string | null
-          location?: string | null
-          event_scope?: string | null
-          budget?: number | null
-          is_completed?: boolean | null
           created_by?: string | null
+          done_at?: string | null
+          estimated_cost?: number | null
+          id?: string
+          is_done?: boolean
+          moment_id?: string | null
+          note?: string | null
+          source?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bucket_items_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bucket_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bucket_items_moment_id_fkey"
+            columns: ["moment_id"]
+            isOneToOne: false
+            referencedRelation: "moments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      couple_events: {
+        Row: {
+          budget: number | null
+          couple_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          event_date: string
+          event_scope: string | null
+          event_type: string
+          id: string
+          is_completed: boolean | null
+          is_recurring: boolean
+          location: string | null
+          remind_days_before: number | null
+          title: string
+        }
+        Insert: {
+          budget?: number | null
+          couple_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date: string
+          event_scope?: string | null
+          event_type: string
+          id?: string
+          is_completed?: boolean | null
+          is_recurring?: boolean
+          location?: string | null
+          remind_days_before?: number | null
+          title: string
+        }
+        Update: {
+          budget?: number | null
+          couple_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date?: string
+          event_scope?: string | null
+          event_type?: string
+          id?: string
+          is_completed?: boolean | null
+          is_recurring?: boolean
+          location?: string | null
+          remind_days_before?: number | null
+          title?: string
         }
         Relationships: [
           {
@@ -125,22 +346,22 @@ export type Database = {
       }
       couple_members: {
         Row: {
-          id: string
           couple_id: string
-          profile_id: string
+          id: string
           joined_at: string
+          profile_id: string
         }
         Insert: {
-          id?: string
           couple_id: string
-          profile_id: string
+          id?: string
           joined_at?: string
+          profile_id: string
         }
         Update: {
-          id?: string
           couple_id?: string
-          profile_id?: string
+          id?: string
           joined_at?: string
+          profile_id?: string
         }
         Relationships: [
           {
@@ -161,31 +382,31 @@ export type Database = {
       }
       couple_pets: {
         Row: {
-          id: string
           couple_id: string
-          pet_type: string
-          name: string
-          level: number
-          xp: number
           created_at: string | null
+          id: string
+          level: number
+          name: string
+          pet_type: string
+          xp: number
         }
         Insert: {
-          id?: string
           couple_id: string
-          pet_type: string
-          name: string
-          level?: number
-          xp?: number
           created_at?: string | null
+          id?: string
+          level?: number
+          name: string
+          pet_type: string
+          xp?: number
         }
         Update: {
-          id?: string
           couple_id?: string
-          pet_type?: string
-          name?: string
-          level?: number
-          xp?: number
           created_at?: string | null
+          id?: string
+          level?: number
+          name?: string
+          pet_type?: string
+          xp?: number
         }
         Relationships: [
           {
@@ -199,37 +420,37 @@ export type Database = {
       }
       couple_transactions: {
         Row: {
-          id: string
-          couple_id: string
-          goal_id: string | null
           amount: number
-          type: string
           category: string | null
-          note: string | null
-          created_by: string
+          couple_id: string
           created_at: string | null
+          created_by: string | null
+          goal_id: string | null
+          id: string
+          note: string | null
+          type: string
         }
         Insert: {
-          id?: string
-          couple_id: string
-          goal_id?: string | null
           amount: number
-          type: string
           category?: string | null
-          note?: string | null
-          created_by: string
+          couple_id: string
           created_at?: string | null
+          created_by?: string | null
+          goal_id?: string | null
+          id?: string
+          note?: string | null
+          type: string
         }
         Update: {
-          id?: string
-          couple_id?: string
-          goal_id?: string | null
           amount?: number
-          type?: string
           category?: string | null
-          note?: string | null
-          created_by?: string
+          couple_id?: string
           created_at?: string | null
+          created_by?: string | null
+          goal_id?: string | null
+          id?: string
+          note?: string | null
+          type?: string
         }
         Relationships: [
           {
@@ -257,26 +478,32 @@ export type Database = {
       }
       couples: {
         Row: {
-          id: string
-          created_by: string
-          invite_code: string
+          closed_at: string | null
           created_at: string
+          created_by: string | null
+          id: string
+          invite_code: string
+          invite_expires_at: string
           is_premium: boolean
           unlocked_at: string | null
         }
         Insert: {
-          id?: string
-          created_by: string
-          invite_code: string
+          closed_at?: string | null
           created_at?: string
+          created_by?: string | null
+          id?: string
+          invite_code: string
+          invite_expires_at?: string
           is_premium?: boolean
           unlocked_at?: string | null
         }
         Update: {
-          id?: string
-          created_by?: string
-          invite_code?: string
+          closed_at?: string | null
           created_at?: string
+          created_by?: string | null
+          id?: string
+          invite_code?: string
+          invite_expires_at?: string
           is_premium?: boolean
           unlocked_at?: string | null
         }
@@ -292,31 +519,31 @@ export type Database = {
       }
       daily_responses: {
         Row: {
-          id: string
-          couple_id: string
-          profile_id: string
-          question_index: number
           answer: string
           answered_date: string
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
           couple_id: string
+          created_at: string | null
+          id: string
           profile_id: string
           question_index: number
+        }
+        Insert: {
           answer: string
           answered_date?: string
+          couple_id: string
           created_at?: string | null
+          id?: string
+          profile_id: string
+          question_index: number
         }
         Update: {
-          id?: string
-          couple_id?: string
-          profile_id?: string
-          question_index?: number
           answer?: string
           answered_date?: string
+          couple_id?: string
           created_at?: string | null
+          id?: string
+          profile_id?: string
+          question_index?: number
         }
         Relationships: [
           {
@@ -337,28 +564,28 @@ export type Database = {
       }
       deep_talk_levels: {
         Row: {
-          id: string
-          pack_id: string
-          level_number: number
-          title: string
           description: string | null
+          id: string
+          level_number: number
+          pack_id: string
           question_count: number | null
+          title: string
         }
         Insert: {
-          id?: string
-          pack_id: string
-          level_number: number
-          title: string
           description?: string | null
+          id?: string
+          level_number: number
+          pack_id: string
           question_count?: number | null
+          title: string
         }
         Update: {
-          id?: string
-          pack_id?: string
-          level_number?: number
-          title?: string
           description?: string | null
+          id?: string
+          level_number?: number
+          pack_id?: string
           question_count?: number | null
+          title?: string
         }
         Relationships: [
           {
@@ -372,76 +599,79 @@ export type Database = {
       }
       deep_talk_packs: {
         Row: {
-          id: string
-          slug: string
-          title: string
+          color: string | null
+          created_at: string | null
           description: string | null
           icon_name: string | null
-          color: string | null
-          sort_order: number | null
+          id: string
+          is_free: boolean
           is_published: boolean | null
-          created_at: string | null
+          slug: string
+          sort_order: number | null
+          title: string
           updated_at: string | null
         }
         Insert: {
-          id?: string
-          slug: string
-          title: string
+          color?: string | null
+          created_at?: string | null
           description?: string | null
           icon_name?: string | null
-          color?: string | null
-          sort_order?: number | null
+          id?: string
+          is_free?: boolean
           is_published?: boolean | null
-          created_at?: string | null
+          slug: string
+          sort_order?: number | null
+          title: string
           updated_at?: string | null
         }
         Update: {
-          id?: string
-          slug?: string
-          title?: string
+          color?: string | null
+          created_at?: string | null
           description?: string | null
           icon_name?: string | null
-          color?: string | null
-          sort_order?: number | null
+          id?: string
+          is_free?: boolean
           is_published?: boolean | null
-          created_at?: string | null
+          slug?: string
+          sort_order?: number | null
+          title?: string
           updated_at?: string | null
         }
         Relationships: []
       }
       deep_talk_progress: {
         Row: {
-          id: string
-          couple_id: string
-          pack_id: string
-          level_number: number
-          current_question_index: number
           completed_levels: number[]
+          couple_id: string
+          current_question_index: number
+          id: string
           is_completed: boolean | null
-          started_at: string | null
           last_played_at: string | null
+          level_number: number
+          pack_id: string
+          started_at: string | null
         }
         Insert: {
-          id?: string
-          couple_id: string
-          pack_id: string
-          level_number?: number
-          current_question_index?: number
           completed_levels?: number[]
+          couple_id: string
+          current_question_index?: number
+          id?: string
           is_completed?: boolean | null
-          started_at?: string | null
           last_played_at?: string | null
+          level_number?: number
+          pack_id: string
+          started_at?: string | null
         }
         Update: {
-          id?: string
-          couple_id?: string
-          pack_id?: string
-          level_number?: number
-          current_question_index?: number
           completed_levels?: number[]
+          couple_id?: string
+          current_question_index?: number
+          id?: string
           is_completed?: boolean | null
-          started_at?: string | null
           last_played_at?: string | null
+          level_number?: number
+          pack_id?: string
+          started_at?: string | null
         }
         Relationships: [
           {
@@ -462,33 +692,33 @@ export type Database = {
       }
       deep_talk_questions: {
         Row: {
+          created_at: string | null
           id: string
+          is_active: boolean | null
           level_id: string
           question_text: string
           sort_order: number | null
           target_partner: number | null
-          is_active: boolean | null
-          created_at: string | null
           updated_at: string | null
         }
         Insert: {
+          created_at?: string | null
           id?: string
+          is_active?: boolean | null
           level_id: string
           question_text: string
           sort_order?: number | null
           target_partner?: number | null
-          is_active?: boolean | null
-          created_at?: string | null
           updated_at?: string | null
         }
         Update: {
+          created_at?: string | null
           id?: string
+          is_active?: boolean | null
           level_id?: string
           question_text?: string
           sort_order?: number | null
           target_partner?: number | null
-          is_active?: boolean | null
-          created_at?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -501,48 +731,74 @@ export type Database = {
           },
         ]
       }
-      game_sessions: {
+      event_reminders_sent: {
         Row: {
-          id: string
-          couple_id: string
-          created_by: string
-          partner_id: string | null
-          chapter_id: string
-          status: string
-          rounds: Json
-          round_types: string[]
-          total_score: number
-          created_at: string
-          started_at: string | null
-          completed_at: string | null
+          event_id: string
+          occurrence_date: string
+          sent_at: string
         }
         Insert: {
-          id?: string
-          couple_id: string
-          created_by: string
-          partner_id?: string | null
-          chapter_id?: string
-          status?: string
-          rounds: Json
-          round_types: string[]
-          total_score?: number
-          created_at?: string
-          started_at?: string | null
-          completed_at?: string | null
+          event_id: string
+          occurrence_date: string
+          sent_at?: string
         }
         Update: {
-          id?: string
-          couple_id?: string
-          created_by?: string
-          partner_id?: string | null
+          event_id?: string
+          occurrence_date?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_reminders_sent_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "couple_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_sessions: {
+        Row: {
+          chapter_id: string
+          completed_at: string | null
+          couple_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          partner_id: string | null
+          round_types: string[]
+          rounds: Json
+          started_at: string | null
+          status: string
+          total_score: number
+        }
+        Insert: {
           chapter_id?: string
-          status?: string
-          rounds?: Json
-          round_types?: string[]
-          total_score?: number
-          created_at?: string
-          started_at?: string | null
           completed_at?: string | null
+          couple_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          partner_id?: string | null
+          round_types: string[]
+          rounds?: Json
+          started_at?: string | null
+          status?: string
+          total_score?: number
+        }
+        Update: {
+          chapter_id?: string
+          completed_at?: string | null
+          couple_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          partner_id?: string | null
+          round_types?: string[]
+          rounds?: Json
+          started_at?: string | null
+          status?: string
+          total_score?: number
         }
         Relationships: [
           {
@@ -568,48 +824,103 @@ export type Database = {
           },
         ]
       }
-      letters: {
+      gratitude_notes: {
         Row: {
-          id: string
+          body: string
           couple_id: string
-          sender_id: string
-          receiver_id: string
-          content: string
-          photo_url: string | null
-          occasion: string | null
-          occasion_label: string | null
-          unlock_date: string
-          is_opened: boolean | null
+          created_at: string
+          from_id: string
+          id: string
           opened_at: string | null
-          created_at: string | null
+          to_id: string
         }
         Insert: {
-          id?: string
+          body: string
           couple_id: string
-          sender_id: string
-          receiver_id: string
-          content: string
-          photo_url?: string | null
-          occasion?: string | null
-          occasion_label?: string | null
-          unlock_date: string
-          is_opened?: boolean | null
+          created_at?: string
+          from_id: string
+          id?: string
           opened_at?: string | null
-          created_at?: string | null
+          to_id: string
         }
         Update: {
-          id?: string
+          body?: string
           couple_id?: string
-          sender_id?: string
-          receiver_id?: string
-          content?: string
-          photo_url?: string | null
+          created_at?: string
+          from_id?: string
+          id?: string
+          opened_at?: string | null
+          to_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gratitude_notes_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gratitude_notes_from_id_fkey"
+            columns: ["from_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gratitude_notes_to_id_fkey"
+            columns: ["to_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      letters: {
+        Row: {
+          content: string
+          couple_id: string
+          created_at: string | null
+          id: string
+          is_opened: boolean | null
+          occasion: string | null
+          occasion_label: string | null
+          opened_at: string | null
+          photo_url: string | null
+          receiver_id: string
+          sender_id: string
+          unlock_date: string
+          unlock_notified_at: string | null
+        }
+        Insert: {
+          content: string
+          couple_id: string
+          created_at?: string | null
+          id?: string
+          is_opened?: boolean | null
           occasion?: string | null
           occasion_label?: string | null
-          unlock_date?: string
-          is_opened?: boolean | null
           opened_at?: string | null
+          photo_url?: string | null
+          receiver_id: string
+          sender_id: string
+          unlock_date: string
+          unlock_notified_at?: string | null
+        }
+        Update: {
+          content?: string
+          couple_id?: string
           created_at?: string | null
+          id?: string
+          is_opened?: boolean | null
+          occasion?: string | null
+          occasion_label?: string | null
+          opened_at?: string | null
+          photo_url?: string | null
+          receiver_id?: string
+          sender_id?: string
+          unlock_date?: string
+          unlock_notified_at?: string | null
         }
         Relationships: [
           {
@@ -635,31 +946,75 @@ export type Database = {
           },
         ]
       }
+      llm_settings: {
+        Row: {
+          id: boolean
+          key_last4: string | null
+          key_set_at: string | null
+          key_set_by: string | null
+          model: string | null
+          test_message: string | null
+          test_ok: boolean | null
+          tested_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          key_last4?: string | null
+          key_set_at?: string | null
+          key_set_by?: string | null
+          model?: string | null
+          test_message?: string | null
+          test_ok?: boolean | null
+          tested_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          key_last4?: string | null
+          key_set_at?: string | null
+          key_set_by?: string | null
+          model?: string | null
+          test_message?: string | null
+          test_ok?: boolean | null
+          tested_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "llm_settings_key_set_by_fkey"
+            columns: ["key_set_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mbti_results: {
         Row: {
-          id: string
-          profile_id: string
-          couple_id: string | null
-          mbti_type: string
           answers: Json
+          couple_id: string | null
+          id: string
+          mbti_type: string
+          profile_id: string
           scores: Json
           taken_at: string | null
         }
         Insert: {
-          id?: string
-          profile_id: string
-          couple_id?: string | null
-          mbti_type: string
           answers: Json
+          couple_id?: string | null
+          id?: string
+          mbti_type: string
+          profile_id: string
           scores: Json
           taken_at?: string | null
         }
         Update: {
-          id?: string
-          profile_id?: string
-          couple_id?: string | null
-          mbti_type?: string
           answers?: Json
+          couple_id?: string | null
+          id?: string
+          mbti_type?: string
+          profile_id?: string
           scores?: Json
           taken_at?: string | null
         }
@@ -682,31 +1037,31 @@ export type Database = {
       }
       miss_you: {
         Row: {
-          id: string
           couple_id: string
-          sender_id: string
+          created_at: string | null
+          id: string
           receiver_id: string
           responded: boolean | null
           responded_at: string | null
-          created_at: string | null
+          sender_id: string
         }
         Insert: {
-          id?: string
           couple_id: string
-          sender_id: string
+          created_at?: string | null
+          id?: string
           receiver_id: string
           responded?: boolean | null
           responded_at?: string | null
-          created_at?: string | null
+          sender_id: string
         }
         Update: {
-          id?: string
           couple_id?: string
-          sender_id?: string
+          created_at?: string | null
+          id?: string
           receiver_id?: string
           responded?: boolean | null
           responded_at?: string | null
-          created_at?: string | null
+          sender_id?: string
         }
         Relationships: [
           {
@@ -732,27 +1087,328 @@ export type Database = {
           },
         ]
       }
-      pet_care_logs: {
+      moment_comments: {
         Row: {
+          body: string
+          couple_id: string
+          created_at: string
           id: string
-          pet_id: string
-          action_type: string
-          done_by: string
-          done_at: string | null
+          moment_id: string
+          profile_id: string | null
         }
         Insert: {
+          body: string
+          couple_id: string
+          created_at?: string
           id?: string
-          pet_id: string
-          action_type: string
-          done_by: string
-          done_at?: string | null
+          moment_id: string
+          profile_id?: string | null
         }
         Update: {
+          body?: string
+          couple_id?: string
+          created_at?: string
+          id?: string
+          moment_id?: string
+          profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moment_comments_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moment_comments_moment_id_fkey"
+            columns: ["moment_id"]
+            isOneToOne: false
+            referencedRelation: "moments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moment_comments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moment_photos: {
+        Row: {
+          couple_id: string
+          created_at: string
+          height: number | null
+          id: string
+          moment_id: string
+          sort_order: number
+          storage_path: string
+          taken_at: string | null
+          width: number | null
+        }
+        Insert: {
+          couple_id: string
+          created_at?: string
+          height?: number | null
+          id?: string
+          moment_id: string
+          sort_order?: number
+          storage_path: string
+          taken_at?: string | null
+          width?: number | null
+        }
+        Update: {
+          couple_id?: string
+          created_at?: string
+          height?: number | null
+          id?: string
+          moment_id?: string
+          sort_order?: number
+          storage_path?: string
+          taken_at?: string | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moment_photos_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moment_photos_moment_id_fkey"
+            columns: ["moment_id"]
+            isOneToOne: false
+            referencedRelation: "moments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moment_reactions: {
+        Row: {
+          couple_id: string
+          created_at: string
+          emoji: string
+          id: string
+          moment_id: string
+          profile_id: string
+        }
+        Insert: {
+          couple_id: string
+          created_at?: string
+          emoji: string
+          id?: string
+          moment_id: string
+          profile_id: string
+        }
+        Update: {
+          couple_id?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          moment_id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moment_reactions_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moment_reactions_moment_id_fkey"
+            columns: ["moment_id"]
+            isOneToOne: false
+            referencedRelation: "moments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moment_reactions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moments: {
+        Row: {
+          couple_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_favorite: boolean
+          latitude: number | null
+          location_name: string | null
+          longitude: number | null
+          moment_date: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          couple_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_favorite?: boolean
+          latitude?: number | null
+          location_name?: string | null
+          longitude?: number | null
+          moment_date: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          couple_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_favorite?: boolean
+          latitude?: number | null
+          location_name?: string | null
+          longitude?: number | null
+          moment_date?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moments_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mood_checkins: {
+        Row: {
+          checkin_date: string
+          couple_id: string
+          created_at: string
+          id: string
+          mood: string
+          note: string | null
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          checkin_date?: string
+          couple_id: string
+          created_at?: string
+          id?: string
+          mood: string
+          note?: string | null
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          checkin_date?: string
+          couple_id?: string
+          created_at?: string
+          id?: string
+          mood?: string
+          note?: string | null
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mood_checkins_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mood_checkins_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_prefs: {
+        Row: {
+          activity: boolean
+          kangen: boolean
+          letters: boolean
+          moments: boolean
+          profile_id: string
+          quiet_end: number | null
+          quiet_start: number | null
+          reminders: boolean
+          updated_at: string
+        }
+        Insert: {
+          activity?: boolean
+          kangen?: boolean
+          letters?: boolean
+          moments?: boolean
+          profile_id: string
+          quiet_end?: number | null
+          quiet_start?: number | null
+          reminders?: boolean
+          updated_at?: string
+        }
+        Update: {
+          activity?: boolean
+          kangen?: boolean
+          letters?: boolean
+          moments?: boolean
+          profile_id?: string
+          quiet_end?: number | null
+          quiet_start?: number | null
+          reminders?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_prefs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pet_care_logs: {
+        Row: {
+          action_type: string
+          done_at: string | null
+          done_by: string | null
+          id: string
+          pet_id: string
+        }
+        Insert: {
+          action_type: string
+          done_at?: string | null
+          done_by?: string | null
+          id?: string
+          pet_id: string
+        }
+        Update: {
+          action_type?: string
+          done_at?: string | null
+          done_by?: string | null
           id?: string
           pet_id?: string
-          action_type?: string
-          done_by?: string
-          done_at?: string | null
         }
         Relationships: [
           {
@@ -773,25 +1429,25 @@ export type Database = {
       }
       pet_care_roles: {
         Row: {
-          id: string
+          actions: string[]
           couple_id: string
+          id: string
           pet_id: string
           profile_id: string
-          actions: string[]
         }
         Insert: {
-          id?: string
+          actions?: string[]
           couple_id: string
+          id?: string
           pet_id: string
           profile_id: string
-          actions: string[]
         }
         Update: {
-          id?: string
+          actions?: string[]
           couple_id?: string
+          id?: string
           pet_id?: string
           profile_id?: string
-          actions?: string[]
         }
         Relationships: [
           {
@@ -819,32 +1475,32 @@ export type Database = {
       }
       pet_mood_state: {
         Row: {
-          id: string
-          pet_id: string
-          mood: string
-          hunger: number
-          happiness: number
           cleanliness: number
+          happiness: number
+          hunger: number
+          id: string
+          mood: string
+          pet_id: string
           thriving_since: string | null
           updated_at: string | null
         }
         Insert: {
-          id?: string
-          pet_id: string
-          mood?: string
-          hunger?: number
-          happiness?: number
           cleanliness?: number
+          happiness?: number
+          hunger?: number
+          id?: string
+          mood?: string
+          pet_id: string
           thriving_since?: string | null
           updated_at?: string | null
         }
         Update: {
-          id?: string
-          pet_id?: string
-          mood?: string
-          hunger?: number
-          happiness?: number
           cleanliness?: number
+          happiness?: number
+          hunger?: number
+          id?: string
+          mood?: string
+          pet_id?: string
           thriving_since?: string | null
           updated_at?: string | null
         }
@@ -860,64 +1516,64 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
+          birthday: string | null
+          created_at: string
+          gender: string | null
           id: string
           name: string | null
-          birthday: string | null
-          relationship_start_date: string | null
-          avatar_url: string | null
           onboarding_complete: boolean
-          created_at: string
+          relationship_start_date: string | null
           role: string | null
-          gender: string | null
         }
         Insert: {
+          avatar_url?: string | null
+          birthday?: string | null
+          created_at?: string
+          gender?: string | null
           id: string
           name?: string | null
-          birthday?: string | null
-          relationship_start_date?: string | null
-          avatar_url?: string | null
           onboarding_complete?: boolean
-          created_at?: string
+          relationship_start_date?: string | null
           role?: string | null
-          gender?: string | null
         }
         Update: {
+          avatar_url?: string | null
+          birthday?: string | null
+          created_at?: string
+          gender?: string | null
           id?: string
           name?: string | null
-          birthday?: string | null
-          relationship_start_date?: string | null
-          avatar_url?: string | null
           onboarding_complete?: boolean
-          created_at?: string
+          relationship_start_date?: string | null
           role?: string | null
-          gender?: string | null
         }
         Relationships: []
       }
       push_subscriptions: {
         Row: {
-          id: string
-          profile_id: string
-          endpoint: string
-          p256dh: string
           auth_key: string
           created_at: string | null
+          endpoint: string
+          id: string
+          p256dh: string
+          profile_id: string
         }
         Insert: {
-          id?: string
-          profile_id: string
-          endpoint: string
-          p256dh: string
           auth_key: string
           created_at?: string | null
+          endpoint: string
+          id?: string
+          p256dh: string
+          profile_id: string
         }
         Update: {
-          id?: string
-          profile_id?: string
-          endpoint?: string
-          p256dh?: string
           auth_key?: string
           created_at?: string | null
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          profile_id?: string
         }
         Relationships: [
           {
@@ -929,39 +1585,33 @@ export type Database = {
           },
         ]
       }
-      spending_results: {
-        Row: { id: string; couple_id: string; profile_id: string; spending_type: string; scores: Json; answers: Json; created_at: string | null }
-        Insert: { id?: string; couple_id: string; profile_id: string; spending_type: string; scores: Json; answers: Json; created_at?: string | null }
-        Update: { id?: string; couple_id?: string; profile_id?: string; spending_type?: string; scores?: Json; answers?: Json; created_at?: string | null }
-        Relationships: []
-      }
       savings_entries: {
         Row: {
-          id: string
-          goal_id: string
-          couple_id: string
           amount: number
+          couple_id: string
+          created_at: string
+          goal_id: string
+          id: string
           month: string
           note: string | null
-          created_at: string
         }
         Insert: {
-          id?: string
-          goal_id: string
-          couple_id: string
           amount: number
+          couple_id: string
+          created_at?: string
+          goal_id: string
+          id?: string
           month: string
           note?: string | null
-          created_at?: string
         }
         Update: {
-          id?: string
-          goal_id?: string
-          couple_id?: string
           amount?: number
+          couple_id?: string
+          created_at?: string
+          goal_id?: string
+          id?: string
           month?: string
           note?: string | null
-          created_at?: string
         }
         Relationships: [
           {
@@ -982,31 +1632,31 @@ export type Database = {
       }
       savings_goals: {
         Row: {
-          id: string
           couple_id: string
+          created_at: string
+          current_amount: number
+          id: string
           name: string
           target_amount: number
-          current_amount: number
           target_date: string | null
-          created_at: string
         }
         Insert: {
-          id?: string
           couple_id: string
+          created_at?: string
+          current_amount?: number
+          id?: string
           name: string
           target_amount: number
-          current_amount?: number
           target_date?: string | null
-          created_at?: string
         }
         Update: {
-          id?: string
           couple_id?: string
+          created_at?: string
+          current_amount?: number
+          id?: string
           name?: string
           target_amount?: number
-          current_amount?: number
           target_date?: string | null
-          created_at?: string
         }
         Relationships: [
           {
@@ -1018,42 +1668,87 @@ export type Database = {
           },
         ]
       }
-      wedding_budget_items: {
+      spending_results: {
         Row: {
+          answers: Json
+          couple_id: string | null
+          created_at: string | null
           id: string
-          couple_id: string
-          category: string
-          name: string
-          estimated_cost: number
-          actual_cost: number | null
-          is_paid: boolean
-          notes: string | null
-          sort_order: number
-          created_at: string
+          profile_id: string
+          scores: Json
+          spending_type: string
         }
         Insert: {
+          answers: Json
+          couple_id?: string | null
+          created_at?: string | null
           id?: string
-          couple_id: string
-          category: string
-          name: string
-          estimated_cost?: number
-          actual_cost?: number | null
-          is_paid?: boolean
-          notes?: string | null
-          sort_order?: number
-          created_at?: string
+          profile_id: string
+          scores: Json
+          spending_type: string
         }
         Update: {
+          answers?: Json
+          couple_id?: string | null
+          created_at?: string | null
           id?: string
-          couple_id?: string
-          category?: string
-          name?: string
-          estimated_cost?: number
+          profile_id?: string
+          scores?: Json
+          spending_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spending_results_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spending_results_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wedding_budget_items: {
+        Row: {
+          actual_cost: number | null
+          category: string
+          couple_id: string
+          created_at: string
+          estimated_cost: number
+          id: string
+          is_paid: boolean
+          name: string
+          notes: string | null
+          sort_order: number
+        }
+        Insert: {
           actual_cost?: number | null
+          category: string
+          couple_id: string
+          created_at?: string
+          estimated_cost?: number
+          id?: string
           is_paid?: boolean
+          name: string
           notes?: string | null
           sort_order?: number
+        }
+        Update: {
+          actual_cost?: number | null
+          category?: string
+          couple_id?: string
           created_at?: string
+          estimated_cost?: number
+          id?: string
+          is_paid?: boolean
+          name?: string
+          notes?: string | null
+          sort_order?: number
         }
         Relationships: [
           {
@@ -1067,40 +1762,40 @@ export type Database = {
       }
       wishlist_items: {
         Row: {
-          id: string
           couple_id: string
-          name: string
-          price: number | null
-          is_purchased: boolean
           created_at: string
-          owner_type: string | null
-          owner_id: string | null
-          link: string | null
+          id: string
           image_url: string | null
+          is_purchased: boolean
+          link: string | null
+          name: string
+          owner_id: string | null
+          owner_type: string | null
+          price: number | null
         }
         Insert: {
-          id?: string
           couple_id: string
-          name: string
-          price?: number | null
-          is_purchased?: boolean
           created_at?: string
-          owner_type?: string | null
-          owner_id?: string | null
-          link?: string | null
+          id?: string
           image_url?: string | null
+          is_purchased?: boolean
+          link?: string | null
+          name: string
+          owner_id?: string | null
+          owner_type?: string | null
+          price?: number | null
         }
         Update: {
-          id?: string
           couple_id?: string
-          name?: string
-          price?: number | null
-          is_purchased?: boolean
           created_at?: string
-          owner_type?: string | null
-          owner_id?: string | null
-          link?: string | null
+          id?: string
           image_url?: string | null
+          is_purchased?: boolean
+          link?: string | null
+          name?: string
+          owner_id?: string | null
+          owner_type?: string | null
+          price?: number | null
         }
         Relationships: [
           {
@@ -1124,7 +1819,119 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_clear_llm_key: { Args: never; Returns: Json }
+      admin_llm_status: { Args: never; Returns: Json }
+      admin_set_llm_key: { Args: { p_key: string }; Returns: Json }
+      admin_set_llm_model: { Args: { p_model: string }; Returns: Json }
+      can_access_couple_folder: {
+        Args: { object_name: string }
+        Returns: boolean
+      }
+      claim_date_idea_run: {
+        Args: {
+          p_couple: string
+          p_input: Json
+          p_limit: number
+          p_profile: string
+        }
+        Returns: string
+      }
+      complete_deep_talk_level: {
+        Args: { p_level_number: number; p_pack_id: string }
+        Returns: boolean
+      }
+      couple_has_data: { Args: { p_couple: string }; Returns: boolean }
+      create_couple: {
+        Args: never
+        Returns: {
+          closed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          invite_code: string
+          invite_expires_at: string
+          is_premium: boolean
+          unlocked_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "couples"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      generate_invite_code: { Args: never; Returns: string }
+      get_my_couple_id: { Args: never; Returns: string }
+      has_answered_daily: {
+        Args: { p_couple: string; p_date: string }
+        Returns: boolean
+      }
+      is_admin: { Args: never; Returns: boolean }
+      is_couple_member: { Args: { cid: string }; Returns: boolean }
+      join_couple: {
+        Args: { p_code: string; p_discard?: boolean }
+        Returns: string
+      }
+      leave_couple: { Args: never; Returns: Json }
+      llm_runtime_config: {
+        Args: never
+        Returns: {
+          api_key: string
+          model: string
+        }[]
+      }
+      moment_in_couple: {
+        Args: { p_couple: string; p_moment: string }
+        Returns: boolean
+      }
+      my_couple_is_premium: { Args: never; Returns: boolean }
+      my_role: { Args: never; Returns: string }
+      perform_pet_care: {
+        Args: { p_action: string; p_pet_id: string }
+        Returns: Json
+      }
+      pet_care_rules: { Args: never; Returns: Json }
+      pet_mood_of: {
+        Args: { c: number; h: number; ha: number }
+        Returns: string
+      }
+      read_letter: {
+        Args: { p_letter_id: string }
+        Returns: {
+          content: string
+          id: string
+          is_opened: boolean
+          opened_at: string
+        }[]
+      }
+      record_llm_test: {
+        Args: { p_message: string; p_ok: boolean }
+        Returns: undefined
+      }
+      regenerate_invite_code: {
+        Args: never
+        Returns: {
+          closed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          invite_code: string
+          invite_expires_at: string
+          is_premium: boolean
+          unlocked_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "couples"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      save_push_subscription: {
+        Args: { p_auth_key: string; p_endpoint: string; p_p256dh: string }
+        Returns: undefined
+      }
+      shares_couple_with: { Args: { pid: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
@@ -1134,3 +1941,127 @@ export type Database = {
     }
   }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
+

@@ -22,6 +22,7 @@ function Avatar({ url, name, color }: { url?: string | null; name: string | null
   if (url) {
     return (
       <div className="h-16 w-16 overflow-hidden rounded-full ring-4 ring-white">
+        {/* eslint-disable-next-line @next/next/no-img-element -- avatar from Supabase public storage (host differs per environment), next/image would need every host whitelisted */}
         <img src={url} alt={name ?? ''} className="h-full w-full object-cover" />
       </div>
     )

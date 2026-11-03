@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Smartphone, Share, MoreHorizontal, Plus, Bell, BellOff } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
+import { createClient, getClientUser } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { isPushSupported, getNotificationPermission, enablePushNotifications } from '@/lib/notifications'
 
@@ -32,7 +32,7 @@ export default function OnboardingInstallPage() {
   async function handleFinish() {
     setLoading(true)
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getClientUser()
     if (user) {
       await supabase
         .from('profiles')
@@ -116,10 +116,10 @@ export default function OnboardingInstallPage() {
               Buka Safari, lalu ketuk ikon <strong>Bagikan</strong> (kotak dengan panah ke atas) di bagian bawah layar
             </Step>
             <Step num={2} icon={<Plus className="h-4 w-4" />}>
-              Gulir ke bawah dan pilih <strong>"Tambahkan ke Layar Utama"</strong>
+              Gulir ke bawah dan pilih <strong>&ldquo;Tambahkan ke Layar Utama&rdquo;</strong>
             </Step>
             <Step num={3} icon={<Smartphone className="h-4 w-4" />}>
-              Ketuk <strong>"Tambahkan"</strong> di pojok kanan atas
+              Ketuk <strong>&ldquo;Tambahkan&rdquo;</strong> di pojok kanan atas
             </Step>
           </>
         ) : (
@@ -128,10 +128,10 @@ export default function OnboardingInstallPage() {
               Buka Chrome, ketuk ikon <strong>menu tiga titik</strong> di pojok kanan atas
             </Step>
             <Step num={2} icon={<Plus className="h-4 w-4" />}>
-              Pilih <strong>"Tambahkan ke Layar Utama"</strong>
+              Pilih <strong>&ldquo;Tambahkan ke Layar Utama&rdquo;</strong>
             </Step>
             <Step num={3} icon={<Smartphone className="h-4 w-4" />}>
-              Ketuk <strong>"Tambahkan"</strong> untuk konfirmasi
+              Ketuk <strong>&ldquo;Tambahkan&rdquo;</strong> untuk konfirmasi
             </Step>
           </>
         )}

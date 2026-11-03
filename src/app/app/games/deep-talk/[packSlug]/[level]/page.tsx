@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { X, ChevronRight, ChevronLeft, Trophy } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
+import { X, ChevronRight, ChevronLeft, Trophy, Check, CloudOff, RefreshCw } from 'lucide-react'
+import { createClient, getClientUser } from '@/lib/supabase'
 import {
   getPackBySlug,
   getLevelsForPack,
@@ -12,161 +12,215 @@ import {
   saveProgress,
   markLevelCompleted,
   getLevelStatus,
+  isPlayableLevel,
 } from '@/lib/deep-talk'
 import type { DeepTalkPack, DeepTalkQuestion, DeepTalkLevel } from '@/lib/deep-talk'
 import UnlockCelebration from '@/components/app/UnlockCelebration'
+
+type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+
+interface MemberRow {
+  profile_id: string
+  joined_at: string | null
+}
+
+/**
+ * "Partner 1" (target_partner = 1) is the member who joined the couple first;
+ * ties fall back to the lower profile id. Both phones get the same order.
+ */
+function orderMembers(rows: MemberRow[]): string[] {
+  const time = (r: MemberRow) => {
+    const t = r.joined_at ? Date.parse(r.joined_at) : NaN
+    return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t
+  }
+  return [...rows]
+    .sort((a, b) => {
+      const ta = time(a)
+      const tb = time(b)
+      if (ta < tb) return -1
+      if (ta > tb) return 1
+      return a.profile_id < b.profile_id ? -1 : a.profile_id > b.profile_id ? 1 : 0
+    })
+    .map((r) => r.profile_id)
+}
+
+/** target_partner wins when set; otherwise questions alternate 1, 2, 1, 2… */
+function getAssignee(question: DeepTalkQuestion, index: number): 1 | 2 {
+  if (question.target_partner === 1 || question.target_partner === 2) return question.target_partner
+  return index % 2 === 0 ? 1 : 2
+}
 
 export default function DeepTalkPlayPage() {
   const router = useRouter()
   const { packSlug, level } = useParams<{ packSlug: string; level: string }>()
   const levelNumber = parseInt(level, 10)
+  const packHref = `/app/games/deep-talk/${packSlug}`
 
   const [pack, setPack] = useState<DeepTalkPack | null>(null)
   const [questions, setQuestions] = useState<DeepTalkQuestion[]>([])
-  const [myName, setMyName] = useState<string>('Kamu')
-  const [partnerName, setPartnerName] = useState<string>('Pasangan')
-  const [myUserId, setMyUserId] = useState<string>('')
-  const [partnerUserId, setPartnerUserId] = useState<string>('')
+  const [myUserId, setMyUserId] = useState('')
+  const [memberIds, setMemberIds] = useState<string[]>([])
+  const [names, setNames] = useState<Record<string, string>>({})
   const [coupleId, setCoupleId] = useState<string | null>(null)
   const [packId, setPackId] = useState<string | null>(null)
+  const [isPremium, setIsPremium] = useState(false)
+  const [isReplay, setIsReplay] = useState(false)
+  const [completedBefore, setCompletedBefore] = useState<number[]>([])
+  const [allLevels, setAllLevels] = useState<DeepTalkLevel[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [readIndexes, setReadIndexes] = useState<number[]>([])
   const [isCompleted, setIsCompleted] = useState(false)
+  const [saveState, setSaveState] = useState<SaveState>('idle')
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [flipped, setFlipped] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const [showCelebration, setShowCelebration] = useState(false)
   const [nextLevel, setNextLevel] = useState<DeepTalkLevel | null>(null)
-  const [allLevels, setAllLevels] = useState<DeepTalkLevel[]>([])
+
+  const packIsFree = pack?.is_free === true
+
+  const mountedRef = useRef(true)
+  const completingRef = useRef(false)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const user = await getClientUser()
+    if (!user) {
+      setLoading(false)
+      router.replace('/auth/login')
+      return
+    }
     setMyUserId(user.id)
 
-    // Get my profile
-    const { data: myProfile } = await supabase
-      .from('profiles').select('name').eq('id', user.id).single()
-    if (myProfile?.name) setMyName(myProfile.name)
-
-    // Get couple
     const { data: membership } = await supabase
-      .from('couple_members').select('couple_id').eq('profile_id', user.id).single()
+      .from('couple_members').select('couple_id').eq('profile_id', user.id).maybeSingle()
     if (!membership?.couple_id) { setLoading(false); return }
-    setCoupleId(membership.couple_id)
+    const cid = membership.couple_id
+    setCoupleId(cid)
 
-    // Get partner name
-    const { data: partnerMembers } = await supabase
-      .from('couple_members').select('profile_id')
-      .eq('couple_id', membership.couple_id).neq('profile_id', user.id)
-    if (partnerMembers?.[0]) {
-      setPartnerUserId(partnerMembers[0].profile_id)
-      const { data: pp } = await supabase.from('profiles').select('name').eq('id', partnerMembers[0].profile_id).single()
-      if (pp?.name) setPartnerName(pp.name)
+    const [{ data: members }, { data: premium }, p] = await Promise.all([
+      supabase.from('couple_members').select('profile_id, joined_at').eq('couple_id', cid),
+      supabase.rpc('my_couple_is_premium'),
+      getPackBySlug(packSlug),
+    ])
+
+    const ordered = orderMembers(members ?? [])
+    setMemberIds(ordered)
+    if (ordered.length > 0) {
+      const { data: profiles } = await supabase.from('profiles').select('id, name').in('id', ordered)
+      setNames(Object.fromEntries((profiles ?? []).filter((pr) => pr.name).map((pr) => [pr.id, pr.name as string])))
     }
 
-    // Load pack
-    const p = await getPackBySlug(packSlug)
+    const premiumNow = premium === true
+    setIsPremium(premiumNow)
+
     if (!p) { setLoading(false); return }
     setPack(p)
     setPackId(p.id)
 
-    // Load level + questions + progress
-    const levels = await getLevelsForPack(p.id)
+    const [levels, prog] = await Promise.all([getLevelsForPack(p.id), getProgress(cid, p.id)])
     setAllLevels(levels)
     const targetLevel = levels.find(l => l.level_number === levelNumber)
     if (!targetLevel) { setLoading(false); return }
 
     // URL guard: cek status level (completed_levels + premium tier)
-    const { data: coupleRow } = await supabase
-      .from('couples').select('is_premium').eq('id', membership.couple_id).single()
-    const prog = await getProgress(membership.couple_id, p.id)
-    const status = getLevelStatus(targetLevel, prog?.completed_levels ?? [], !!coupleRow?.is_premium)
+    const completed = prog?.completed_levels ?? []
+    setCompletedBefore(completed)
+    const status = getLevelStatus(targetLevel, completed, premiumNow, levels, p.is_free)
     if (status === 'locked') {
-      router.replace(`/app/games/deep-talk/${packSlug}?locked=${levelNumber}`)
+      router.replace(`${packHref}?locked=${levelNumber}`)
       return
     }
     if (status === 'premium_locked') {
-      router.replace(`/app/games/deep-talk/${packSlug}?premium=${levelNumber}`)
+      router.replace(`${packHref}?premium=${levelNumber}`)
       return
     }
     if (status === 'coming_soon') {
-      router.replace(`/app/games/deep-talk/${packSlug}?coming_soon=${levelNumber}`)
+      router.replace(`${packHref}?coming_soon=${levelNumber}`)
       return
     }
 
     const qs = await getQuestionsForLevel(targetLevel.id)
     setQuestions(qs)
 
-    // Restore progress (prog sudah di-fetch di URL guard di atas)
-    if (prog && prog.level_number === levelNumber && !prog.is_completed) {
+    // Replaying a finished level never touches the shared resume point, so the
+    // level still in progress keeps its place (F45). Only an in-range index
+    // of this same level is restored (F36).
+    const replay = status === 'completed'
+    setIsReplay(replay)
+    if (
+      !replay && prog && prog.level_number === levelNumber &&
+      prog.current_question_index > 0 && prog.current_question_index < qs.length
+    ) {
       setCurrentIndex(prog.current_question_index)
     }
 
     setLoading(false)
-  }, [packSlug, levelNumber])
+  }, [packSlug, levelNumber, packHref, router])
 
-  useEffect(() => { loadData() }, [loadData])
-
-  // Save in-progress (saat user scroll antar pertanyaan)
   useEffect(() => {
-    if (!coupleId || !packId || questions.length === 0 || loading || isCompleted) return
-    setSaving(true)
-    saveProgress(coupleId, packId, levelNumber, currentIndex, false)
-      .finally(() => setSaving(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex])
+    loadData().catch((err) => {
+      console.error('[deep-talk] gagal memuat level:', err)
+      setLoadError(true)
+      setLoading(false)
+    })
+  }, [loadData])
 
-  // Mark level completed saat isCompleted flag jadi true (sekali saja)
+  // Save the resume point while moving through an unfinished level.
   useEffect(() => {
-    if (!isCompleted || !coupleId || !packId) return
+    if (loading || isReplay || isCompleted || !coupleId || !packId || questions.length === 0) return
+    saveProgress(coupleId, packId, levelNumber, Math.min(currentIndex, questions.length - 1))
+      .catch((err) => console.error('[deep-talk] gagal menyimpan posisi:', err))
+  }, [loading, isReplay, isCompleted, coupleId, packId, levelNumber, currentIndex, questions.length])
 
-    setSaving(true)
-    let isMounted = true
+  const completeLevel = useCallback(async () => {
+    if (!packId || completingRef.current) return
+    completingRef.current = true
+    setSaveState('saving')
+    try {
+      const { firstTime } = await markLevelCompleted(packId, levelNumber)
+      if (!mountedRef.current) return
+      setSaveState('saved')
 
-    markLevelCompleted(coupleId, packId, levelNumber, questions.length)
-      .then(({ unlockedNext }) => {
-        if (!isMounted) return
-        const next = allLevels.find(l => l.level_number === levelNumber + 1)
-        // Show celebration hanya kalau: (1) baru pertama kali completed, (2) ada next level, (3) next level punya konten (bukan coming_soon)
-        if (unlockedNext && next && (next.question_count ?? 0) > 0) {
-          setNextLevel(next)
-          setShowCelebration(true)
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to mark level completed:', err)
-      })
-      .finally(() => {
-        if (isMounted) setSaving(false)
-      })
+      // Celebrate only a level that really opened: first completion, and the
+      // next playable level is now 'unlocked' for this couple (premium aware).
+      // In a free pack every level was open already, so there's nothing to unlock.
+      const completedNow = Array.from(new Set([...completedBefore, levelNumber]))
+      const next = allLevels.find(l => l.level_number > levelNumber && isPlayableLevel(l))
+      if (!packIsFree && firstTime && next && getLevelStatus(next, completedNow, isPremium, allLevels) === 'unlocked') {
+        setNextLevel(next)
+        setShowCelebration(true)
+      }
+    } catch (err) {
+      console.error('[deep-talk] gagal menyimpan level selesai:', err)
+      if (mountedRef.current) setSaveState('error')
+    } finally {
+      completingRef.current = false
+    }
+  }, [packId, levelNumber, completedBefore, allLevels, isPremium, packIsFree])
 
-    return () => { isMounted = false }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCompleted])
-
-  function getAssignedName(index: number): string {
-    // Deterministic turn order: compare user IDs alphabetically
-    // Both players will get the same order regardless of who opens first
-    const iAmFirst = myUserId < partnerUserId
-    if (index % 2 === 0) return iAmFirst ? myName : partnerName
-    return iAmFirst ? partnerName : myName
-  }
+  const dismissCelebration = useCallback(() => setShowCelebration(false), [])
 
   function goNext() {
+    if (questions.length === 0) return
     if (currentIndex >= questions.length - 1) {
       setIsCompleted(true)
-    } else {
-      setFlipped(false)
-      setTimeout(() => setCurrentIndex(i => i + 1), 50)
+      void completeLevel()
+      return
     }
+    setCurrentIndex(i => Math.min(i + 1, questions.length - 1))
   }
 
   function goPrev() {
-    if (currentIndex > 0) {
-      setFlipped(false)
-      setTimeout(() => setCurrentIndex(i => i - 1), 50)
-    }
+    setCurrentIndex(i => Math.max(i - 1, 0))
+  }
+
+  function toggleRead(index: number) {
+    setReadIndexes(prev => (prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]))
   }
 
   if (loading) {
@@ -177,17 +231,27 @@ export default function DeepTalkPlayPage() {
     )
   }
 
-  if (!pack || questions.length === 0) {
+  const safeIndex = Math.min(Math.max(currentIndex, 0), Math.max(questions.length - 1, 0))
+  const question = questions[safeIndex]
+
+  if (loadError || !pack || !question) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white px-6 text-center">
-        <p className="text-sm text-ink-muted">Pertanyaan tidak ditemukan</p>
-        <button onClick={() => router.back()} className="mt-4 text-sm text-rose">Kembali</button>
+        <p className="text-sm text-ink-muted">
+          {loadError ? 'Gagal memuat pertanyaan. Cek koneksi lalu coba lagi.' : 'Pertanyaan tidak ditemukan'}
+        </p>
+        <button onClick={() => router.push(packHref)} className="mt-4 text-sm text-rose">Kembali</button>
       </div>
     )
   }
 
+  const color = pack.color ?? '#E07A9E'
+
   // Completion screen
   if (isCompleted) {
+    const saved = saveState === 'saved'
+    const failed = saveState === 'error'
+    const hasNextLevel = allLevels.some(l => l.level_number > levelNumber && isPlayableLevel(l))
     return (
       <>
         {showCelebration && nextLevel && (
@@ -195,28 +259,46 @@ export default function DeepTalkPlayPage() {
             levelNumber={nextLevel.level_number}
             levelTitle={nextLevel.title}
             questionCount={nextLevel.question_count ?? 0}
-            onDismiss={() => setShowCelebration(false)}
+            onDismiss={dismissCelebration}
           />
         )}
         <div
           className="fixed inset-0 z-50 flex flex-col items-center justify-center px-8 text-white text-center"
-          style={{ background: `linear-gradient(135deg, ${pack.color ?? '#E07A9E'}, ${pack.color ?? '#E07A9E'}99)` }}
+          style={{ background: `linear-gradient(135deg, ${color}, ${color}99)` }}
         >
           <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-            <Trophy className="h-12 w-12 text-white" strokeWidth={1.5} />
+            {failed
+              ? <CloudOff className="h-12 w-12 text-white" strokeWidth={1.5} />
+              : <Trophy className="h-12 w-12 text-white" strokeWidth={1.5} />}
           </div>
-          <h1 className="text-3xl font-extrabold">Level {levelNumber} Selesai!</h1>
+          <h1 className="text-3xl font-extrabold">
+            {failed ? 'Progress belum tersimpan' : `Level ${levelNumber} Selesai!`}
+          </h1>
           <p className="mt-3 text-base text-white/80">
-            Kalian baru saja menyelesaikan {questions.length} pertanyaan bersama. Luar biasa!
+            {failed
+              ? `Kalian sudah membahas ${questions.length} pertanyaan, tapi progress gagal disimpan. Cek koneksi lalu coba lagi ya.`
+              : `Kalian baru saja menyelesaikan ${questions.length} pertanyaan bersama. Luar biasa!`}
           </p>
           <div className="mt-8 w-full space-y-3">
-            <button
-              onClick={() => router.push(`/app/games/deep-talk/${packSlug}`)}
-              className="w-full rounded-2xl bg-white py-4 text-sm font-bold text-ink shadow-elevated transition-all active:scale-[0.98]"
-              style={{ color: pack.color ?? '#E07A9E' }}
-            >
-              Lihat Level Berikutnya
-            </button>
+            {failed ? (
+              <button
+                onClick={() => { void completeLevel() }}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-sm font-bold shadow-elevated transition-all active:scale-[0.98]"
+                style={{ color }}
+              >
+                <RefreshCw className="h-4 w-4" /> Coba Simpan Lagi
+              </button>
+            ) : (
+              <button
+                onClick={() => router.push(packHref)}
+                disabled={!saved}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-sm font-bold shadow-elevated transition-all active:scale-[0.98] disabled:opacity-70"
+                style={{ color }}
+              >
+                {!saved && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />}
+                {hasNextLevel ? 'Lihat Level Berikutnya' : 'Lihat Semua Level'}
+              </button>
+            )}
             <button
               onClick={() => router.push('/app/games/deep-talk')}
               className="w-full rounded-2xl border border-white/30 py-3.5 text-sm font-semibold text-white transition-all active:scale-[0.98]"
@@ -224,26 +306,29 @@ export default function DeepTalkPlayPage() {
               Kembali ke Deep Talk
             </button>
           </div>
-          {saving && <p className="mt-4 text-xs text-white/60 animate-pulse">Menyimpan progress...</p>}
+          {saveState === 'saving' && <p className="mt-4 text-xs text-white/60 animate-pulse">Menyimpan progress...</p>}
         </div>
       </>
     )
   }
 
-  const question = questions[currentIndex]
-  const assignedName = getAssignedName(currentIndex)
-  const isMyTurn = assignedName === myName
-  const progress = ((currentIndex + 1) / questions.length) * 100
+  const assigneeId = memberIds[getAssignee(question, safeIndex) - 1] ?? null
+  const assignedName = assigneeId
+    ? names[assigneeId] ?? (assigneeId === myUserId ? 'Kamu' : 'Pasangan')
+    : 'pasanganmu'
+  const isRead = readIndexes.includes(safeIndex)
+  const progress = ((safeIndex + 1) / questions.length) * 100
 
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: `linear-gradient(160deg, ${pack.color ?? '#E07A9E'}15, white 60%)` }}
+      style={{ background: `linear-gradient(160deg, ${color}15, white 60%)` }}
     >
       {/* Top bar */}
       <div className="flex items-center justify-between px-5 pt-safe pt-6 pb-2">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push(packHref)}
+          aria-label="Tutup"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white/80 shadow-sm backdrop-blur-sm"
         >
           <X className="h-4 w-4 text-ink" />
@@ -253,13 +338,13 @@ export default function DeepTalkPlayPage() {
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/10">
             <div
               className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${progress}%`, background: pack.color ?? '#E07A9E' }}
+              style={{ width: `${progress}%`, background: color }}
             />
           </div>
         </div>
 
         <span className="text-xs font-semibold text-ink-muted">
-          {currentIndex + 1}/{questions.length}
+          {safeIndex + 1}/{questions.length}
         </span>
       </div>
 
@@ -268,30 +353,48 @@ export default function DeepTalkPlayPage() {
         {/* For whom label */}
         <div
           className="mb-5 rounded-full px-5 py-1.5 text-sm font-bold text-white shadow-sm"
-          style={{ background: pack.color ?? '#E07A9E' }}
+          style={{ background: color }}
         >
           Pertanyaan untuk {assignedName}
         </div>
 
         {/* Question card */}
         <button
-          onClick={() => setFlipped(f => !f)}
-          className="w-full cursor-pointer rounded-3xl bg-white p-8 shadow-elevated text-center transition-all active:scale-[0.98]"
-          style={{ minHeight: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => toggleRead(safeIndex)}
+          aria-pressed={isRead}
+          className="relative w-full cursor-pointer rounded-3xl bg-white p-8 shadow-elevated text-center transition-all active:scale-[0.98]"
+          style={{
+            minHeight: '220px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            outline: isRead ? `2px solid ${color}` : undefined,
+          }}
         >
-          <p className="text-xl font-bold leading-relaxed text-ink">
+          {isRead && (
+            <span
+              className="absolute right-4 top-4 flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold text-white animate-scale-in"
+              style={{ background: color }}
+            >
+              <Check className="h-3 w-3" strokeWidth={3} /> Sudah dibaca
+            </span>
+          )}
+          <p className={`text-xl font-bold leading-relaxed transition-colors ${isRead ? 'text-ink-muted' : 'text-ink'}`}>
             {question.question_text}
           </p>
         </button>
 
-        <p className="mt-4 text-xs text-ink-muted">Ketuk kartu untuk menandai sudah dibaca</p>
+        <p className="mt-4 text-xs text-ink-muted">
+          {isRead ? 'Sudah dibaca. Ketuk lagi untuk batal.' : 'Ketuk kartu untuk menandai sudah dibaca'}
+        </p>
       </div>
 
       {/* Navigation */}
       <div className="flex items-center justify-between px-6 pb-safe pb-8 pt-4">
         <button
           onClick={goPrev}
-          disabled={currentIndex === 0}
+          disabled={safeIndex === 0}
+          aria-label="Pertanyaan sebelumnya"
           className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-white shadow-card disabled:opacity-30 transition-all active:scale-[0.95]"
         >
           <ChevronLeft className="h-5 w-5 text-ink" />
@@ -302,10 +405,10 @@ export default function DeepTalkPlayPage() {
             <div
               key={i}
               className={`h-1.5 rounded-full transition-all duration-300 ${
-                i === currentIndex ? 'w-5' : 'w-1.5'
+                i === safeIndex ? 'w-5' : 'w-1.5'
               }`}
               style={{
-                background: i <= currentIndex ? (pack.color ?? '#E07A9E') : '#e5e7eb',
+                background: i <= safeIndex ? color : '#e5e7eb',
               }}
             />
           ))}
@@ -313,8 +416,9 @@ export default function DeepTalkPlayPage() {
 
         <button
           onClick={goNext}
+          aria-label={safeIndex >= questions.length - 1 ? 'Selesaikan level' : 'Pertanyaan berikutnya'}
           className="flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-elevated transition-all active:scale-[0.95]"
-          style={{ background: pack.color ?? '#E07A9E' }}
+          style={{ background: color }}
         >
           <ChevronRight className="h-5 w-5" />
         </button>

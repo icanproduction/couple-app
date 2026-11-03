@@ -3,36 +3,40 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Loader2, Zap, Trophy, Clock } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
+import { createClient, getClientUser } from '@/lib/supabase'
 import { CHAPTERS } from '@/data/samakan'
 import { getGameHistory } from '@/lib/samakan'
 import type { GameSession } from '@/types/samakan'
 
 export default function SinkronisasiHubPage() {
   const router = useRouter()
-  const supabase = createClient()
 
-  const [userId, setUserId] = useState<string | null>(null)
-  const [coupleId, setCoupleId] = useState<string | null>(null)
-  const [partnerName, setPartnerName] = useState<string>('Pasangan')
   const [loading, setLoading] = useState(true)
+  const [partnerName, setPartnerName] = useState<string>('Pasangan')
   const [creating, setCreating] = useState<string | null>(null)
+  const [createError, setCreateError] = useState<string | null>(null)
   const [history, setHistory] = useState<GameSession[]>([])
 
   useEffect(() => {
+    let cancelled = false
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/login'); return }
-      setUserId(user.id)
+      const supabase = createClient()
+      const user = await getClientUser()
+      if (cancelled) return
+      if (!user) {
+        setLoading(false)
+        router.replace('/auth/login')
+        return
+      }
 
       const { data: membership } = await supabase
         .from('couple_members')
         .select('couple_id')
         .eq('profile_id', user.id)
-        .single()
+        .maybeSingle()
 
+      if (cancelled) return
       if (!membership?.couple_id) { setLoading(false); return }
-      setCoupleId(membership.couple_id)
 
       // Get partner name
       const { data: partners } = await supabase
@@ -52,27 +56,42 @@ export default function SinkronisasiHubPage() {
 
       // Load history
       const games = await getGameHistory(membership.couple_id)
+      if (cancelled) return
       setHistory(games)
       setLoading(false)
     }
-    init()
-  }, [])
+    init().catch((err) => {
+      console.error('[samakan] gagal memuat hub:', err)
+      if (!cancelled) setLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [router])
+
+  useEffect(() => {
+    if (!createError) return
+    const t = setTimeout(() => setCreateError(null), 6000)
+    return () => clearTimeout(t)
+  }, [createError])
 
   const handlePlay = async (chapterId: string) => {
     if (creating) return
     setCreating(chapterId)
+    setCreateError(null)
     try {
       const res = await fetch('/api/games/samakan/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chapterId }),
       })
-      const data = await res.json()
-      if (data.sessionId) {
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.sessionId) {
         router.push(`/app/games/samakan/${data.sessionId}`)
+        return
       }
+      setCreateError(data.error ?? 'Gagal memulai permainan. Coba lagi ya.')
     } catch (err) {
       console.error('Failed to create session:', err)
+      setCreateError('Tidak bisa terhubung. Cek koneksi internetmu lalu coba lagi.')
     } finally {
       setCreating(null)
     }
@@ -112,18 +131,27 @@ export default function SinkronisasiHubPage() {
         <p className="mb-3 text-xs font-bold uppercase tracking-wider text-ink-muted">
           Pilih Chapter
         </p>
+        {createError && (
+          <div role="alert" className="mb-3 rounded-xl border border-rose/20 bg-rose/5 px-4 py-3 text-xs font-medium text-rose animate-fade-in">
+            {createError}
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           {CHAPTERS.map((chapter) => (
             <div
               key={chapter.id}
-              className="relative overflow-hidden rounded-2xl border border-border bg-white shadow-card"
+              className="relative flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-card"
             >
               <div className={`h-2 bg-gradient-to-r ${chapter.gradient}`} />
-              <div className="p-4">
-                <h3 className="text-sm font-bold text-ink">{chapter.title}</h3>
-                <p className="mt-1 text-xs text-ink-muted leading-relaxed line-clamp-2">
-                  {chapter.subtitle}
-                </p>
+              {/* Column layout + mt-auto keeps every "Main Bareng" on the same line,
+                  whether the title takes one line or two. */}
+              <div className="flex flex-1 flex-col p-4">
+                <div className="flex-1">
+                  <h3 className="text-sm font-bold text-ink">{chapter.title}</h3>
+                  <p className="mt-1 text-xs text-ink-muted leading-relaxed line-clamp-2">
+                    {chapter.subtitle}
+                  </p>
+                </div>
                 <button
                   onClick={() => handlePlay(chapter.id)}
                   disabled={!!creating}

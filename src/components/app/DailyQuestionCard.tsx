@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { MessageCircle, Send, Check, Heart, Flame } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { MessageCircle, Send, Check, Heart, Flame, Lock } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
+import { todayJakarta } from '@/lib/dates'
 
 interface DailyQuestionCardProps {
   question: string
@@ -19,47 +20,49 @@ interface DailyResponse {
   answer: string
 }
 
+/** "YYYY-MM-DD" shifted by whole days (timezone independent) */
+function shiftDateKey(dateKey: string, days: number): string {
+  const [y, m, d] = dateKey.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10)
+}
+
 export default function DailyQuestionCard({
   question, questionIndex, coupleId, userId, userName, partnerId, partnerName,
 }: DailyQuestionCardProps) {
   const [myAnswer, setMyAnswer] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const [responses, setResponses] = useState<DailyResponse[]>([])
   const [loaded, setLoaded] = useState(false)
   const [streak, setStreak] = useState(0)
 
   const myResponse = responses.find(r => r.profile_id === userId)
+  // The DB only returns the partner's row once I've answered the same day
   const partnerResponse = responses.find(r => r.profile_id !== userId)
   const bothAnswered = !!myResponse && !!partnerResponse
 
-  useEffect(() => {
-    if (!coupleId || !userId) { setLoaded(true); return }
-    loadResponses()
-    loadStreak()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coupleId, userId])
-
-  async function loadResponses() {
+  const loadResponses = useCallback(async () => {
+    if (!coupleId) return
     const supabase = createClient()
-    const today = new Date().toISOString().split('T')[0]
     const { data } = await supabase
       .from('daily_responses')
       .select('profile_id, answer')
-      .eq('couple_id', coupleId!)
-      .eq('answered_date', today)
+      .eq('couple_id', coupleId)
+      .eq('answered_date', todayJakarta())
     setResponses(data ?? [])
     setLoaded(true)
-  }
+  }, [coupleId])
 
-  async function loadStreak() {
+  const loadStreak = useCallback(async () => {
+    if (!coupleId) return
     const supabase = createClient()
-    // Count consecutive days where BOTH partners answered
+    // Count consecutive Jakarta days where BOTH partners answered
     const { data } = await supabase
       .from('daily_responses')
       .select('answered_date, profile_id')
-      .eq('couple_id', coupleId!)
+      .eq('couple_id', coupleId)
       .order('answered_date', { ascending: false })
-      .limit(60) // check last 60 days max
+      .limit(120) // two answers per day → covers the last 60 days
 
     if (!data || data.length === 0) { setStreak(0); return }
 
@@ -71,14 +74,10 @@ export default function DailyQuestionCard({
       byDate.set(r.answered_date, existing)
     })
 
-    // Count consecutive days where 2+ people answered
     let count = 0
-    const today = new Date()
+    const today = todayJakarta()
     for (let i = 0; i < 60; i++) {
-      const d = new Date(today)
-      d.setDate(d.getDate() - i)
-      const key = d.toISOString().split('T')[0]
-      const answerers = byDate.get(key)
+      const answerers = byDate.get(shiftDateKey(today, -i))
       if (answerers && answerers.size >= 2) {
         count++
       } else if (i === 0) {
@@ -89,23 +88,37 @@ export default function DailyQuestionCard({
       }
     }
     setStreak(count)
-  }
+  }, [coupleId])
+
+  useEffect(() => {
+    if (!coupleId || !userId) { setLoaded(true); return }
+    loadResponses()
+    loadStreak()
+  }, [coupleId, userId, loadResponses, loadStreak])
 
   async function handleSubmit() {
-    if (!myAnswer.trim() || !coupleId || !userId) return
+    if (!myAnswer.trim() || !coupleId || !userId || submitting) return
     setSubmitting(true)
+    setSubmitError('')
     const supabase = createClient()
-    const today = new Date().toISOString().split('T')[0]
 
-    await supabase.from('daily_responses').upsert({
+    const { error } = await supabase.from('daily_responses').upsert({
       couple_id: coupleId,
       profile_id: userId,
       question_index: questionIndex,
       answer: myAnswer.trim(),
-      answered_date: today,
+      answered_date: todayJakarta(),
     }, { onConflict: 'couple_id,profile_id,answered_date' })
 
-    await loadResponses()
+    if (error) {
+      // Keep what was typed
+      setSubmitError('Jawabanmu belum terkirim. Coba lagi ya.')
+      setSubmitting(false)
+      return
+    }
+
+    // Re-fetch: now that I've answered, the partner's answer becomes visible
+    await Promise.all([loadResponses(), loadStreak()])
     setSubmitting(false)
     setMyAnswer('')
 
@@ -120,6 +133,7 @@ export default function DailyQuestionCard({
             title: 'Nanti Kita',
             body: `${userName ?? 'Pasanganmu'} sudah jawab pertanyaan hari ini! Giliranmu`,
             url: '/app/home',
+            kind: 'activity',
           }),
         })
       } catch { /* optional */ }
@@ -160,21 +174,31 @@ export default function DailyQuestionCard({
         <div className="border-t border-border">
           {/* My answer input or display */}
           {!myResponse ? (
-            <div className="flex items-end gap-2 p-3">
-              <textarea
-                value={myAnswer}
-                onChange={e => setMyAnswer(e.target.value)}
-                placeholder="Tulis jawabanmu..."
-                rows={2}
-                className="flex-1 resize-none rounded-xl border border-border bg-cream px-3 py-2 text-sm text-ink placeholder:text-ink-muted/50 focus:border-rose focus:outline-none focus:ring-1 focus:ring-rose/20"
-              />
-              <button
-                onClick={handleSubmit}
-                disabled={!myAnswer.trim() || submitting}
-                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-rose text-white disabled:opacity-40 transition-all"
-              >
-                <Send className="h-4 w-4" />
-              </button>
+            <div className="p-3">
+              <div className="flex items-end gap-2">
+                <textarea
+                  value={myAnswer}
+                  onChange={e => setMyAnswer(e.target.value)}
+                  placeholder="Tulis jawabanmu..."
+                  rows={2}
+                  className="flex-1 resize-none rounded-xl border border-border bg-cream px-3 py-2 text-sm text-ink placeholder:text-ink-muted/50 focus:border-rose focus:outline-none focus:ring-1 focus:ring-rose/20"
+                />
+                <button
+                  onClick={handleSubmit}
+                  disabled={!myAnswer.trim() || submitting}
+                  aria-label="Kirim jawaban"
+                  className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-rose text-white disabled:opacity-40 transition-all"
+                >
+                  <Send className="h-4 w-4" />
+                </button>
+              </div>
+              {submitError && <p className="mt-2 text-xs font-medium text-red-500">{submitError}</p>}
+              {partnerId && (
+                <p className="mt-2 flex items-center gap-1.5 text-[11px] text-ink-muted">
+                  <Lock className="h-3 w-3 flex-shrink-0" />
+                  Jawab dulu untuk lihat jawaban {partnerName ?? 'pasangan'}
+                </p>
+              )}
             </div>
           ) : (
             <div className="p-3 space-y-2">
@@ -182,7 +206,7 @@ export default function DailyQuestionCard({
               <div className="flex items-start gap-2">
                 <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-rose/10 mt-0.5">
                   <span className="text-[10px] font-bold text-rose">
-                    {(userName ?? 'K')[0].toUpperCase()}
+                    {(userName || 'K')[0].toUpperCase()}
                   </span>
                 </div>
                 <div className="flex-1 rounded-xl rounded-tl-sm bg-rose-50 px-3 py-2">
@@ -196,7 +220,7 @@ export default function DailyQuestionCard({
                 <div className="flex items-start gap-2">
                   <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-sage/20 mt-0.5">
                     <span className="text-[10px] font-bold text-sage-dark">
-                      {(partnerName ?? 'P')[0].toUpperCase()}
+                      {(partnerName || 'P')[0].toUpperCase()}
                     </span>
                   </div>
                   <div className="flex-1 rounded-xl rounded-tl-sm bg-sage/10 px-3 py-2">
@@ -204,14 +228,14 @@ export default function DailyQuestionCard({
                     <p className="mt-0.5 text-sm text-ink">{partnerResponse.answer}</p>
                   </div>
                 </div>
-              ) : (
+              ) : partnerId ? (
                 <div className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2.5">
                   <div className="h-2 w-2 animate-pulse rounded-full bg-gold" />
                   <p className="text-xs text-ink-muted">
                     Menunggu jawaban {partnerName ?? 'pasangan'}...
                   </p>
                 </div>
-              )}
+              ) : null}
 
               {/* Both answered celebration */}
               {bothAnswered && (

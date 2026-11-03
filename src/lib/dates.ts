@@ -6,27 +6,47 @@ function parseLocalDate(dateStr: string): Date {
   return new Date(y, m - 1, d)
 }
 
-// Format a local Date to "YYYY-MM-DD" without UTC conversion
-function formatDateKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const JAKARTA_TZ = 'Asia/Jakarta'
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Today's date in Jakarta as "YYYY-MM-DD". Use this instead of
+ * `new Date().toISOString().split('T')[0]` (UTC — still yesterday before
+ * 07:00 WIB) or local-clock math (UTC on the Vercel server).
+ */
+export function todayJakarta(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: JAKARTA_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(now)
 }
 
-/** Number of full days between a past date and today */
+/** Month key "YYYY-MM" in Jakarta time */
+export function monthKeyJakarta(now: Date = new Date()): string {
+  return todayJakarta(now).slice(0, 7)
+}
+
+function dateKeyToUTC(dateStr: string): number {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return Date.UTC(y, m - 1, d)
+}
+
+function utcToDateKey(ms: number): string {
+  return new Date(ms).toISOString().split('T')[0]
+}
+
+/** Whole days from date key `from` to date key `to` — timezone independent */
+function dayDiff(from: string, to: string): number {
+  return Math.round((dateKeyToUTC(to) - dateKeyToUTC(from)) / DAY_MS)
+}
+
+/** Number of full days between a past date and today (Jakarta) */
 export function daysSince(dateStr: string): number {
-  const past = parseLocalDate(dateStr)
-  const nowMidnight = new Date()
-  nowMidnight.setHours(0, 0, 0, 0)
-  const diff = nowMidnight.getTime() - past.getTime()
-  return Math.floor(diff / (1000 * 60 * 60 * 24))
+  return dayDiff(dateStr, todayJakarta())
 }
 
 /** Number of days until a future date (returns 0 if today, negative if past) */
 export function daysUntil(dateStr: string): number {
-  const targetMidnight = parseLocalDate(dateStr)
-  const nowMidnight = new Date()
-  nowMidnight.setHours(0, 0, 0, 0)
-  const diff = targetMidnight.getTime() - nowMidnight.getTime()
-  return Math.round(diff / (1000 * 60 * 60 * 24))
+  return dayDiff(todayJakarta(), dateStr)
 }
 
 /** Format a date string to Indonesian locale: "22 Maret 2026" */
@@ -56,14 +76,15 @@ export function getNextOccurrence(eventDateStr: string): string {
   const [, monthStr, dayStr] = eventDateStr.split('-')
   const month = parseInt(monthStr, 10) - 1
   const day = parseInt(dayStr, 10)
-  const now = new Date()
-  const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const today = todayJakarta()
+  // A recurring event that hasn't happened yet for the first time.
+  if (eventDateStr >= today) return eventDateStr
+  const year = Number(today.slice(0, 4))
 
-  const thisYear = new Date(now.getFullYear(), month, day)
-  if (thisYear >= nowMidnight) {
-    return formatDateKey(thisYear)
-  }
-  return formatDateKey(new Date(now.getFullYear() + 1, month, day))
+  // Date.UTC rolls Feb 29 over to Mar 1 in non-leap years, like before.
+  const thisYear = utcToDateKey(Date.UTC(year, month, day))
+  if (thisYear >= today) return thisYear
+  return utcToDateKey(Date.UTC(year + 1, month, day))
 }
 
 /**

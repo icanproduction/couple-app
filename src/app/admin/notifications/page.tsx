@@ -77,6 +77,7 @@ export default function AdminNotificationsPage() {
           title: title || '🔔 Nanti Kita',
           body: body.trim(),
           url: '/app/home',
+          kind: 'admin',
         }),
       })
       const data = await res.json()
@@ -110,6 +111,7 @@ export default function AdminNotificationsPage() {
             title: broadcastTitle || '📢 Nanti Kita',
             body: broadcastBody.trim(),
             url: '/app/home',
+            kind: 'admin',
           }),
         })
         const data = await res.json()

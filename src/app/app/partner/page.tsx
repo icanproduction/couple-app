@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Heart, Brain, Cake,
-  Clock, Sparkles,
+  Clock,
 } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
+import { createClient, getClientUser } from '@/lib/supabase'
 import { formatDateID, daysSince, getRelationshipLevel } from '@/lib/dates'
 import AvatarUpload from '@/components/app/AvatarUpload'
 import MbtiCard from '@/components/app/MbtiCard'
@@ -53,6 +54,7 @@ function getZodiac(birthday: string): { sign: string; emoji: string } {
 }
 
 export default function PartnerPage() {
+  const router = useRouter()
   const [userId, setUserId] = useState<string | null>(null)
   const [coupleId, setCoupleId] = useState<string | null>(null)
   const [partner, setPartner] = useState<PartnerProfile | null>(null)
@@ -63,16 +65,16 @@ export default function PartnerPage() {
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const user = await getClientUser()
+    if (!user) { router.replace('/auth/login'); return }
     setUserId(user.id)
 
     // Get my profile
-    const { data: myP } = await supabase.from('profiles').select('id, name, birthday, avatar_url, relationship_start_date').eq('id', user.id).single()
+    const { data: myP } = await supabase.from('profiles').select('id, name, birthday, avatar_url, relationship_start_date').eq('id', user.id).maybeSingle()
     setMyProfile(myP)
 
     // Get couple
-    const { data: membership } = await supabase.from('couple_members').select('couple_id').eq('profile_id', user.id).single()
+    const { data: membership } = await supabase.from('couple_members').select('couple_id').eq('profile_id', user.id).maybeSingle()
     if (!membership?.couple_id) { setLoading(false); return }
     setCoupleId(membership.couple_id)
 
@@ -82,7 +84,7 @@ export default function PartnerPage() {
 
     if (partnerMembers?.[0]) {
       const pid = partnerMembers[0].profile_id
-      const { data: pp } = await supabase.from('profiles').select('id, name, birthday, avatar_url, relationship_start_date').eq('id', pid).single()
+      const { data: pp } = await supabase.from('profiles').select('id, name, birthday, avatar_url, relationship_start_date').eq('id', pid).maybeSingle()
       setPartner(pp)
 
       // Partner MBTI
@@ -98,7 +100,7 @@ export default function PartnerPage() {
     setWishlist(wl ?? [])
 
     setLoading(false)
-  }, [])
+  }, [router])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -106,7 +108,10 @@ export default function PartnerPage() {
     return <div className="flex items-center justify-center py-20"><div className="h-6 w-6 animate-spin rounded-full border-2 border-rose border-t-transparent" /></div>
   }
 
-  const daysTogether = myProfile?.relationship_start_date ? daysSince(myProfile.relationship_start_date) : 0
+  // Either partner may have set the start date; use the earliest one
+  const startDate = [myProfile?.relationship_start_date, partner?.relationship_start_date]
+    .filter((d): d is string => !!d).sort()[0] ?? null
+  const daysTogether = startDate ? Math.max(0, daysSince(startDate)) : 0
   const level = getRelationshipLevel(daysTogether)
   const zodiac = partner?.birthday ? getZodiac(partner.birthday) : null
 
@@ -170,7 +175,7 @@ export default function PartnerPage() {
             <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/30 p-6 text-center">
               <Brain className="mx-auto mb-3 h-10 w-10 text-purple-300" strokeWidth={1.5} />
               <p className="text-sm font-semibold text-ink">{partner?.name ?? 'Pasangan'} belum tes MBTI</p>
-              <p className="mt-1 text-xs text-ink-muted">Ajak mereka ambil tes di menu Profil mereka!</p>
+              <p className="mt-1 text-xs text-ink-muted">Ajak mereka ambil tes di menu About Me!</p>
             </div>
           )}
         </div>

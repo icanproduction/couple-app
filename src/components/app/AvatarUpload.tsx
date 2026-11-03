@@ -30,28 +30,31 @@ export default function AvatarUpload({
 }: AvatarUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState(currentUrl)
+  const [uploadError, setUploadError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const initial = (name ?? '?')[0].toUpperCase()
+  const initial = (name || '?')[0].toUpperCase()
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
 
     setUploading(true)
+    setUploadError('')
     const supabase = createClient()
     const ext = file.name.split('.').pop()
     const path = `${userId}/avatar.${ext}`
 
     const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
-    if (error) { setUploading(false); return }
+    if (error) { setUploadError('Gagal upload foto. Coba lagi ya.'); setUploading(false); return }
 
     const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
     const url = `${publicUrl}?t=${Date.now()}`
 
-    await supabase.from('profiles').update({ avatar_url: url }).eq('id', userId)
-    setAvatarUrl(url)
+    const { error: saveError } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', userId)
     setUploading(false)
+    if (saveError) { setUploadError('Foto belum tersimpan. Coba lagi ya.'); return }
+    setAvatarUrl(url)
     onUploaded?.(url)
   }
 
@@ -67,6 +70,7 @@ export default function AvatarUpload({
         {uploading ? (
           <Loader2 className="h-5 w-5 animate-spin text-rose" />
         ) : avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- avatar from Supabase public storage (host differs per environment), next/image would need every host whitelisted
           <img src={avatarUrl} alt={name ?? 'Avatar'} className="h-full w-full object-cover" />
         ) : (
           <span className="font-bold text-rose">{initial}</span>
@@ -80,6 +84,11 @@ export default function AvatarUpload({
       )}
 
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+      {uploadError && (
+        <p className="absolute left-1/2 top-full mt-1 w-40 -translate-x-1/2 text-center text-[10px] font-medium text-red-500">
+          {uploadError}
+        </p>
+      )}
     </div>
   )
 }

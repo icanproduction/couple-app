@@ -1,56 +1,171 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Heart, Link2 } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
-import { createCouple, joinCouple } from '@/lib/couple'
+import { createClient, getClientUser } from '@/lib/supabase'
+import { createCouple, getMyCouple, isCoupleHasDataError, isExpiredInviteError, joinCouple } from '@/lib/couple'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Suspense } from 'react'
+import { ExpiredInviteNotice } from '@/components/account/ExpiredInviteNotice'
+import { DiscardCoupleModal } from '@/components/account/DiscardCoupleModal'
+import { cleanInviteCode } from '@/app/onboarding/steps'
 
 type Mode = 'choose' | 'create' | 'join'
+
+interface Me {
+  id: string
+  hasName: boolean
+  onboardingComplete: boolean
+  coupleId: string | null
+  /** My couple is closed (partner left): joining another deletes this archive. */
+  coupleClosed: boolean
+}
 
 function CouplePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const prefilledCode = searchParams.get('code') ?? ''
-  const [mode, setMode] = useState<Mode>(prefilledCode ? 'join' : 'choose')
+  const prefilledCode = cleanInviteCode(searchParams.get('code'))
+  // Someone already waiting alone in their own couple may still join their
+  // partner's — but only when they came here to join.
+  const wantsJoin = !!prefilledCode || searchParams.get('join') === '1'
+  // Arrived here right after "Keluar dari pasangan" on the profile page.
+  const justLeft = searchParams.get('left') === '1'
+
+  const [me, setMe] = useState<Me | null>(null)
+  const [mode, setMode] = useState<Mode>(wantsJoin ? 'join' : 'choose')
   const [inviteCode, setInviteCode] = useState(prefilledCode)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // Loading who I am failed: show a retry instead of guessing (a guess of
+  // "no name yet" would send a successful join to the profile step).
+  const [loadError, setLoadError] = useState('')
+  const [attempt, setAttempt] = useState(0)
+  // Joining would delete my current space (it holds memories): confirm first.
+  const [discardCode, setDiscardCode] = useState<string | null>(null)
+  const [discardError, setDiscardError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    async function check() {
+      setLoadError('')
+      const supabase = createClient()
+      const user = await getClientUser()
+      if (!user) { router.replace('/auth/login'); return }
+
+      try {
+        const [{ data: profile, error: profileError }, couple] = await Promise.all([
+          supabase.from('profiles').select('name, onboarding_complete').eq('id', user.id).maybeSingle(),
+          getMyCouple(user.id),
+        ])
+        if (profileError) throw new Error(profileError.message)
+        if (cancelled) return
+        const hasName = !!profile?.name
+        const onboardingComplete = !!profile?.onboarding_complete
+
+        if (couple) {
+          const alone = couple.memberCount < 2
+          if (!(alone && wantsJoin)) {
+            // A closed couple (partner left) is an archive, not a waiting
+            // room: there is no invite code to share, so go to the app.
+            const waiting = alone && !couple.closedAt
+            router.replace(
+              !hasName ? '/onboarding/profile'
+                : waiting ? '/onboarding/invite'
+                : onboardingComplete ? '/app/home'
+                : '/onboarding/install'
+            )
+            return
+          }
+        }
+        setMe({
+          id: user.id, hasName, onboardingComplete,
+          coupleId: couple?.id ?? null, coupleClosed: !!couple?.closedAt,
+        })
+      } catch (e: unknown) {
+        if (cancelled) return
+        setLoadError(e instanceof Error && e.message ? e.message : 'Gagal memuat data')
+      }
+    }
+    check()
+    return () => { cancelled = true }
+  }, [router, wantsJoin, attempt])
 
   async function handleCreate() {
+    if (!me || loading) return
     setLoading(true)
     setError('')
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
-      await createCouple(user.id)
+      await createCouple(me.id)
       router.push('/onboarding/invite')
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? 'Gagal membuat pasangan'
-      setError(msg)
+      setError(e instanceof Error ? e.message : 'Gagal membuat pasangan')
       setLoading(false)
     }
   }
 
   async function handleJoin(e: React.FormEvent) {
     e.preventDefault()
-    if (!inviteCode.trim()) { setError('Masukkan kode undangan'); return }
+    if (!me || loading) return
+    const code = cleanInviteCode(inviteCode)
+    if (!code) { setError('Masukkan kode undangan'); return }
     setLoading(true)
     setError('')
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
-      await joinCouple(inviteCode.trim(), user.id)
-      router.push('/onboarding/install')
+      const coupleId = await joinCouple(code, me.id)
+      if (coupleId === me.coupleId) {
+        setError('Ini kode undangan kamu sendiri. Masukkan kode dari pasanganmu.')
+        setLoading(false)
+        return
+      }
+      afterJoin()
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Gagal bergabung')
+      if (isCoupleHasDataError(e)) {
+        setDiscardError('')
+        setDiscardCode(code)
+      } else {
+        setError(e instanceof Error ? e.message : 'Gagal bergabung')
+      }
       setLoading(false)
     }
+  }
+
+  async function confirmDiscardJoin() {
+    if (!me || !discardCode || loading) return
+    setLoading(true)
+    setDiscardError('')
+    try {
+      await joinCouple(discardCode, me.id, { discard: true })
+      afterJoin()
+    } catch (e: unknown) {
+      setDiscardError(e instanceof Error ? e.message : 'Gagal bergabung')
+      setLoading(false)
+    }
+  }
+
+  function afterJoin() {
+    if (!me) return
+    // Profile still empty (signed up from an invite link)? Fill it next.
+    router.push(!me.hasName ? '/onboarding/profile' : me.onboardingComplete ? '/app/home' : '/onboarding/install')
+  }
+
+  if (loadError) {
+    return (
+      <div className="animate-fade-in py-10 text-center">
+        <p className="mb-6 text-sm text-danger">Gagal memuat datamu: {loadError}</p>
+        <Button onClick={() => setAttempt((n) => n + 1)} variant="secondary" size="lg">
+          Coba Lagi
+        </Button>
+      </div>
+    )
+  }
+
+  if (!me) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-rose border-t-transparent" />
+      </div>
+    )
   }
 
   if (mode === 'choose') {
@@ -63,9 +178,17 @@ function CouplePage() {
           </p>
         </div>
 
+        {justLeft && (
+          <div className="mb-4 rounded-2xl border border-border bg-cream px-4 py-3 text-xs leading-relaxed text-ink-muted">
+            Kamu sudah keluar dari pasangan sebelumnya. Buat pasangan baru atau gabung dengan kode undangan.
+          </div>
+        )}
+
+        {error && <p className="mb-4 text-sm text-danger">{error}</p>}
+
         <div className="space-y-3">
           <button
-            onClick={() => setMode('create')}
+            onClick={() => { setError(''); setMode('create') }}
             className="flex w-full items-center gap-4 rounded-2xl border border-border bg-white p-4 text-left transition-colors hover:border-rose hover:bg-rose-50"
           >
             <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-rose-50">
@@ -78,7 +201,7 @@ function CouplePage() {
           </button>
 
           <button
-            onClick={() => setMode('join')}
+            onClick={() => { setError(''); setMode('join') }}
             className="flex w-full items-center gap-4 rounded-2xl border border-border bg-white p-4 text-left transition-colors hover:border-rose hover:bg-rose-50"
           >
             <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-sage/20">
@@ -98,7 +221,7 @@ function CouplePage() {
     return (
       <div className="animate-fade-in">
         <button
-          onClick={() => setMode('choose')}
+          onClick={() => { setError(''); setMode('choose') }}
           className="mb-6 text-sm font-medium text-ink-muted hover:text-ink"
         >
           ← Kembali
@@ -109,7 +232,7 @@ function CouplePage() {
             Kamu akan mendapat kode undangan untuk dibagikan ke pasangan
           </p>
         </div>
-        {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
+        {error && <p className="mb-4 text-sm text-danger">{error}</p>}
         <Button onClick={handleCreate} loading={loading} size="lg">
           Buat Sekarang
         </Button>
@@ -121,7 +244,7 @@ function CouplePage() {
   return (
     <div className="animate-fade-in">
       <button
-        onClick={() => setMode('choose')}
+        onClick={() => { setError(''); setMode('choose') }}
         className="mb-6 text-sm font-medium text-ink-muted hover:text-ink"
       >
         ← Kembali
@@ -142,14 +265,24 @@ function CouplePage() {
           onChange={e => setInviteCode(e.target.value.toUpperCase())}
           required
           autoComplete="off"
-          error={error}
+          error={isExpiredInviteError(error) ? undefined : error || undefined}
         />
+        {isExpiredInviteError(error) && <ExpiredInviteNotice />}
         <div className="pt-2">
           <Button type="submit" loading={loading} size="lg">
             Gabung
           </Button>
         </div>
       </form>
+
+      <DiscardCoupleModal
+        open={discardCode !== null}
+        onClose={() => setDiscardCode(null)}
+        onConfirm={confirmDiscardJoin}
+        loading={loading}
+        error={discardError}
+        closed={me.coupleClosed}
+      />
     </div>
   )
 }

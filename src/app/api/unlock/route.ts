@@ -4,10 +4,10 @@ import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supab
 /**
  * Unlock premium for the current user's couple.
  *
- * DUMMY PAYMENT MODE: while `PAYMENT_DUMMY` !== 'false' (default ON), this
- * unlocks instantly with no real charge — for QA / soft launch. To wire a real
- * gateway later (Midtrans/Xendit), set PAYMENT_DUMMY=false and implement the
- * order/redirect + webhook that flips `couples.is_premium` on payment success.
+ * DUMMY PAYMENT MODE is opt-in: only when PAYMENT_DUMMY=true does this unlock
+ * instantly with no charge (QA / soft launch). Unset or anything else fails
+ * closed with 501 until a real gateway (Midtrans/Xendit) is wired: an
+ * order/redirect here plus a verified webhook that flips `couples.is_premium`.
  */
 export async function POST() {
   try {
@@ -16,30 +16,33 @@ export async function POST() {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { data: membership } = await supabase
-      .from('couple_members').select('couple_id').eq('profile_id', user.id).single()
+      .from('couple_members').select('couple_id').eq('profile_id', user.id).maybeSingle()
     if (!membership?.couple_id) {
       return NextResponse.json({ error: 'Belum punya pasangan' }, { status: 400 })
     }
 
-    const dummy = process.env.PAYMENT_DUMMY !== 'false' // default ON
-    if (!dummy) {
+    if (process.env.PAYMENT_DUMMY?.trim() !== 'true') {
       return NextResponse.json(
-        { error: 'Payment gateway belum dikonfigurasi' },
+        { error: 'Pembayaran belum tersedia. Coba lagi nanti ya.' },
         { status: 501 }
       )
     }
 
-    // Service role: flip premium regardless of couples RLS update policy.
+    // Service role: members have no UPDATE policy on couples by design.
     const admin = createServiceRoleClient()
     const { error } = await admin
       .from('couples')
       .update({ is_premium: true, unlocked_at: new Date().toISOString() })
       .eq('id', membership.couple_id)
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      console.error('[unlock] update failed:', error.message)
+      return NextResponse.json({ error: 'Gagal membuka premium, coba lagi' }, { status: 500 })
+    }
 
     return NextResponse.json({ ok: true, isPremium: true })
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    console.error('[unlock] unhandled:', err)
+    return NextResponse.json({ error: 'Gagal membuka premium, coba lagi' }, { status: 500 })
   }
 }

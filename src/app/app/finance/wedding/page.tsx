@@ -6,7 +6,7 @@ import {
   ArrowLeft, Plus, Trash2, Check, Edit2, ChevronDown, ChevronUp,
   Heart, Calculator, TrendingUp, CheckCircle,
 } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
+import { createClient, getClientUser } from '@/lib/supabase'
 
 interface BudgetItem {
   id: string
@@ -67,12 +67,18 @@ export default function WeddingPlannerPage() {
   // Collapsed categories
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
+  // Errors + inline delete confirm
+  const [addError, setAddError] = useState('')
+  const [editError, setEditError] = useState('')
+  const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
   const loadData = useCallback(async () => {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const user = await getClientUser()
+    if (!user) { router.replace('/auth/login'); return }
 
-    const { data: membership } = await supabase.from('couple_members').select('couple_id').eq('profile_id', user.id).single()
+    const { data: membership } = await supabase.from('couple_members').select('couple_id').eq('profile_id', user.id).maybeSingle()
     if (!membership?.couple_id) { setLoading(false); return }
     setCoupleId(membership.couple_id)
 
@@ -85,16 +91,16 @@ export default function WeddingPlannerPage() {
 
     setItems((data ?? []) as BudgetItem[])
     setLoading(false)
-  }, [])
+  }, [router])
 
   useEffect(() => { loadData() }, [loadData])
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
-    if (!coupleId || !addName.trim()) return
-    setSaving(true)
+    if (!coupleId || !addName.trim() || saving) return
+    setSaving(true); setAddError('')
     const supabase = createClient()
-    await supabase.from('wedding_budget_items').insert({
+    const { error } = await supabase.from('wedding_budget_items').insert({
       couple_id: coupleId,
       category: addCategory,
       name: addName.trim(),
@@ -103,37 +109,47 @@ export default function WeddingPlannerPage() {
       notes: addNotes.trim() || null,
       sort_order: items.length,
     })
+    setSaving(false)
+    // Keep what was typed when the save fails
+    if (error) { setAddError('Gagal menambah item. Coba lagi ya.'); return }
     setAddName(''); setAddEstimated(''); setAddActual(''); setAddNotes('')
-    setShowAdd(false); setSaving(false); loadData()
+    setShowAdd(false); loadData()
   }
 
   async function handleSaveEdit() {
-    if (!editId) return
-    setEditSaving(true)
+    if (!editId || editSaving) return
+    setEditSaving(true); setEditError('')
     const supabase = createClient()
-    await supabase.from('wedding_budget_items').update({
+    const { error } = await supabase.from('wedding_budget_items').update({
       name: editName.trim(),
       estimated_cost: parseRp(editEstimated),
       actual_cost: editActual ? parseRp(editActual) : null,
       notes: editNotes.trim() || null,
     }).eq('id', editId)
-    setEditId(null); setEditSaving(false); loadData()
+    setEditSaving(false)
+    if (error) { setEditError('Gagal menyimpan. Coba lagi ya.'); return }
+    setEditId(null); loadData()
   }
 
   async function togglePaid(item: BudgetItem) {
+    setRowError(null)
     const supabase = createClient()
-    await supabase.from('wedding_budget_items').update({ is_paid: !item.is_paid }).eq('id', item.id)
+    const { error } = await supabase.from('wedding_budget_items').update({ is_paid: !item.is_paid }).eq('id', item.id)
+    if (error) { setRowError({ id: item.id, message: 'Gagal mengubah status. Coba lagi ya.' }); return }
     loadData()
   }
 
   async function deleteItem(id: string) {
-    if (!confirm('Hapus item ini?')) return
+    setRowError(null)
     const supabase = createClient()
-    await supabase.from('wedding_budget_items').delete().eq('id', id)
+    const { error } = await supabase.from('wedding_budget_items').delete().eq('id', id)
+    setConfirmDeleteId(null)
+    if (error) { setRowError({ id, message: 'Gagal menghapus item. Coba lagi ya.' }); return }
     loadData()
   }
 
   function startEdit(item: BudgetItem) {
+    setEditError('')
     setEditId(item.id)
     setEditName(item.name)
     setEditEstimated(item.estimated_cost.toLocaleString('id-ID'))
@@ -157,6 +173,22 @@ export default function WeddingPlannerPage() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-20"><div className="h-6 w-6 animate-spin rounded-full border-2 border-rose border-t-transparent" /></div>
+  }
+
+  if (!coupleId) {
+    return (
+      <div className="animate-fade-in flex min-h-[60vh] flex-col items-center justify-center px-8 text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose/10">
+          <Heart className="h-8 w-8 text-rose" />
+        </div>
+        <h1 className="text-xl font-bold text-ink">Wedding Planner</h1>
+        <p className="mt-2 max-w-xs text-sm text-ink-muted">Hubungkan akunmu dengan pasangan dulu untuk mulai menghitung biaya nikah bareng.</p>
+        <button onClick={() => router.push('/app/profile')}
+          className="mt-6 w-full max-w-xs rounded-2xl bg-rose py-3.5 text-sm font-bold text-white shadow-elevated">
+          Undang Pasangan
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -237,35 +269,38 @@ export default function WeddingPlannerPage() {
                       {editId === item.id ? (
                         // Edit mode
                         <div className="space-y-2">
-                          <input value={editName} onChange={e => setEditName(e.target.value)}
+                          <input value={editName} onChange={e => setEditName(e.target.value)} aria-label="Nama item"
                             className="w-full rounded-xl border border-border px-3 py-2 text-sm focus:border-rose focus:outline-none" />
                           <div className="grid grid-cols-2 gap-2">
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted">Est</span>
-                              <input value={editEstimated} onChange={e => setEditEstimated(fmtInput(e.target.value))}
+                              <input value={editEstimated} onChange={e => setEditEstimated(fmtInput(e.target.value))} aria-label="Biaya estimasi"
                                 className="w-full rounded-xl border border-border py-2 pl-10 pr-3 text-sm focus:border-rose focus:outline-none" inputMode="numeric" />
                             </div>
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted">Real</span>
-                              <input value={editActual} onChange={e => setEditActual(fmtInput(e.target.value))}
+                              <input value={editActual} onChange={e => setEditActual(fmtInput(e.target.value))} aria-label="Biaya real"
                                 className="w-full rounded-xl border border-border py-2 pl-10 pr-3 text-sm focus:border-rose focus:outline-none" inputMode="numeric"
                                 placeholder="kosong = sama estimasi" />
                             </div>
                           </div>
-                          <input value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Catatan..."
+                          <input value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Catatan..." aria-label="Catatan"
                             className="w-full rounded-xl border border-border px-3 py-2 text-xs focus:border-rose focus:outline-none" />
+                          {editError && <p className="text-xs font-medium text-red-500">{editError}</p>}
                           <div className="flex gap-2">
                             <button onClick={handleSaveEdit} disabled={editSaving}
-                              className="flex items-center gap-1 rounded-lg bg-rose px-3 py-1.5 text-xs font-bold text-white">
-                              <Check className="h-3 w-3" /> Simpan
+                              className="flex items-center gap-1 rounded-lg bg-rose px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60">
+                              <Check className="h-3 w-3" /> {editSaving ? 'Menyimpan...' : 'Simpan'}
                             </button>
-                            <button onClick={() => setEditId(null)} className="text-xs text-ink-muted">Batal</button>
+                            <button onClick={() => { setEditId(null); setEditError('') }} className="text-xs text-ink-muted">Batal</button>
                           </div>
                         </div>
                       ) : (
                         // Display mode
                         <div className="flex items-start gap-3">
                           <button onClick={() => togglePaid(item)}
+                            role="checkbox" aria-checked={!!item.is_paid}
+                            aria-label={`${item.name} sudah dibayar`}
                             className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
                               item.is_paid ? 'border-sage bg-sage text-white' : 'border-border'
                             }`}>
@@ -280,10 +315,22 @@ export default function WeddingPlannerPage() {
                               )}
                             </div>
                             {item.notes && <p className="mt-0.5 text-[10px] text-ink-muted/70">{item.notes}</p>}
+                            {rowError?.id === item.id && (
+                              <p className="mt-1 text-[10px] font-medium text-red-500">{rowError.message}</p>
+                            )}
+                            {confirmDeleteId === item.id && (
+                              <div className="mt-2 flex items-center gap-2">
+                                <span className="text-[11px] font-medium text-red-600">Hapus item ini?</span>
+                                <button onClick={() => deleteItem(item.id)}
+                                  className="rounded-lg bg-red-500 px-2.5 py-1 text-[11px] font-bold text-white">Hapus</button>
+                                <button onClick={() => setConfirmDeleteId(null)}
+                                  className="text-[11px] text-ink-muted">Batal</button>
+                              </div>
+                            )}
                           </div>
                           <div className="flex gap-1">
-                            <button onClick={() => startEdit(item)} className="p-1 text-ink-muted hover:text-ink"><Edit2 className="h-3.5 w-3.5" /></button>
-                            <button onClick={() => deleteItem(item.id)} className="p-1 text-ink-muted hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                            <button onClick={() => startEdit(item)} aria-label={`Ubah ${item.name}`} className="p-1 text-ink-muted hover:text-ink"><Edit2 className="h-3.5 w-3.5" /></button>
+                            <button onClick={() => setConfirmDeleteId(item.id)} aria-label={`Hapus ${item.name}`} className="p-1 text-ink-muted hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
                           </div>
                         </div>
                       )}
@@ -309,28 +356,29 @@ export default function WeddingPlannerPage() {
         {showAdd ? (
           <form onSubmit={handleAdd} className="rounded-2xl border-2 border-rose/30 bg-rose/5 p-4 space-y-3">
             <p className="text-sm font-bold text-ink">Tambah Item</p>
-            <select value={addCategory} onChange={e => setAddCategory(e.target.value)}
+            <select value={addCategory} onChange={e => setAddCategory(e.target.value)} aria-label="Kategori"
               className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:border-rose focus:outline-none">
               {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
-            <input value={addName} onChange={e => setAddName(e.target.value)} placeholder="Nama item (mis. Gedung resepsi)"
+            <input value={addName} onChange={e => setAddName(e.target.value)} placeholder="Nama item (mis. Gedung resepsi)" aria-label="Nama item"
               className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:border-rose focus:outline-none" required />
             <div className="grid grid-cols-2 gap-2">
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted">Rp</span>
                 <input value={addEstimated} onChange={e => setAddEstimated(fmtInput(e.target.value))}
-                  placeholder="Estimasi" inputMode="numeric"
+                  placeholder="Estimasi" aria-label="Biaya estimasi" inputMode="numeric"
                   className="w-full rounded-xl border border-border bg-white py-2.5 pl-9 pr-3 text-sm focus:border-rose focus:outline-none" required />
               </div>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted">Rp</span>
                 <input value={addActual} onChange={e => setAddActual(fmtInput(e.target.value))}
-                  placeholder="Aktual (opsional)" inputMode="numeric"
+                  placeholder="Aktual (opsional)" aria-label="Biaya aktual" inputMode="numeric"
                   className="w-full rounded-xl border border-border bg-white py-2.5 pl-9 pr-3 text-sm focus:border-rose focus:outline-none" />
               </div>
             </div>
-            <input value={addNotes} onChange={e => setAddNotes(e.target.value)} placeholder="Catatan (opsional)"
+            <input value={addNotes} onChange={e => setAddNotes(e.target.value)} placeholder="Catatan (opsional)" aria-label="Catatan"
               className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-xs focus:border-rose focus:outline-none" />
+            {addError && <p className="text-xs font-medium text-red-500">{addError}</p>}
             <div className="flex gap-2">
               <button type="submit" disabled={saving}
                 className="flex-1 rounded-xl bg-rose py-2.5 text-sm font-bold text-white disabled:opacity-50">

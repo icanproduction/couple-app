@@ -6,9 +6,11 @@ interface StoryCardProps {
   text: string
   gradient?: string
   onNext: () => void
+  /** Replaces "Ketuk untuk lanjut", e.g. when the partner controls the pace */
+  hint?: string
 }
 
-export default function StoryCard({ text, gradient, onNext }: StoryCardProps) {
+export default function StoryCard({ text, gradient, onNext, hint }: StoryCardProps) {
   const [displayedText, setDisplayedText] = useState('')
   const [isComplete, setIsComplete] = useState(false)
   const indexRef = useRef(0)
@@ -64,7 +66,7 @@ export default function StoryCard({ text, gradient, onNext }: StoryCardProps) {
 
       {isComplete && (
         <div className="absolute bottom-12 animate-pulse">
-          <p className="text-sm text-white/50">Ketuk untuk lanjut</p>
+          <p className="text-sm text-white/50">{hint ?? 'Ketuk untuk lanjut'}</p>
         </div>
       )}
     </div>

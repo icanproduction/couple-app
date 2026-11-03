@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Sparkles } from 'lucide-react'
 
 interface Props {
@@ -11,15 +11,20 @@ interface Props {
 }
 
 export default function UnlockCelebration({ levelNumber, levelTitle, questionCount, onDismiss }: Props) {
+  // Keep the latest callback in a ref so a parent re-render (new inline
+  // function) does not restart the auto-dismiss timer.
+  const onDismissRef = useRef(onDismiss)
+  useEffect(() => { onDismissRef.current = onDismiss }, [onDismiss])
+
   useEffect(() => {
-    const timer = setTimeout(onDismiss, 1800)
+    const timer = setTimeout(() => onDismissRef.current(), 1800)
     return () => clearTimeout(timer)
-  }, [onDismiss])
+  }, [])
 
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in"
-      onClick={onDismiss}
+      onClick={() => onDismissRef.current()}
     >
       <div className="flex flex-col items-center px-8 text-center text-white animate-scale-in">
         <div className="relative mb-6">

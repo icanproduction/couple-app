@@ -1,25 +1,30 @@
 'use client'
 
-import { ArrowDownLeft, ArrowUpRight, Heart, ShoppingBag, Utensils, Gift, HelpCircle } from 'lucide-react'
+import { ArrowDownLeft, Heart, ShoppingBag, Utensils, Gift, HelpCircle, ChevronRight } from 'lucide-react'
+import { todayJakarta, daysSince } from '@/lib/dates'
+import { fmtRpShort } from '@/lib/finance'
 
-interface Transaction {
+export interface TransactionItem {
   id: string
   amount: number
   type: string
   category: string | null
   note: string | null
-  created_by: string
+  created_by: string | null
   created_at: string | null
+  goal_id?: string | null
 }
 
 interface TransactionListProps {
-  transactions: Transaction[]
+  transactions: TransactionItem[]
   userId: string
   partnerName: string | null
   userName: string | null
+  /** Tapping a deposit/withdrawal opens the editor (F06) */
+  onSelect?: (tx: TransactionItem) => void
 }
 
-const CATEGORY_META: Record<string, { icon: typeof Heart; label: string; color: string }> = {
+export const CATEGORY_META: Record<string, { icon: typeof Heart; label: string; color: string }> = {
   tabungan: { icon: ArrowDownLeft, label: 'Tabungan', color: 'bg-sage/10 text-sage-dark' },
   date_night: { icon: Utensils, label: 'Date Night', color: 'bg-purple-50 text-purple-600' },
   anniversary: { icon: Heart, label: 'Anniversary', color: 'bg-rose/10 text-rose' },
@@ -28,30 +33,26 @@ const CATEGORY_META: Record<string, { icon: typeof Heart; label: string; color: 
   lainnya: { icon: HelpCircle, label: 'Lainnya', color: 'bg-ink/5 text-ink-muted' },
 }
 
-function fmtRp(n: number): string {
-  const abs = Math.abs(n)
-  if (abs >= 1_000_000) return `Rp${(abs / 1_000_000).toFixed(1)}jt`
-  if (abs >= 1_000) return `Rp${(abs / 1_000).toFixed(0)}rb`
-  return `Rp${abs.toLocaleString('id-ID')}`
-}
-
-function formatDate(dateStr: string): string {
+/** Relative label by Jakarta calendar day (not a rolling 24h window) */
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return ''
   const d = new Date(dateStr)
-  const now = new Date()
-  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000)
+  if (Number.isNaN(d.getTime())) return ''
+  const diffDays = daysSince(todayJakarta(d))
 
-  if (diffDays === 0) return 'Hari ini'
+  if (diffDays <= 0) return 'Hari ini'
   if (diffDays === 1) return 'Kemarin'
   if (diffDays < 7) return `${diffDays} hari lalu`
 
-  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' })
 }
 
-export default function TransactionList({ transactions, userId, partnerName, userName }: TransactionListProps) {
+export default function TransactionList({ transactions, userId, partnerName, userName, onSelect }: TransactionListProps) {
   if (transactions.length === 0) {
     return (
       <div className="py-8 text-center">
         <p className="text-sm text-ink-muted">Belum ada transaksi</p>
+        <p className="mt-0.5 text-xs text-ink-muted/60">Catat uang masuk pertama kalian di atas</p>
       </div>
     )
   }
@@ -64,32 +65,50 @@ export default function TransactionList({ transactions, userId, partnerName, use
         const Icon = isDeposit ? ArrowDownLeft : meta.icon
         const iconColor = isDeposit ? 'bg-sage/10 text-sage-dark' : meta.color
         const isMe = tx.created_by === userId
-        const whoLabel = isMe ? (userName ?? 'Kamu') : (partnerName ?? 'Pasangan')
+        // First names keep the pill short; the full name doesn't fit a phone row.
+        const firstName = (name: string | null) => name?.trim().split(/\s+/)[0] || null
+        const whoLabel = isMe ? (firstName(userName) ?? 'Kamu') : tx.created_by ? (firstName(partnerName) ?? 'Pasangan') : 'Akun dihapus'
+        const title = tx.note ?? (isDeposit ? 'Tabungan' : meta.label)
+        const editable = !!onSelect && (tx.type === 'deposit' || tx.type === 'withdrawal')
 
-        return (
-          <div key={tx.id} className="flex items-center gap-3 px-4 py-3">
+        const content = (
+          <>
             <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${iconColor}`}>
               <Icon className="h-5 w-5" strokeWidth={2} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <p className="text-sm font-medium text-ink truncate">
-                  {tx.note ?? (isDeposit ? 'Tabungan' : meta.label)}
-                </p>
+                <p className="text-sm font-medium text-ink truncate">{title}</p>
               </div>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+              {/* One line: a long name truncates instead of wrapping into a tall pill */}
+              <div className="flex min-w-0 items-center gap-2 mt-0.5">
+                <span className={`min-w-0 max-w-[9rem] truncate whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
                   isMe ? 'bg-rose/10 text-rose' : 'bg-sage/10 text-sage-dark'
                 }`}>
                   {whoLabel}
                 </span>
-                <span className="text-[10px] text-ink-muted">{formatDate(tx.created_at ?? '')}</span>
+                <span className="shrink-0 whitespace-nowrap text-[10px] text-ink-muted">{formatDate(tx.created_at)}</span>
               </div>
             </div>
-            <span className={`text-sm font-bold ${isDeposit ? 'text-sage-dark' : 'text-rose'}`}>
-              {isDeposit ? '+' : '-'}{fmtRp(Number(tx.amount))}
+            <span className={`shrink-0 whitespace-nowrap text-sm font-bold ${isDeposit ? 'text-sage-dark' : 'text-rose'}`}>
+              {isDeposit ? '+' : '-'}{fmtRpShort(Math.abs(Number(tx.amount)))}
             </span>
-          </div>
+            {editable && <ChevronRight className="h-4 w-4 flex-shrink-0 text-ink-muted/40" aria-hidden />}
+          </>
+        )
+
+        return editable ? (
+          <button
+            key={tx.id}
+            type="button"
+            onClick={() => onSelect?.(tx)}
+            aria-label={`Ubah transaksi ${title}`}
+            className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-cream active:bg-cream"
+          >
+            {content}
+          </button>
+        ) : (
+          <div key={tx.id} className="flex items-center gap-3 px-4 py-3">{content}</div>
         )
       })}
     </div>

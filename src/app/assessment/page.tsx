@@ -17,6 +17,8 @@ export default function AssessmentPage() {
   const progress = ((currentIndex + 1) / questions.length) * 100
 
   function handleAnswer(value: number | string) {
+    // A second tap during the slide animation would answer the same question twice.
+    if (animating) return
     const newAnswers = { ...answers, [question.id]: value }
     setAnswers(newAnswers)
 

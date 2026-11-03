@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { DM_Sans } from 'next/font/google'
 import './globals.css'
 import PWARegister from '@/components/PWARegister'
+import ViewportShell from '@/components/admin/ViewportShell'
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -42,9 +43,9 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className={`${dmSans.className} min-h-screen bg-cream antialiased`}>
-        <main className="mx-auto max-w-lg">
+        <ViewportShell>
           {children}
-        </main>
+        </ViewportShell>
         <PWARegister />
       </body>
     </html>

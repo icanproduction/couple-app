@@ -1,7 +1,14 @@
 'use client'
 
-import { Check, X, ArrowLeft, RotateCcw } from 'lucide-react'
+import { Check, X, Minus, ArrowLeft, RotateCcw } from 'lucide-react'
 import type { RoundResult, RoundType } from '@/types/samakan'
+import { getRoundVerdict, type RoundTone } from '@/lib/samakan'
+
+const TONE_TEXT: Record<RoundTone, string> = {
+  match: 'text-emerald-400',
+  close: 'text-amber-400',
+  miss: 'text-red-400',
+}
 
 interface SinkronisasiResultsProps {
   totalScore: number
@@ -86,9 +93,11 @@ export default function SinkronisasiResults({
             Detail Ronde
           </p>
           <div className="space-y-2">
-            {results.map((result, i) => (
+            {results.map((result, i) => {
+              const tone = getRoundVerdict(result).tone
+              return (
               <div
-                key={i}
+                key={result.roundIndex ?? i}
                 className="flex items-center justify-between rounded-xl bg-white/5 border border-white/10 px-4 py-3"
               >
                 <div className="flex items-center gap-3">
@@ -101,25 +110,20 @@ export default function SinkronisasiResults({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span
-                    className={`text-sm font-bold ${
-                      result.score >= 15
-                        ? 'text-emerald-400'
-                        : result.score >= 5
-                        ? 'text-amber-400'
-                        : 'text-red-400'
-                    }`}
-                  >
+                  <span className={`text-sm font-bold ${TONE_TEXT[tone]}`}>
                     +{result.score}
                   </span>
-                  {result.score >= 15 ? (
+                  {tone === 'match' ? (
                     <Check className="h-4 w-4 text-emerald-400" />
+                  ) : tone === 'close' ? (
+                    <Minus className="h-4 w-4 text-amber-400" />
                   ) : (
                     <X className="h-4 w-4 text-red-400" />
                   )}
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Share2, Users, Sparkles } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
+import { createClient, getClientUser } from '@/lib/supabase'
 import { SPENDING_TYPES, type SpendingType } from '@/lib/spending-assessment/types'
 import { getCompatibility } from '@/lib/spending-assessment/compatibility'
 import { Button } from '@/components/ui/Button'
@@ -24,11 +24,11 @@ export default function SpendingResultPage() {
   useEffect(() => {
     async function load() {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const user = await getClientUser()
+      if (!user) { router.replace('/auth/login'); return }
 
       const { data: membership } = await supabase
-        .from('couple_members').select('couple_id').eq('profile_id', user.id).single()
+        .from('couple_members').select('couple_id').eq('profile_id', user.id).maybeSingle()
 
       if (!membership?.couple_id) { setLoading(false); return }
 
@@ -66,23 +66,24 @@ export default function SpendingResultPage() {
       setTimeout(() => setRevealed(true), 300)
     }
     load()
-  }, [])
+  }, [router])
 
   if (loading) {
     return <div className="flex items-center justify-center py-20"><div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-400 border-t-transparent" /></div>
   }
 
-  if (!myResult) {
+  const myType = myResult ? SPENDING_TYPES[myResult.spending_type as SpendingType] : undefined
+
+  if (!myResult || !myType) {
     return (
       <div className="flex min-h-[80vh] flex-col items-center justify-center px-6">
         <p className="mb-4 text-ink-muted">Belum ada hasil. Ambil tes dulu!</p>
-        <Button onClick={() => router.push('/app/about-me/spending-habits')}>Mulai Tes</Button>
+        <Button onClick={() => router.push('/app/about-me/spending-habits/questions')}>Mulai Tes</Button>
       </div>
     )
   }
 
-  const myType = SPENDING_TYPES[myResult.spending_type as SpendingType]
-  const partnerType = partnerResult ? SPENDING_TYPES[partnerResult.spending_type as SpendingType] : null
+  const partnerType = partnerResult ? SPENDING_TYPES[partnerResult.spending_type as SpendingType] ?? null : null
   const compat = partnerType ? getCompatibility(myType.id, partnerType.id) : null
 
   return (

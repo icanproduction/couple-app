@@ -36,7 +36,7 @@ const PET_OPTIONS = [
   {
     type: 'cat' as PetType,
     name: 'Parrot',
-    desc: 'Bisa belajar kata dari kalian 🔒',
+    desc: 'Bisa belajar kata dari kalian',
     emoji: '🦜',
     difficulty: 1,
     diffLabel: 'Easy',
@@ -46,7 +46,7 @@ const PET_OPTIONS = [
   {
     type: 'cat' as PetType,
     name: 'Ikan',
-    desc: 'Tenang, low pressure, tank bisa didekorasi 🔒',
+    desc: 'Tenang, low pressure, tank bisa didekorasi',
     emoji: '🐟',
     difficulty: 0,
     diffLabel: 'Chill',
@@ -68,14 +68,15 @@ export default function PetAdoptScreen({ coupleId, userId, partnerId }: Props) {
   const handleAdopt = async () => {
     if (!petName.trim() || loading) return
     setLoading(true)
+    setError('')
     try {
+      // If the partner adopted at the same moment, adoptPet returns their pet
+      // (unique couple_id) and we simply go see it.
       await adoptPet(coupleId, selectedPet.type, petName.trim(), userId, partnerId)
       router.replace('/app/pet')
-    } catch (e: any) {
-      const msg = e?.message?.includes('already has')
-        ? 'Pasanganmu sudah adopt pet! Refresh halaman.'
-        : 'Gagal adopt, coba lagi ya.'
-      setError(msg)
+      router.refresh()
+    } catch {
+      setError('Gagal adopt, coba lagi ya.')
       setLoading(false)
     }
   }
@@ -111,7 +112,9 @@ export default function PetAdoptScreen({ coupleId, userId, partnerId }: Props) {
                 } ${pet.locked ? 'opacity-60' : 'hover:translate-x-0.5'}`}
               >
                 {/* Badge */}
-                <div className={`absolute top-2.5 right-3 text-[9px] font-bold px-2 py-0.5 rounded-xl uppercase tracking-wider ${pet.badge.className}`}>
+                {/* The lock lives inside the badge so the two never stack on each other */}
+                <div className={`absolute top-2.5 right-3 flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-xl uppercase tracking-wider ${pet.badge.className}`}>
+                  {pet.locked && <Lock className="h-2.5 w-2.5" aria-hidden />}
                   {pet.badge.text}
                 </div>
 
@@ -123,7 +126,7 @@ export default function PetAdoptScreen({ coupleId, userId, partnerId }: Props) {
                 </div>
 
                 {/* Info */}
-                <div className="flex-1">
+                <div className="min-w-0 flex-1 pr-14">
                   <div className="text-sm font-bold text-ink mb-0.5">{pet.name}</div>
                   <div className="text-[11px] text-ink-muted mb-1.5 leading-snug">{pet.desc}</div>
                   <div className="flex items-center gap-0.5">
@@ -139,10 +142,6 @@ export default function PetAdoptScreen({ coupleId, userId, partnerId }: Props) {
                   <div className="absolute bottom-2.5 right-3 w-[22px] h-[22px] bg-rose rounded-full flex items-center justify-center text-[11px] text-white font-bold">
                     ✓
                   </div>
-                )}
-
-                {pet.locked && (
-                  <Lock className="w-4 h-4 text-ink-muted absolute top-3 right-3" />
                 )}
               </button>
             ))}

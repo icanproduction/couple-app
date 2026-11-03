@@ -7,7 +7,12 @@ import { Button } from '@/components/ui/Button'
 
 interface SavingsWizardProps {
   coupleId: string
-  onComplete: () => void
+  userId: string
+  /** Receives the new goal's id so the caller can select it */
+  onComplete: (goalId?: string) => void
+  /** Shown inside a sheet (extra goal): smaller header + a cancel link */
+  embedded?: boolean
+  onCancel?: () => void
 }
 
 const GOAL_PRESETS = [
@@ -30,13 +35,14 @@ function fmtRp(n: number): string {
   return `Rp ${n.toLocaleString('id-ID')}`
 }
 
-export default function SavingsWizard({ coupleId, onComplete }: SavingsWizardProps) {
+export default function SavingsWizard({ coupleId, userId, onComplete, embedded = false, onCancel }: SavingsWizardProps) {
   const [step, setStep] = useState<'pick' | 'detail'>('pick')
   const [goalName, setGoalName] = useState('')
   const [targetAmount, setTargetAmount] = useState('')
   const [targetDate, setTargetDate] = useState('')
   const [currentSavings, setCurrentSavings] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const parsedTarget = parseRp(targetAmount)
   const parsedSavings = parseRp(currentSavings)
@@ -47,18 +53,49 @@ export default function SavingsWizard({ coupleId, onComplete }: SavingsWizardPro
   const monthlyNeeded = monthsRemaining ? Math.ceil(remaining / monthsRemaining) : null
 
   async function handleCreate() {
-    if (!goalName.trim() || parsedTarget <= 0) return
+    if (!goalName.trim() || parsedTarget <= 0 || loading) return
     setLoading(true)
+    setError('')
     const supabase = createClient()
-    await supabase.from('savings_goals').insert({
+
+    // current_amount is maintained by a DB trigger (sum of the goal's
+    // transactions), so it is never written from here.
+    const { data: goal, error: goalError } = await supabase.from('savings_goals').insert({
       couple_id: coupleId,
       name: goalName.trim(),
       target_amount: parsedTarget,
-      current_amount: parsedSavings,
       target_date: targetDate || null,
-    })
+    }).select('id').single()
+
+    if (goalError || !goal) {
+      setError('Gagal membuat target. Coba lagi ya.')
+      setLoading(false)
+      return
+    }
+
+    // The opening balance is a real deposit, so the trigger counts it and the
+    // first later transaction doesn't wipe it.
+    if (parsedSavings > 0) {
+      const { error: txError } = await supabase.from('couple_transactions').insert({
+        couple_id: coupleId,
+        goal_id: goal.id,
+        amount: parsedSavings,
+        type: 'deposit',
+        category: 'tabungan',
+        note: 'Saldo awal',
+        created_by: userId,
+      })
+      if (txError) {
+        // Roll back so a retry doesn't leave a goal with a missing balance
+        await supabase.from('savings_goals').delete().eq('id', goal.id)
+        setError('Gagal mencatat saldo awal. Coba lagi ya.')
+        setLoading(false)
+        return
+      }
+    }
+
     setLoading(false)
-    onComplete()
+    onComplete(goal.id)
   }
 
   // Step 1: Pick goal type
@@ -66,11 +103,15 @@ export default function SavingsWizard({ coupleId, onComplete }: SavingsWizardPro
     return (
       <div className="animate-fade-in space-y-6">
         <div className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose/10">
-            <PiggyBank className="h-8 w-8 text-rose" />
-          </div>
-          <h2 className="text-xl font-extrabold text-ink">Buat Target Tabungan</h2>
-          <p className="mt-1 text-sm text-ink-muted">Nabung bareng pasangan untuk apa?</p>
+          {!embedded && (
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose/10">
+              <PiggyBank className="h-8 w-8 text-rose" />
+            </div>
+          )}
+          <h2 className={embedded ? 'text-base font-bold text-ink' : 'text-xl font-extrabold text-ink'}>
+            {embedded ? 'Mau nabung untuk apa lagi?' : 'Buat Target Tabungan'}
+          </h2>
+          {!embedded && <p className="mt-1 text-sm text-ink-muted">Nabung bareng pasangan untuk apa?</p>}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -93,6 +134,11 @@ export default function SavingsWizard({ coupleId, onComplete }: SavingsWizardPro
             )
           })}
         </div>
+        {onCancel && (
+          <button type="button" onClick={onCancel} className="w-full py-2 text-sm text-ink-muted hover:text-ink">
+            Batal
+          </button>
+        )}
       </div>
     )
   }
@@ -191,6 +237,8 @@ export default function SavingsWizard({ coupleId, onComplete }: SavingsWizardPro
           )}
         </div>
       )}
+
+      {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
       <Button onClick={handleCreate} loading={loading} size="lg" disabled={!goalName.trim() || parsedTarget <= 0}>
         <span className="flex items-center gap-2">

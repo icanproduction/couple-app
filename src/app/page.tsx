@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import {
   Heart,
@@ -44,9 +45,12 @@ export default function LandingPage() {
       <div className="flex flex-1 flex-col items-center justify-center px-6 pb-8 pt-16 text-center">
         {/* Logo */}
         <div className="animate-fade-in mb-6">
-          <img
+          <Image
             src="/icons/logo-full.png"
             alt="Nanti Kita"
+            width={96}
+            height={96}
+            priority
             className="mx-auto mb-4 h-24 w-24"
           />
           <h1 className="mb-2 text-4xl font-extrabold tracking-tight text-ink">
@@ -105,10 +109,12 @@ export default function LandingPage() {
 
       {/* ===== Trust bar ===== */}
       <div className="border-t border-border bg-white px-6 py-5">
-        <div className="flex items-center justify-center gap-5">
+        {/* Three equal columns, icon above text: side by side, the icons shrank
+            to dots on narrow phones while the labels wrapped. */}
+        <div className="grid grid-cols-3 gap-3">
           {TRUST_POINTS.map(tp => (
-            <div key={tp.text} className="flex items-center gap-1.5 text-xs text-ink-muted">
-              <tp.icon className="h-3.5 w-3.5" strokeWidth={2} />
+            <div key={tp.text} className="flex flex-col items-center gap-1.5 text-center text-xs leading-snug text-ink-muted">
+              <tp.icon className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
               <span>{tp.text}</span>
             </div>
           ))}

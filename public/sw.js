@@ -1,17 +1,15 @@
-const CACHE_NAME = 'nantikita-v3'
-const APP_SHELL_URLS = [
-  '/',
-  '/app/home',
-  '/app/finance',
-  '/app/partner',
-  '/app/calendar',
-  '/app/profile',
-]
+// Bump when the caching rules below change; activate() deletes older caches.
+const CACHE_NAME = 'nantikita-v4'
+const OFFLINE_URL = '/offline.html'
+// Only static, user-independent files. Never pre-cache app pages: they are
+// auth-gated (a logged-out install would store the login redirect) and hold
+// personal data.
+const PRECACHE_URLS = [OFFLINE_URL, '/manifest.json', '/icons/icon-192.png']
 
 // ===== Install =====
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL_URLS))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
   )
   self.skipWaiting()
 })
@@ -26,7 +24,16 @@ self.addEventListener('activate', (event) => {
   self.clients.claim()
 })
 
-// ===== Fetch — Tiered Caching Strategy =====
+function cacheIfStatic(request, response) {
+  // Redirected or opaque responses must never be replayed from cache.
+  if (response.ok && response.type === 'basic' && !response.redirected) {
+    const clone = response.clone()
+    caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
+  }
+  return response
+}
+
+// ===== Fetch =====
 self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
@@ -34,75 +41,38 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return
   if (url.origin !== self.location.origin) return
 
-  // 1. Static assets → Cache-first (immutable hashed files)
+  // 1. Pages → network only (fresh HTML after every deploy, nothing personal
+  //    left on the device after logout); offline page when there's no network.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() => caches.match(OFFLINE_URL))
+    )
+    return
+  }
+
+  // 2. API → network only, never cached (per-user data).
+  if (url.pathname.startsWith('/api/')) return
+
+  // 3. Hashed build assets → cache-first (immutable).
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached
-        return fetch(request).then((response) => {
-          if (response.ok) {
-            const clone = response.clone()
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
-          }
-          return response
-        })
-      })
+      caches.match(request).then((cached) =>
+        cached || fetch(request).then((response) => cacheIfStatic(request, response))
+      )
     )
     return
   }
 
-  // 2. Icons & manifest → Cache-first with background update
-  if (url.pathname.startsWith('/icons/') || url.pathname === '/manifest.json') {
+  // 4. Icons, audio, manifest → cache, refreshed in the background.
+  if (url.pathname.startsWith('/icons/') || url.pathname.startsWith('/audio/') || url.pathname === '/manifest.json') {
     event.respondWith(
       caches.match(request).then((cached) => {
-        const fetchPromise = fetch(request).then((response) => {
-          if (response.ok) {
-            const clone = response.clone()
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
-          }
-          return response
-        })
-        return cached || fetchPromise
+        const network = fetch(request).then((response) => cacheIfStatic(request, response))
+        return cached || network
       })
     )
-    return
   }
-
-  // 3. API routes → Network-first (data must be fresh)
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(fetch(request).catch(() => caches.match(request)))
-    return
-  }
-
-  // 4. Navigation (HTML pages) → Stale-while-revalidate
-  if (request.mode === 'navigate' || (request.headers.get('accept') || '').includes('text/html')) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        const fetchPromise = fetch(request).then((response) => {
-          if (response.ok) {
-            const clone = response.clone()
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
-          }
-          return response
-        }).catch(() => cached)
-        return cached || fetchPromise
-      })
-    )
-    return
-  }
-
-  // 5. Everything else → Network-first with cache fallback
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        if (response.ok && response.type === 'basic') {
-          const clone = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
-        }
-        return response
-      })
-      .catch(() => caches.match(request))
-  )
+  // Everything else goes straight to the network.
 })
 
 // ===== Push Notifications =====
@@ -129,20 +99,29 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(data.title, options))
 })
 
+// Only ever open pages of this app, whatever the push payload says.
+function safeAppUrl(raw) {
+  try {
+    const target = new URL(raw || '/app/home', self.location.origin)
+    return target.origin === self.location.origin ? target : new URL('/app/home', self.location.origin)
+  } catch {
+    return new URL('/app/home', self.location.origin)
+  }
+}
+
 // ===== Notification Click =====
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-
-  const url = event.notification.data?.url || '/app/home'
+  const target = safeAppUrl(event.notification.data?.url)
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
       for (const client of windowClients) {
-        if (client.url.includes(url) && 'focus' in client) {
-          return client.focus()
+        if (new URL(client.url).origin === target.origin && 'focus' in client) {
+          return client.focus().then((c) => (c && 'navigate' in c ? c.navigate(target.href) : c))
         }
       }
-      return clients.openWindow(url)
+      return clients.openWindow(target.href)
     })
   )
 })

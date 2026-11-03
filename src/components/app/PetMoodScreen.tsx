@@ -30,12 +30,14 @@ const MOOD_RING_SHADOWS: Record<PetMood, string> = {
   sad: '0 10px 30px rgba(160,176,208,0.28)',
 }
 
+// Matches the model in lib/pet: mood = average of the three needs, each need
+// drops DECAY_PER_HOUR (1.25) points per hour without care.
 const MOOD_STATES: { mood: PetMood; trigger: string }[] = [
-  { mood: 'thriving', trigger: 'Semua kebutuhan terpenuhi 3 hari berturut' },
-  { mood: 'happy', trigger: 'Kebutuhan hari ini terpenuhi' },
-  { mood: 'neutral', trigger: 'Satu kebutuhan terlewat hari ini' },
-  { mood: 'lonely', trigger: 'Salah satu partner tidak buka app 24 jam' },
-  { mood: 'sad', trigger: '48 jam neglected — butuh kalian berdua' },
+  { mood: 'thriving', trigger: 'Semua kebutuhan hampir penuh — rajin dirawat berdua' },
+  { mood: 'happy', trigger: 'Kebutuhannya terpenuhi' },
+  { mood: 'neutral', trigger: 'Ada kebutuhan yang mulai menurun' },
+  { mood: 'lonely', trigger: 'Sekitar 1 hari tidak dirawat' },
+  { mood: 'sad', trigger: 'Sekitar 2 hari tidak dirawat — butuh kalian berdua' },
 ]
 
 export default function PetMoodScreen({ pet, moodState }: Props) {
@@ -45,7 +47,7 @@ export default function PetMoodScreen({ pet, moodState }: Props) {
     ? getDecayedStats({ ...moodState, updated_at: moodState.updated_at })
     : moodState
       ? { hunger: moodState.hunger, happiness: moodState.happiness, cleanliness: moodState.cleanliness, mood: calculateMood(moodState.hunger, moodState.happiness, moodState.cleanliness) }
-      : { hunger: 80, happiness: 80, cleanliness: 80, mood: 'happy' as PetMood }
+      : { hunger: 70, happiness: 70, cleanliness: 70, mood: 'happy' as PetMood }
 
   const currentMood = decayed.mood
   const meta = MOOD_META[currentMood]

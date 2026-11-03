@@ -1,0 +1,13 @@
+{
+  "regions": ["sin1"],
+  "crons": [
+    {
+      "path": "/api/cron/letter-unlocks",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/event-reminders",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}

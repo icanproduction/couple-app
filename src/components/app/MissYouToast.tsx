@@ -16,10 +16,11 @@ interface MissYouRow {
   id: string
   sender_id: string
   responded: boolean | null
-  created_at: string
+  created_at: string | null
 }
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string | null): string {
+  if (!dateStr) return ''
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
   if (mins < 1) return 'baru saja'
@@ -29,17 +30,24 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hours / 24)} hari yang lalu`
 }
 
+/**
+ * Shows the partner's latest unanswered "Kangen" (last 24h) on home, with a
+ * "Kangen kamu juga" reply. Replying marks it responded as the receiver (the
+ * only update RLS allows) and pings the partner; it does not send a new
+ * Kangen back, so it doesn't use up my own cooldown or start a ping-pong.
+ */
 export default function MissYouToast({ myId, myName, partnerId, partnerName, coupleId }: MissYouToastProps) {
   const [latestMissYou, setLatestMissYou] = useState<MissYouRow | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const [responding, setResponding] = useState(false)
   const [responded, setResponded] = useState(false)
+  const [error, setError] = useState('')
 
   const loadLatest = useCallback(async () => {
     if (!coupleId || !partnerId) return
     const supabase = createClient()
 
-    // Get most recent unresponded miss you FROM partner to me
+    // Most recent unanswered kangen FROM partner TO me
     const { data } = await supabase
       .from('miss_you')
       .select('id, sender_id, responded, created_at')
@@ -51,34 +59,43 @@ export default function MissYouToast({ myId, myName, partnerId, partnerName, cou
       .limit(1)
       .maybeSingle()
 
-    if (data) {
+    if (data?.created_at) {
       // Only show if within last 24 hours
-      const ageHours = (Date.now() - new Date(data.created_at!).getTime()) / 3600000
-      if (ageHours < 24) {
-        setLatestMissYou(data as MissYouRow)
-      }
+      const ageHours = (Date.now() - new Date(data.created_at).getTime()) / 3600000
+      if (ageHours < 24) setLatestMissYou(data)
     }
   }, [myId, partnerId, coupleId])
 
   useEffect(() => { loadLatest() }, [loadLatest])
 
+  // Close a moment after replying
+  useEffect(() => {
+    if (!responded) return
+    const t = setTimeout(() => setDismissed(true), 2500)
+    return () => clearTimeout(t)
+  }, [responded])
+
   async function handleRespond() {
-    if (!latestMissYou || !partnerId || !coupleId) return
+    if (!latestMissYou || !partnerId || !coupleId || responding) return
     setResponding(true)
+    setError('')
     const supabase = createClient()
 
-    // Mark original as responded
-    await supabase
+    // Answer every pending kangen from the partner at once, so older ones
+    // don't pop up again on the next visit
+    const { error: updateError } = await supabase
       .from('miss_you')
       .update({ responded: true, responded_at: new Date().toISOString() })
-      .eq('id', latestMissYou.id)
+      .eq('couple_id', coupleId)
+      .eq('sender_id', partnerId)
+      .eq('receiver_id', myId)
+      .eq('responded', false)
 
-    // Send reciprocal miss you
-    await supabase.from('miss_you').insert({
-      couple_id: coupleId,
-      sender_id: myId,
-      receiver_id: partnerId,
-    })
+    if (updateError) {
+      setError('Gagal membalas. Coba lagi ya.')
+      setResponding(false)
+      return
+    }
 
     // Push notif back
     try {
@@ -90,13 +107,13 @@ export default function MissYouToast({ myId, myName, partnerId, partnerName, cou
           title: '💓 Nanti Kita',
           body: `${myName} kangen kamu juga!`,
           url: '/app/home',
+          kind: 'kangen',
         }),
       })
     } catch { /* optional */ }
 
     setResponded(true)
     setResponding(false)
-    setTimeout(() => setDismissed(true), 2000)
   }
 
   if (!latestMissYou || dismissed) return null
@@ -106,6 +123,7 @@ export default function MissYouToast({ myId, myName, partnerId, partnerName, cou
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-rose/10 to-rose/5 border border-rose/20 p-4">
         <button
           onClick={() => setDismissed(true)}
+          aria-label="Tutup"
           className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-rose/10 text-rose"
         >
           <X className="h-3 w-3" />
@@ -124,17 +142,18 @@ export default function MissYouToast({ myId, myName, partnerId, partnerName, cou
             </p>
 
             {responded ? (
-              <p className="mt-2 text-xs font-semibold text-rose">Kamu sudah balas!</p>
+              <p className="mt-2 text-xs font-semibold text-rose">Terkirim: kangen kamu juga!</p>
             ) : (
               <button
                 onClick={handleRespond}
                 disabled={responding}
-                className="mt-2.5 flex items-center gap-1.5 rounded-xl bg-rose px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all active:scale-[0.97]"
+                className="mt-2.5 flex items-center gap-1.5 rounded-xl bg-rose px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all active:scale-[0.97] disabled:opacity-60"
               >
                 <Heart className="h-3 w-3" fill="currentColor" />
-                {responding ? 'Mengirim...' : 'Kangen balik'}
+                {responding ? 'Mengirim...' : 'Kangen kamu juga'}
               </button>
             )}
+            {error && <p className="mt-1.5 text-xs font-medium text-red-500">{error}</p>}
           </div>
         </div>
       </div>

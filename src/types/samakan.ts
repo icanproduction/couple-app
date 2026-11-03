@@ -8,11 +8,14 @@ export type GamePhase =
   | 'countdown'
   | 'story_intro'
   | 'challenge'
+  /** Guest reopened a game in progress and waits for the host's sync_state */
   | 'waiting_partner'
   | 'reveal'
   | 'story_bridge'
   | 'story_ending'
   | 'results'
+  /** Session expired or a player ended it — nothing left to play */
+  | 'ended'
 
 // --- Round Configs ---
 export interface PilihSamaConfig {
@@ -77,16 +80,28 @@ export interface Chapter {
 }
 
 // --- Broadcast Events ---
+// Lobby readiness and "who is here" live in presence ({ user_id, ready }),
+// not in broadcasts, so they survive reconnects.
 export type BroadcastPayload =
-  | { type: 'player_joined'; playerId: string; name: string; avatarUrl: string | null }
-  | { type: 'player_ready'; playerId: string }
   | { type: 'game_start'; rounds: RoundConfig[]; startAt: number }
   | { type: 'round_start'; roundIndex: number }
   | { type: 'player_answer'; playerId: string; roundIndex: number; answer: unknown }
-  | { type: 'round_reveal'; roundIndex: number; result: RoundResult }
+  | { type: 'round_reveal'; roundIndex: number; result: RoundResult; totalScore: number }
   | { type: 'game_complete'; totalScore: number; results: RoundResult[] }
-  | { type: 'sync_state'; phase: GamePhase; currentRound: number; results: RoundResult[] }
-  | { type: 'story_next' }
+  /** Host → guest snapshot after a (re)join or a request_sync */
+  | { type: 'sync_state'; phase: GamePhase; currentRound: number; results: RoundResult[]; totalScore: number }
+  /** Guest asks the host for a sync_state (guest reopened a running game) */
+  | { type: 'request_sync'; playerId: string }
+  /** Host moved past a story card; guest applies it only when behind */
+  | { type: 'story_next'; phase: GamePhase; round: number }
+  /** A player closed the game; the session is now expired */
+  | { type: 'session_ended'; playerId: string }
+
+/** Shape each player tracks in the channel's presence (key = user id). */
+export interface GamePresence {
+  user_id: string
+  ready: boolean
+}
 
 // --- Game Session (DB row) ---
 export interface GameSession {

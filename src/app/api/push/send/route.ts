@@ -1,81 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server'
-import webpush from 'web-push'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { isPushKind, isSafeAppPath, sendPushToProfile } from '@/lib/push-server'
 
+const MAX_TITLE = 80
+const MAX_BODY = 240
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Notify one person. Allowed only to your own partner, or to anyone when the
+ * caller is an admin (broadcast from /admin/notifications). Non-admins must
+ * say which `kind` it is, so the recipient's switches in /app/profile/notifikasi apply.
+ */
 export async function POST(req: NextRequest) {
   try {
-    // Auth check — must be logged in
     const supabase = await createServerSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // VAPID setup
-    const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-    const vapidPrivate = process.env.VAPID_PRIVATE_KEY
-    if (!vapidPublic || !vapidPrivate) {
-      return NextResponse.json({ error: 'Push not configured' }, { status: 500 })
+    const { recipientId, title, body, url, kind } = await req.json().catch(() => ({}))
+    if (kind !== undefined && !isPushKind(kind)) {
+      return NextResponse.json({ error: 'Jenis notifikasi tidak dikenal' }, { status: 400 })
     }
-    webpush.setVapidDetails('mailto:admin@coupleapp.id', vapidPublic, vapidPrivate)
-
-    const { recipientId, title, body, url } = await req.json()
-    if (!recipientId || !title || !body) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+    if (typeof recipientId !== 'string' || !UUID.test(recipientId) ||
+        typeof title !== 'string' || !title.trim() ||
+        typeof body !== 'string' || !body.trim()) {
+      return NextResponse.json({ error: 'Data notifikasi tidak lengkap' }, { status: 400 })
     }
-
-    // Use service role client to bypass RLS — needed to read any user's subscriptions
-    const admin = createServiceRoleClient()
-
-    const { data: subs, error: subsError } = await admin
-      .from('push_subscriptions')
-      .select('endpoint, p256dh, auth_key')
-      .eq('profile_id', recipientId)
-
-    if (subsError) {
-      console.error('[push/send] DB error:', subsError.message)
-      return NextResponse.json({ error: 'DB error', detail: subsError.message }, { status: 500 })
+    if (url !== undefined && !isSafeAppPath(url)) {
+      return NextResponse.json({ error: 'URL notifikasi harus halaman di aplikasi ini' }, { status: 400 })
     }
 
-    if (!subs || subs.length === 0) {
-      return NextResponse.json({ sent: 0, message: 'No subscriptions found' })
+    const [{ data: isAdmin }, { data: isPartner }] = await Promise.all([
+      supabase.rpc('is_admin'),
+      supabase.rpc('shares_couple_with', { pid: recipientId }),
+    ])
+    // Without a kind the recipient's per-kind switches can't apply, so only
+    // admins may leave it out.
+    if (kind === undefined && !isAdmin) {
+      return NextResponse.json({ error: 'Jenis notifikasi wajib diisi' }, { status: 400 })
+    }
+    if (!isAdmin && (!isPartner || recipientId === user.id)) {
+      return NextResponse.json({ error: 'Hanya bisa mengirim notifikasi ke pasanganmu' }, { status: 403 })
+    }
+    // 'admin' skips the recipient's per-kind switches, so only admins may use it.
+    if (kind === 'admin' && !isAdmin) {
+      return NextResponse.json({ error: 'Jenis notifikasi tidak diizinkan' }, { status: 403 })
     }
 
-    const payload = JSON.stringify({ title, body, url: url ?? '/app/home' })
-    let sent = 0
-    const staleEndpoints: string[] = []
-
-    await Promise.allSettled(
-      subs.map(async (sub) => {
-        try {
-          await webpush.sendNotification(
-            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
-            payload
-          )
-          sent++
-        } catch (err: unknown) {
-          const status = (err as { statusCode?: number })?.statusCode
-          if (status === 404 || status === 410) {
-            staleEndpoints.push(sub.endpoint)
-          }
-        }
-      })
-    )
-
-    // Clean stale
-    if (staleEndpoints.length > 0) {
-      await admin
-        .from('push_subscriptions')
-        .delete()
-        .in('endpoint', staleEndpoints)
+    const result = await sendPushToProfile(recipientId, {
+      title: title.trim().slice(0, MAX_TITLE),
+      body: body.trim().slice(0, MAX_BODY),
+      url: url ?? '/app/home',
+    }, kind)
+    if (!result) {
+      return NextResponse.json({ error: 'Notifikasi belum dikonfigurasi' }, { status: 503 })
     }
-
-    return NextResponse.json({ sent, stale: staleEndpoints.length })
-  } catch (err: unknown) {
-    console.error('[push/send] Unhandled error:', err)
-    return NextResponse.json(
-      { error: 'Internal error', detail: String(err) },
-      { status: 500 }
-    )
+    return NextResponse.json(result)
+  } catch (err) {
+    console.error('[push/send] unhandled:', err)
+    return NextResponse.json({ error: 'Gagal mengirim notifikasi' }, { status: 500 })
   }
 }

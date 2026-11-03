@@ -1,27 +1,29 @@
 import { redirect } from 'next/navigation'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, getServerUser } from '@/lib/supabase-server'
 import PetAdoptScreen from '@/components/app/PetAdoptScreen'
 
 export default async function AdoptPage() {
   const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getServerUser(supabase)
   if (!user) redirect('/auth/login')
 
   const { data: membership } = await supabase
     .from('couple_members')
     .select('couple_id')
     .eq('profile_id', user.id)
-    .single()
+    .maybeSingle()
 
   if (!membership) redirect('/app/home')
 
-  // Already has pet? Go to pet room
-  const { data: pet } = await supabase
+  // Already has pet? Go to pet room. (maybeSingle: only an actual pet row
+  // redirects, so a query error can't create a /pet <-> /pet/adopt loop.)
+  const { data: pet, error: petError } = await supabase
     .from('couple_pets')
     .select('id')
     .eq('couple_id', membership.couple_id)
-    .single()
+    .maybeSingle()
 
+  if (petError) throw new Error('Gagal memuat pet')
   if (pet) redirect('/app/pet')
 
   // Get partner ID
@@ -30,7 +32,7 @@ export default async function AdoptPage() {
     .select('profile_id')
     .eq('couple_id', membership.couple_id)
     .neq('profile_id', user.id)
-    .single()
+    .maybeSingle()
 
   return (
     <PetAdoptScreen

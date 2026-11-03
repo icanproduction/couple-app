@@ -1,16 +1,23 @@
 import { ImageResponse } from 'next/og'
 
-export const runtime = 'edge'
+// Same bands as the results page. The label is derived from the score so the
+// card can't be used to put arbitrary text on this domain.
+function scoreLabel(score: number): string {
+  if (score >= 80) return 'Sangat Siap!'
+  if (score >= 60) return 'Cukup Siap'
+  if (score >= 40) return 'Perlu Diskusi'
+  return 'Masih Perlu Waktu'
+}
 
 /**
  * Shareable result card (4:5 portrait, IG-friendly) rendered with Satori via
  * next/og. Premium feature. Example:
- *   /api/share-card?score=82&label=Sangat%20Siap!
+ *   /api/share-card?score=82
  */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const score = Math.max(0, Math.min(100, parseInt(searchParams.get('score') ?? '0', 10) || 0))
-  const label = (searchParams.get('label') ?? 'Kesiapan Hubungan').slice(0, 40)
+  const label = scoreLabel(score)
 
   // Color by score band
   const accent = score >= 80 ? '#5B8C6E' : score >= 60 ? '#7BA98C' : score >= 40 ? '#C9A227' : '#D9534F'
@@ -80,10 +87,10 @@ export async function GET(req: Request) {
         />
 
         <div style={{ display: 'flex', fontSize: 40, fontWeight: 700, color: '#3A3338' }}>
-          Couple App
+          Nanti Kita
         </div>
         <div style={{ display: 'flex', fontSize: 28, color: '#9A8C90', marginTop: 8 }}>
-          Kesiapan Assessment untuk pasangan
+          Kesiapan hubungan untuk pasangan
         </div>
       </div>
     ),

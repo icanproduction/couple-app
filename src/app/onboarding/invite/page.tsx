@@ -1,43 +1,62 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Copy, MessageCircle, Check } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
+import { createClient, getClientUser } from '@/lib/supabase'
+import { getMyCouple } from '@/lib/couple'
 import { Button } from '@/components/ui/Button'
+import { InviteExpiry } from '@/components/account/InviteExpiry'
 
 export default function OnboardingInvitePage() {
   const router = useRouter()
   const [inviteCode, setInviteCode] = useState('')
+  const [inviteLink, setInviteLink] = useState('')
+  const [expiresAt, setExpiresAt] = useState('')
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
+    let cancelled = false
     async function loadInviteCode() {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
+      const user = await getClientUser()
+      if (!user) { router.replace('/auth/login'); return }
 
-      const { data } = await supabase
-        .from('couples')
-        .select('invite_code')
-        .eq('created_by', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      if (data) setInviteCode(data.invite_code)
+      try {
+        const couple = await getMyCouple(user.id)
+        if (cancelled) return
+        // Nothing to share without a couple; nothing left to share once the
+        // partner has joined.
+        if (!couple) { router.replace('/onboarding/couple'); return }
+        if (couple.memberCount >= 2) { router.replace('/onboarding/install'); return }
+        // Partner left: the couple is a closed archive with no invite code.
+        // Profile explains it and offers "Mulai lembaran baru".
+        if (couple.closedAt) { router.replace('/app/profile'); return }
+        setInviteCode(couple.inviteCode)
+        setExpiresAt(couple.inviteExpiresAt)
+        // The link always points at the site the user is on right now.
+        setInviteLink(`${window.location.origin}/invite/${couple.inviteCode}`)
+      } catch (e: unknown) {
+        if (cancelled) return
+        setError(e instanceof Error ? e.message : 'Gagal memuat kode undangan')
+      }
       setLoading(false)
     }
     loadInviteCode()
+    return () => { cancelled = true }
   }, [router])
 
-  const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://couple-app-three.vercel.app'}/invite/${inviteCode}`
-
-  function copyCode() {
-    navigator.clipboard.writeText(inviteLink)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(inviteLink)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setError('Gagal menyalin. Salin link di atas secara manual, ya.')
+    }
   }
 
   function shareWhatsApp() {
@@ -51,6 +70,17 @@ export default function OnboardingInvitePage() {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-rose border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (!inviteCode) {
+    return (
+      <div className="animate-fade-in py-10 text-center">
+        <p className="mb-6 text-sm text-danger">{error || 'Kode undangan belum tersedia.'}</p>
+        <Button onClick={() => window.location.reload()} variant="secondary" size="lg">
+          Coba Lagi
+        </Button>
       </div>
     )
   }
@@ -73,7 +103,21 @@ export default function OnboardingInvitePage() {
           {inviteCode}
         </p>
         <p className="mt-3 break-all text-xs text-ink-muted">{inviteLink}</p>
+        {expiresAt && (
+          <InviteExpiry
+            className="mt-4 border-t border-rose/15 pt-4"
+            expiresAt={expiresAt}
+            onRenewed={(next) => {
+              setInviteCode(next.inviteCode)
+              setExpiresAt(next.inviteExpiresAt)
+              setInviteLink(`${window.location.origin}/invite/${next.inviteCode}`)
+              setCopied(false)
+            }}
+          />
+        )}
       </div>
+
+      {error && <p className="mb-4 text-center text-xs text-danger">{error}</p>}
 
       <div className="space-y-3">
         <button
@@ -101,6 +145,13 @@ export default function OnboardingInvitePage() {
           Kirim via WhatsApp
         </button>
       </div>
+
+      <p className="mt-5 text-center text-xs text-ink-muted">
+        Pasanganmu yang buat kode duluan?{' '}
+        <Link href="/onboarding/couple?join=1" className="font-semibold text-rose hover:text-rose-dark">
+          Masukkan kodenya
+        </Link>
+      </p>
 
       <div className="mt-8">
         <Button onClick={() => router.push('/onboarding/install')} variant="secondary" size="lg">

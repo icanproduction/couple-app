@@ -58,9 +58,12 @@ module.exports = {
         'nav': '0 -1px 0 rgba(237, 230, 222, 1)',
       },
       animation: {
-        'fade-in': 'fadeIn 0.5s ease-out forwards',
-        'slide-up': 'slideUp 0.5s ease-out forwards',
-        'scale-in': 'scaleIn 0.3s ease-out forwards',
+        // No `forwards`: a filled opacity/transform animation keeps a stacking
+        // context forever, which trapped page overlays (z-50) under the bottom
+        // nav. The end frames equal the natural styles, so nothing jumps.
+        'fade-in': 'fadeIn 0.5s ease-out',
+        'slide-up': 'slideUp 0.5s ease-out',
+        'scale-in': 'scaleIn 0.3s ease-out',
         'shimmer': 'shimmer 1s ease-in-out infinite',
       },
       keyframes: {

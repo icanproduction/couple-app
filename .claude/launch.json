@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "couple-app-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "runtimeExecutable": "/usr/local/bin/node",
+      "runtimeArgs": ["/Users/icanproduction/Desktop/ICAN/PROJECTS/media/ican-internal-apps/couple-app/node_modules/.bin/next", "dev", "-p", "3030"],
+      "port": 3030
     }
   ]
 }

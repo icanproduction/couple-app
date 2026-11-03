@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Lock } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
+import { createClient, getClientUser } from '@/lib/supabase'
+import { todayJakarta } from '@/lib/dates'
 
 const OCCASIONS = [
   { value: 'anniversary', label: 'Anniversary', desc: 'Tulis sesuatu untuk hari jadi kalian' },
@@ -15,23 +16,15 @@ const OCCASIONS = [
 ]
 
 const MAX_CHARS = 2000
-const WIB_OFFSET = 7 // UTC+7
-
-/** Get today's date string in WIB (YYYY-MM-DD) */
-function todayWIB(): string {
-  const now = new Date()
-  const wib = new Date(now.getTime() + WIB_OFFSET * 3600 * 1000)
-  return wib.toISOString().split('T')[0]
-}
-
-/** Build a timestamptz string from WIB date + hour */
-function buildUnlockTimestamp(dateStr: string, hour: number): string {
-  // dateStr is YYYY-MM-DD in WIB; hour is 0-23 WIB
-  // Convert to UTC by subtracting 7h
-  const utcHour = hour - WIB_OFFSET
-  const date = new Date(`${dateStr}T00:00:00Z`)
-  date.setUTCHours(date.getUTCHours() + utcHour)
-  return date.toISOString()
+/**
+ * Build a timestamptz string from a WIB date ("YYYY-MM-DD") + hour (0-23 WIB).
+ * Returns null while the date input is empty or incomplete — the date field can
+ * be cleared, and `new Date('T..')` would throw on toISOString().
+ */
+function buildUnlockTimestamp(dateStr: string, hour: number): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null
+  const date = new Date(`${dateStr}T${String(hour).padStart(2, '0')}:00:00+07:00`)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
 
 /** Format a timestamptz for display in WIB */
@@ -59,23 +52,23 @@ export default function WriteLetter() {
   const [myId, setMyId] = useState<string | null>(null)
 
   const [occasion, setOccasion] = useState('anniversary')
-  const [unlockDate, setUnlockDate] = useState(todayWIB())
+  const [unlockDate, setUnlockDate] = useState(() => todayJakarta())
   const [unlockHour, setUnlockHour] = useState(7) // 07:00 WIB default
   const [content, setContent] = useState('')
   const [pendingCount, setPendingCount] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [done, setDone] = useState(false)
+  const [lockedUntil, setLockedUntil] = useState<string | null>(null)
 
-  const minDate = todayWIB()
+  const minDate = todayJakarta()
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const user = await getClientUser()
+    if (!user) { router.replace('/auth/login'); return }
     setMyId(user.id)
 
-    const { data: membership } = await supabase.from('couple_members').select('couple_id').eq('profile_id', user.id).single()
+    const { data: membership } = await supabase.from('couple_members').select('couple_id').eq('profile_id', user.id).maybeSingle()
     if (!membership?.couple_id) return
     setCoupleId(membership.couple_id)
 
@@ -86,13 +79,15 @@ export default function WriteLetter() {
       if (pp?.name) setPartnerName(pp.name)
     }
 
-    const { count } = await supabase.from('letters').select('*', { count: 'exact', head: true }).eq('sender_id', user.id).eq('is_opened', false)
+    // select('id') — `*` would include the non-granted `content` column and fail
+    const { count } = await supabase.from('letters').select('id', { count: 'exact', head: true }).eq('sender_id', user.id).eq('is_opened', false)
     setPendingCount(count ?? 0)
-  }, [])
+  }, [router])
 
   useEffect(() => { loadData() }, [loadData])
 
   const unlockTimestamp = buildUnlockTimestamp(unlockDate, unlockHour)
+  const unlockInPast = unlockTimestamp != null && new Date(unlockTimestamp) <= new Date()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -102,6 +97,7 @@ export default function WriteLetter() {
     if (content.length > MAX_CHARS) { setError('Surat terlalu panjang (maks 2000 karakter)'); return }
     if (pendingCount >= 10) { setError('Kamu sudah punya 10 surat terkunci. Tunggu beberapa surat terbuka dulu'); return }
     if (!partnerId || !coupleId || !myId) { setError('Belum terhubung dengan pasangan'); return }
+    if (!unlockTimestamp) { setError('Pilih tanggal buka suratnya dulu'); return }
 
     // Validate unlock time is not in the past
     if (new Date(unlockTimestamp) <= new Date()) {
@@ -133,15 +129,16 @@ export default function WriteLetter() {
           title: 'Nanti Kita',
           body: `Kamu punya surat yang bisa dibuka ${formatWIB(unlockTimestamp)}`,
           url: '/app/letters',
+          kind: 'letters',
         }),
       })
     } catch { /* optional */ }
 
-    setDone(true)
+    setLockedUntil(unlockTimestamp)
     setSubmitting(false)
   }
 
-  if (done) {
+  if (lockedUntil) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center px-8 text-center animate-fade-in">
         <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose/10">
@@ -151,7 +148,7 @@ export default function WriteLetter() {
         <p className="mt-3 text-sm text-ink-muted leading-relaxed">
           Suratmu untuk {partnerName} sudah tersimpan dan terkunci.<br />
           Mereka bisa membacanya pada{' '}
-          <span className="font-semibold text-rose">{formatWIB(unlockTimestamp)}</span>.
+          <span className="font-semibold text-rose">{formatWIB(lockedUntil)}</span>.
         </p>
         <button
           onClick={() => router.push('/app/letters')}
@@ -207,22 +204,30 @@ export default function WriteLetter() {
               value={unlockDate}
               min={minDate}
               onChange={e => setUnlockDate(e.target.value)}
-              className="flex-1 rounded-xl border border-border bg-white px-4 py-3 text-sm text-ink focus:border-rose focus:outline-none"
+              aria-label="Tanggal surat bisa dibuka"
+              className="min-w-0 flex-1 rounded-xl border border-border bg-white px-4 py-3 text-sm text-ink focus:border-rose focus:outline-none"
             />
+            {/* The label above already says WIB; repeating it in each option
+                cut the text off ("07:00 WIE") on narrow phones. */}
             <select
               value={unlockHour}
               onChange={e => setUnlockHour(Number(e.target.value))}
-              className="w-28 rounded-xl border border-border bg-white px-3 py-3 text-sm text-ink focus:border-rose focus:outline-none"
+              aria-label="Jam surat bisa dibuka (WIB)"
+              className="w-[6.5rem] shrink-0 rounded-xl border border-border bg-white px-3 py-3 text-sm text-ink focus:border-rose focus:outline-none"
             >
               {HOUR_OPTIONS.map(h => (
-                <option key={h.value} value={h.value}>{h.label} WIB</option>
+                <option key={h.value} value={h.value}>{h.label}</option>
               ))}
             </select>
           </div>
-          <p className="mt-1.5 text-xs text-ink-muted">
-            Akan terbuka: <span className="font-medium text-ink">{formatWIB(unlockTimestamp)}</span>
-          </p>
-          {new Date(unlockTimestamp) <= new Date() && (
+          {unlockTimestamp ? (
+            <p className="mt-1.5 text-xs text-ink-muted">
+              Akan terbuka: <span className="font-medium text-ink">{formatWIB(unlockTimestamp)}</span>
+            </p>
+          ) : (
+            <p className="mt-1.5 text-xs text-rose font-medium">Pilih tanggal buka suratnya dulu</p>
+          )}
+          {unlockInPast && (
             <p className="mt-1 text-xs text-rose font-medium">⚠️ Waktu sudah lewat, pilih waktu yang akan datang</p>
           )}
         </div>
@@ -255,7 +260,7 @@ export default function WriteLetter() {
 
         <button
           type="submit"
-          disabled={submitting || !content.trim() || pendingCount >= 10 || new Date(unlockTimestamp) <= new Date()}
+          disabled={submitting || !content.trim() || pendingCount >= 10 || !unlockTimestamp || unlockInPast}
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rose py-4 text-sm font-bold text-white shadow-elevated transition-all active:scale-[0.98] disabled:opacity-50"
         >
           <Lock className="h-4 w-4" />

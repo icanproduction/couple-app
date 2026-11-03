@@ -28,16 +28,16 @@ export default function RoundTebakAngka({ config, onSubmit, disabled }: RoundTeb
         Coba pilih angka yang sama dengan pasanganmu!
       </p>
 
-      {/* Number grid — more fun than slider */}
-      <div className="mb-8 grid grid-cols-5 gap-3">
+      {/* Number grid — fluid cells so 5 columns fit 320–375px screens */}
+      <div className="mb-8 grid w-full max-w-xs grid-cols-5 gap-2 sm:gap-3">
         {Array.from({ length: 10 }, (_, i) => i + 1).map(num => (
           <button
             key={num}
             onClick={() => !submitted && setValue(num)}
             disabled={submitted || disabled}
-            className={`flex h-14 w-14 items-center justify-center rounded-2xl text-xl font-bold transition-all ${
+            className={`flex aspect-square w-full items-center justify-center rounded-2xl text-lg font-bold transition-all sm:text-xl ${
               value === num
-                ? 'bg-white text-ink scale-110 shadow-lg'
+                ? 'bg-white text-ink scale-105 shadow-lg'
                 : 'bg-white/10 text-white/70 hover:bg-white/20'
             }`}
           >

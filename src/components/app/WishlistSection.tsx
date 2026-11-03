@@ -36,6 +36,25 @@ function fmtRp(n: number): string {
   return `Rp ${n.toLocaleString('id-ID')}`
 }
 
+/**
+ * Turns what the user typed into a safe absolute link: adds https:// when no
+ * scheme was typed ("shopee.co.id/..." would otherwise be a relative link)
+ * and only allows http(s) — never javascript:, data:, etc. null = invalid.
+ */
+function toSafeHref(raw: string | null): string | null {
+  const value = raw?.trim()
+  if (!value) return null
+  const withScheme = /^[a-z][a-z\d+.-]*:/i.test(value) ? value : `https://${value}`
+  try {
+    const url = new URL(withScheme)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
+    if (!url.hostname.includes('.')) return null
+    return url.href
+  } catch {
+    return null
+  }
+}
+
 function getMarketplaceName(url: string): string | null {
   try {
     const host = new URL(url).hostname.replace('www.', '')
@@ -80,6 +99,9 @@ export default function WishlistSection({
   const [newLink, setNewLink] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [localItems, setLocalItems] = useState(items)
+  const [adding, setAdding] = useState(false)
+  const [formError, setFormError] = useState('')
+  const [listError, setListError] = useState('')
 
   useEffect(() => { setLocalItems(items) }, [items])
 
@@ -102,16 +124,31 @@ export default function WishlistSection({
 
   async function addItem(e: React.FormEvent) {
     e.preventDefault()
-    if (!newName.trim()) return
+    if (!newName.trim() || adding) return
+    setFormError('')
+
+    const link = newLink.trim() ? toSafeHref(newLink) : null
+    if (newLink.trim() && !link) {
+      setFormError('Link-nya belum valid. Contoh: shopee.co.id/produk-kamu')
+      return
+    }
+
+    setAdding(true)
     const supabase = createClient()
     const actualTab = tab === 'partner' ? 'couple' : tab
 
-    await supabase.from('wishlist_items').insert({
+    const { error } = await supabase.from('wishlist_items').insert({
       couple_id: coupleId, name: newName.trim(),
       price: newPrice ? parseInt(newPrice.replace(/\D/g, ''), 10) : null,
-      link: newLink.trim() || null,
+      link,
       owner_type: actualTab, owner_id: actualTab === 'personal' ? userId : null,
     })
+    if (error) {
+      // Keep what was typed
+      setFormError('Gagal menambah wishlist. Coba lagi ya.')
+      setAdding(false)
+      return
+    }
     // Notify partner about new wishlist item
     if (partnerId) {
       const name = userName || 'Pasanganmu'
@@ -125,27 +162,29 @@ export default function WishlistSection({
             title: 'Nanti Kita',
             body: `${name} menambahkan "${newName.trim()}"${priceStr} ke wishlist`,
             url: '/app/partner',
+            kind: 'activity',
           }),
         })
       } catch { /* optional */ }
     }
 
-    setNewName(''); setNewPrice(''); setNewLink(''); setShowForm(false)
+    setNewName(''); setNewPrice(''); setNewLink(''); setShowForm(false); setAdding(false)
     onRefresh()
-    const { data } = await supabase
-      .from('wishlist_items').select('*').eq('couple_id', coupleId).order('created_at', { ascending: false })
-    if (data) setLocalItems(data)
   }
 
   async function toggleItem(item: WishlistItem) {
+    setListError('')
     const supabase = createClient()
-    await supabase.from('wishlist_items').update({ is_purchased: !item.is_purchased }).eq('id', item.id)
+    const { error } = await supabase.from('wishlist_items').update({ is_purchased: !item.is_purchased }).eq('id', item.id)
+    if (error) { setListError('Gagal mengubah item. Coba lagi ya.'); return }
     setLocalItems(prev => prev.map(w => w.id === item.id ? { ...w, is_purchased: !w.is_purchased } : w))
   }
 
   async function deleteItem(id: string) {
+    setListError('')
     const supabase = createClient()
-    await supabase.from('wishlist_items').delete().eq('id', id)
+    const { error } = await supabase.from('wishlist_items').delete().eq('id', id)
+    if (error) { setListError('Gagal menghapus item. Coba lagi ya.'); return }
     setLocalItems(prev => prev.filter(w => w.id !== id))
   }
 
@@ -219,17 +258,22 @@ export default function WishlistSection({
             </div>
             <div className="relative flex-1">
               <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-muted" />
-              <input type="url" placeholder="Link (opsional)"
+              <input type="text" inputMode="url" autoCapitalize="off" autoCorrect="off" placeholder="Link (opsional)"
                 value={newLink} onChange={e => setNewLink(e.target.value)}
                 className="w-full rounded-xl border border-border bg-white py-2.5 pl-8 pr-3 text-sm focus:border-rose focus:outline-none"
               />
             </div>
           </div>
-          <button type="submit" disabled={!newName.trim()}
+          {formError && <p className="text-xs font-medium text-red-500">{formError}</p>}
+          <button type="submit" disabled={!newName.trim() || adding}
             className="w-full rounded-xl bg-rose py-2.5 text-sm font-bold text-white disabled:opacity-40 transition-all active:scale-[0.98]">
-            Tambah ke Wishlist
+            {adding ? 'Menyimpan...' : 'Tambah ke Wishlist'}
           </button>
         </form>
+      )}
+
+      {listError && (
+        <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-600">{listError}</p>
       )}
 
       {/* Empty state */}
@@ -253,7 +297,10 @@ export default function WishlistSection({
           {unpurchased.map((item, idx) => {
             const theme = CARD_THEMES[idx % CARD_THEMES.length]
             const CardIcon = CARD_ICONS[idx % CARD_ICONS.length]
-            const marketplace = item.link ? getMarketplaceName(item.link) : null
+            // Stored links are re-validated: old rows may lack https:// or hold
+            // a non-http scheme, which must never be rendered as a link
+            const href = toSafeHref(item.link)
+            const marketplace = href ? getMarketplaceName(href) : null
             const mpStyle = getMarketplaceStyle(marketplace)
 
             return (
@@ -286,16 +333,16 @@ export default function WishlistSection({
                   )}
 
                   {/* Marketplace badge */}
-                  {item.link && marketplace && (
-                    <a href={item.link} target="_blank" rel="noopener noreferrer"
+                  {href && marketplace && (
+                    <a href={href} target="_blank" rel="noopener noreferrer"
                       className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${mpStyle.bg} ${mpStyle.text} hover:opacity-80 transition-opacity`}>
                       <ShoppingBag className="h-2.5 w-2.5" />
                       {marketplace}
                       <ExternalLink className="h-2.5 w-2.5" />
                     </a>
                   )}
-                  {item.link && !marketplace && (
-                    <a href={item.link} target="_blank" rel="noopener noreferrer"
+                  {href && !marketplace && (
+                    <a href={href} target="_blank" rel="noopener noreferrer"
                       className="mt-2 inline-flex items-center gap-1 rounded-full bg-white/60 px-2 py-0.5 text-[10px] font-bold text-ink-muted hover:text-rose transition-colors">
                       <ExternalLink className="h-2.5 w-2.5" /> Link
                     </a>

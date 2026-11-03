@@ -3,22 +3,21 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Wallet, ArrowRight, Clock, Shield, BarChart3 } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
+import { createClient, getClientUser } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 
 export default function SpendingHabitsIntro() {
   const router = useRouter()
-  const [hasResult, setHasResult] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function check() {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const user = await getClientUser()
+      if (!user) { router.replace('/auth/login'); return }
 
       const { data: membership } = await supabase
-        .from('couple_members').select('couple_id').eq('profile_id', user.id).single()
+        .from('couple_members').select('couple_id').eq('profile_id', user.id).maybeSingle()
 
       if (membership?.couple_id) {
         const { data } = await supabase
@@ -27,20 +26,16 @@ export default function SpendingHabitsIntro() {
           .eq('couple_id', membership.couple_id)
           .eq('profile_id', user.id)
           .maybeSingle()
-        if (data) setHasResult(true)
+        // Navigate from the effect, never during render
+        if (data) { router.replace('/app/about-me/spending-habits/result'); return }
       }
       setLoading(false)
     }
     check()
-  }, [])
+  }, [router])
 
   if (loading) {
     return <div className="flex items-center justify-center py-20"><div className="h-6 w-6 animate-spin rounded-full border-2 border-rose border-t-transparent" /></div>
-  }
-
-  if (hasResult) {
-    router.push('/app/about-me/spending-habits/result')
-    return null
   }
 
   return (

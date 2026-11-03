@@ -5,20 +5,20 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { CARE_ACTION_META, type CareAction } from '@/types/pet'
 import { performCareAction, getCareLogsToday } from '@/lib/pet'
-
-interface CareRole {
-  id: string
-  profile_id: string
-  actions: string[]
-}
+import { daysSince, todayJakarta } from '@/lib/dates'
 
 interface Props {
   pet: { id: string; name: string; pet_type: string; level: number; created_at: string | null }
-  careRoles: CareRole[]
+  /** Effective roles from ensureCareRoles() — never empty for a member */
+  myActions: CareAction[]
+  partnerActions: CareAction[]
   userId: string
   partnerId: string | null
   partnerName: string
 }
+
+/** done_by is null once the person who did it deleted their account */
+interface CareLog { action_type: string; done_by: string | null; done_at: string | null }
 
 const ACTION_EMOJIS: Record<CareAction, string> = {
   feed: '🍖', play: '🎾', bath: '🛁', treat: '🍪', walk: '🏃', cuddle: '💬',
@@ -29,38 +29,38 @@ const ACTION_COLORS: Record<string, string> = {
   treat: 'bg-[#FFF8DC]', walk: 'bg-[#E0EEFF]', cuddle: 'bg-[#FFF8DC]',
 }
 
-export default function PetCareScreen({ pet, careRoles, userId, partnerId, partnerName }: Props) {
+export default function PetCareScreen({ pet, myActions, partnerActions, userId, partnerId, partnerName }: Props) {
   const router = useRouter()
-  const [doneLogs, setDoneLogs] = useState<{ action_type: string; done_by: string; done_at: string }[]>([])
+  const [doneLogs, setDoneLogs] = useState<CareLog[]>([])
   const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [actionError, setActionError] = useState('')
 
   const today = new Date()
-  const daysSinceAdopt = pet.created_at ? Math.floor((Date.now() - new Date(pet.created_at).getTime()) / 86400000) : 0
+  // "Hari ke-N": adoption day is day 1 (Jakarta calendar days)
+  const dayNumber = pet.created_at ? Math.max(0, daysSince(todayJakarta(new Date(pet.created_at)))) + 1 : 1
 
   const loadLogs = useCallback(async () => {
     const logs = await getCareLogsToday(pet.id)
-    setDoneLogs(logs as any)
-    setLoading(false)
+    setDoneLogs(logs)
   }, [pet.id])
 
   useEffect(() => { loadLogs() }, [loadLogs])
 
-  // Build care items list
-  const myRole = careRoles.find(r => r.profile_id === userId)
-  const partnerRole = careRoles.find(r => r.profile_id !== userId)
-  const myActions = (myRole?.actions || []) as CareAction[]
-  const partnerActions = (partnerRole?.actions || []) as CareAction[]
-  const allActions = [...myActions, ...partnerActions]
+  // Each action once in the checklist (a shared action appears under me)
+  const partnerOnly = partnerActions.filter(a => !myActions.includes(a))
+  const allActions = [...myActions, ...partnerOnly]
 
   const isDoneByAnyone = (action: CareAction) => doneLogs.some(l => l.action_type === action)
   const getLogFor = (action: CareAction) => doneLogs.find(l => l.action_type === action)
+  const whoDid = (log: CareLog | undefined) =>
+    log?.done_by === userId ? 'Kamu' : log && !log.done_by ? 'Akun dihapus' : partnerName
   const totalTasks = allActions.length
   const doneTasks = allActions.filter(a => isDoneByAnyone(a)).length
 
   const handleAction = async (action: CareAction) => {
     if (actionLoading) return
     setActionLoading(action)
+    setActionError('')
     try {
       const meta = CARE_ACTION_META[action]
       await performCareAction(pet.id, action, userId, meta)
@@ -75,13 +75,16 @@ export default function PetCareScreen({ pet, careRoles, userId, partnerId, partn
             title: `${pet.name} dirawat! 🐾`,
             body: `Pasanganmu baru saja ${meta.label.toLowerCase()} ${pet.name}`,
             url: '/app/pet/care',
+            kind: 'activity',
           }),
         }).catch(() => {})
       }
 
       await loadLogs()
     } catch (e) {
-      console.error('Care action failed:', e)
+      setActionError(e instanceof Error && e.message.includes('cooldown')
+        ? `${CARE_ACTION_META[action].label} baru saja dilakukan, tunggu sebentar ya.`
+        : 'Gagal merawat, coba lagi ya.')
     } finally {
       setActionLoading(null)
     }
@@ -104,7 +107,7 @@ export default function PetCareScreen({ pet, careRoles, userId, partnerId, partn
           <div>
             <div className="text-[17px] font-bold text-ink">Rawat {pet.name}</div>
             <div className="text-[11px] text-ink-muted">
-              {today.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })} · Hari ke-{daysSinceAdopt}
+              {today.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Jakarta' })} · Hari ke-{dayNumber}
             </div>
           </div>
         </div>
@@ -132,9 +135,9 @@ export default function PetCareScreen({ pet, careRoles, userId, partnerId, partn
               {doneTasks === totalTasks ? 'Semua selesai! 🎉' : `${totalTasks - doneTasks} tugas belum dilakukan`}
             </div>
           </div>
-          {doneTasks === totalTasks && (
+          {totalTasks > 0 && doneTasks === totalTasks && (
             <div className="bg-[rgba(94,196,130,0.14)] text-[#3A9E5A] text-[10px] font-bold px-2.5 py-1.5 rounded-[10px]">
-              +15 mood
+              Kompak!
             </div>
           )}
         </div>
@@ -142,6 +145,9 @@ export default function PetCareScreen({ pet, careRoles, userId, partnerId, partn
 
       {/* Care actions list */}
       <div className="p-3 flex flex-col gap-2">
+        {actionError && (
+          <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-600">{actionError}</p>
+        )}
         {/* My actions */}
         {myActions.map(action => {
           const done = isDoneByAnyone(action)
@@ -164,7 +170,7 @@ export default function PetCareScreen({ pet, careRoles, userId, partnerId, partn
                 <div className="text-[13px] font-bold text-ink">{meta.label}</div>
                 <div className={`text-[10px] font-semibold ${done ? 'text-sage-dark' : 'text-rose-dark'}`}>
                   {done
-                    ? `Kamu · ${log ? formatTimeAgo(log.done_at) : ''} ✓`
+                    ? `${whoDid(log)} · ${formatTimeAgo(log?.done_at ?? null)} ✓`
                     : 'Tugasmu · belum dilakukan'}
                 </div>
               </div>
@@ -186,7 +192,7 @@ export default function PetCareScreen({ pet, careRoles, userId, partnerId, partn
         })}
 
         {/* Partner actions */}
-        {partnerActions.map(action => {
+        {partnerOnly.map(action => {
           const done = isDoneByAnyone(action)
           const meta = CARE_ACTION_META[action]
           const log = getLogFor(action)
@@ -205,7 +211,7 @@ export default function PetCareScreen({ pet, careRoles, userId, partnerId, partn
                 <div className="text-[13px] font-bold text-ink">{meta.label}</div>
                 <div className={`text-[10px] font-semibold ${done ? 'text-sage-dark' : 'text-[#4A80CC]'}`}>
                   {done
-                    ? `${partnerName} · ${log ? formatTimeAgo(log.done_at) : ''} ✓`
+                    ? `${whoDid(log)} · ${formatTimeAgo(log?.done_at ?? null)} ✓`
                     : `Tugas ${partnerName} · menunggu...`}
                 </div>
               </div>
@@ -226,7 +232,8 @@ export default function PetCareScreen({ pet, careRoles, userId, partnerId, partn
   )
 }
 
-function formatTimeAgo(dateStr: string): string {
+function formatTimeAgo(dateStr: string | null): string {
+  if (!dateStr) return ''
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
   if (mins < 1) return 'baru saja'

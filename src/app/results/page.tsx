@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import {
   MessageCircle, Compass, Wallet, Users, Heart,
@@ -69,68 +69,134 @@ function getScoreStyle(percentage: number) {
   return { text: 'text-danger', bg: 'bg-danger/10', bar: 'bg-danger' }
 }
 
+type Answers = Record<number, number | string>
+
+// Written by /assessment; holds answers that haven't been saved yet.
+const PENDING_KEY = 'assessment_answers'
+
+function readPendingAnswers(): Answers | null {
+  try {
+    const raw = sessionStorage.getItem(PENDING_KEY)
+    return raw ? (JSON.parse(raw) as Answers) : null
+  } catch {
+    return null
+  }
+}
+
+type SaveResult = { ok: true; guest?: boolean } | { ok: false; message: string }
+
+async function saveAnswers(answers: Answers): Promise<SaveResult> {
+  try {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { ok: true, guest: true } // Not logged in — nothing to save to
+
+    const { data: membership } = await supabase
+      .from('couple_members')
+      .select('couple_id')
+      .eq('profile_id', user.id)
+      .maybeSingle()
+
+    // Build scores object: { "Komunikasi": 4.2, "Nilai & Visi": 3.8, ... }
+    const scoresObj: Record<string, number> = {}
+    calculateScores(answers).forEach(s => {
+      scoresObj[DIMENSION_LABELS[s.dimension]] = Number((s.score / s.maxScore * 5).toFixed(1))
+    })
+
+    const { error } = await supabase.from('assessment_results').insert({
+      profile_id: user.id,
+      couple_id: membership?.couple_id ?? null,
+      answers,
+      scores: scoresObj,
+    })
+    return error ? { ok: false, message: error.message } : { ok: true }
+  } catch (e: unknown) {
+    return { ok: false, message: e instanceof Error ? e.message : 'Koneksi bermasalah' }
+  }
+}
+
+/** The signed-in user's most recent saved answers, for revisiting results. */
+async function loadLatestAnswers(): Promise<Answers | null> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const { data } = await supabase
+    .from('assessment_results')
+    .select('answers')
+    .eq('profile_id', user.id)
+    .order('taken_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const answers = data?.answers
+  return answers && typeof answers === 'object' && !Array.isArray(answers) ? (answers as unknown as Answers) : null
+}
+
 export default function ResultsPage() {
   const [scores, setScores] = useState<DimensionScore[]>([])
   const [overall, setOverall] = useState(0)
-  const [mounted, setMounted] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [pending, setPending] = useState<Answers | null>(null)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'history' | 'error'>('idle')
+  const [saveError, setSaveError] = useState('')
   const [isPremium, setIsPremium] = useState(false)
   const saveAttempted = useRef(false)
 
-  useEffect(() => {
-    const stored = sessionStorage.getItem('assessment_answers')
-    if (stored) {
-      const answers = JSON.parse(stored)
-      const calculated = calculateScores(answers)
-      setScores(calculated)
-      setOverall(getOverallScore(calculated))
-
-      // Save to Supabase (only once)
-      if (!saveAttempted.current) {
-        saveAttempted.current = true
-        saveToSupabase(answers, calculated)
-      }
-    }
-    getMyCouplePremium().then((p) => setIsPremium(!!p?.isPremium))
-    setMounted(true)
+  const showAnswers = useCallback((answers: Answers) => {
+    const calculated = calculateScores(answers)
+    setScores(calculated)
+    setOverall(getOverallScore(calculated))
   }, [])
 
-  async function saveToSupabase(
-    answers: Record<number, number | string>,
-    calculatedScores: DimensionScore[]
-  ) {
-    try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return // Not logged in — skip saving (guest mode)
-
-      // Get couple_id
-      const { data: membership } = await supabase
-        .from('couple_members')
-        .select('couple_id')
-        .eq('profile_id', user.id)
-        .single()
-
-      // Build scores object: { "Komunikasi": 4.2, "Nilai & Visi": 3.8, ... }
-      const scoresObj: Record<string, number> = {}
-      calculatedScores.forEach(s => {
-        scoresObj[DIMENSION_LABELS[s.dimension]] = Number((s.score / s.maxScore * 5).toFixed(1))
-      })
-
-      await supabase.from('assessment_results').insert({
-        profile_id: user.id,
-        couple_id: membership?.couple_id ?? null,
-        answers,
-        scores: scoresObj,
-      })
-
-      setSaved(true)
-    } catch {
-      // Silently fail — results are still visible from sessionStorage
+  const save = useCallback(async (answers: Answers) => {
+    setSaveState('saving')
+    setSaveError('')
+    const result = await saveAnswers(answers)
+    if (!result.ok) {
+      setSaveState('error')
+      setSaveError(result.message)
+      return
     }
-  }
+    if (result.guest) { setSaveState('idle'); return }
+    // Saved: drop the pending copy so a reload doesn't insert it a second time.
+    try { sessionStorage.removeItem(PENDING_KEY) } catch { /* storage unavailable */ }
+    setPending(null)
+    setSaveState('saved')
+  }, [])
 
-  if (!mounted) return null
+  useEffect(() => {
+    let cancelled = false
+    async function init() {
+      const answers = readPendingAnswers()
+      if (answers) {
+        showAnswers(answers)
+        setPending(answers)
+        setLoading(false)
+        if (!saveAttempted.current) {
+          saveAttempted.current = true
+          save(answers)
+        }
+        return
+      }
+      const latest = await loadLatestAnswers().catch(() => null)
+      if (cancelled) return
+      if (latest) {
+        showAnswers(latest)
+        setSaveState('history')
+      }
+      setLoading(false)
+    }
+    init()
+    getMyCouplePremium().then((p) => { if (!cancelled) setIsPremium(!!p?.isPremium) })
+    return () => { cancelled = true }
+  }, [showAnswers, save])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-rose border-t-transparent" />
+      </div>
+    )
+  }
 
   if (scores.length === 0) {
     return (
@@ -139,7 +205,7 @@ export default function ResultsPage() {
           <Heart className="h-6 w-6 text-rose" strokeWidth={1.5} />
         </div>
         <p className="mb-6 text-sm text-ink-muted">Belum ada hasil assessment.</p>
-        <Link href="/app/assessment"
+        <Link href="/assessment"
           className="inline-flex items-center gap-2 rounded-2xl bg-rose px-6 py-3 text-sm font-semibold text-white shadow-elevated">
           Mulai Assessment <ArrowRight className="h-4 w-4" />
         </Link>
@@ -153,10 +219,25 @@ export default function ResultsPage() {
 
   return (
     <div className="min-h-screen px-6 py-8">
-      {/* Saved indicator */}
-      {saved && (
+      {/* Save status */}
+      {saveState === 'saved' && (
         <div className="mb-4 rounded-xl bg-sage/10 px-4 py-2 text-center text-xs font-medium text-sage-dark">
           Hasil tersimpan di profilmu
+        </div>
+      )}
+      {saveState === 'history' && (
+        <div className="mb-4 rounded-xl bg-cream px-4 py-2 text-center text-xs font-medium text-ink-muted">
+          Hasil assessment terakhirmu
+        </div>
+      )}
+      {saveState === 'error' && (
+        <div className="mb-4 rounded-xl border border-danger/20 bg-danger/10 px-4 py-3 text-xs text-danger">
+          <p>Hasil belum tersimpan: {saveError}</p>
+          {pending && (
+            <button onClick={() => save(pending)} className="mt-1.5 font-semibold underline">
+              Coba simpan lagi
+            </button>
+          )}
         </div>
       )}
 
@@ -273,7 +354,7 @@ export default function ResultsPage() {
           className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-rose px-6 py-3.5 text-sm font-semibold text-white shadow-elevated transition-all hover:bg-rose-dark active:scale-[0.98]">
           Kembali ke Beranda <ArrowRight className="h-4 w-4" />
         </Link>
-        <Link href="/app/assessment"
+        <Link href="/assessment"
           className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface px-6 py-3.5 text-sm font-semibold text-ink-light shadow-card transition-all active:scale-[0.98]">
           <RotateCcw className="h-4 w-4" /> Ulangi Assessment
         </Link>

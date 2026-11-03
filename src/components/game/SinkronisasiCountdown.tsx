@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface SinkronisasiCountdownProps {
   onComplete: () => void
@@ -8,15 +8,18 @@ interface SinkronisasiCountdownProps {
 
 export default function SinkronisasiCountdown({ onComplete }: SinkronisasiCountdownProps) {
   const [count, setCount] = useState(3)
+  // Latest callback in a ref: a parent re-render must not restart the timer.
+  const onCompleteRef = useRef(onComplete)
+  useEffect(() => { onCompleteRef.current = onComplete }, [onComplete])
 
   useEffect(() => {
     if (count === 0) {
-      const t = setTimeout(onComplete, 800)
+      const t = setTimeout(() => onCompleteRef.current(), 800)
       return () => clearTimeout(t)
     }
     const t = setTimeout(() => setCount(c => c - 1), 1000)
     return () => clearTimeout(t)
-  }, [count, onComplete])
+  }, [count])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-ink to-gray-900">

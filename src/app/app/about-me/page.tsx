@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import {
   Brain, Heart, HandHeart, Wallet, Sparkles,
-  ChevronRight, Lock, ArrowLeft,
+  ChevronRight, Lock, ArrowLeft, ClipboardCheck,
 } from 'lucide-react'
 
 const TESTS = [
@@ -78,6 +78,26 @@ export default function AboutMePage() {
       </div>
 
       <div className="px-6 pt-5">
+        {/* Readiness Assessment — the couple-level test (was unreachable from the app) */}
+        <p className="mb-4 text-xs font-bold uppercase tracking-widest text-ink-muted/50">
+          Kesiapan Hubungan
+        </p>
+        <button
+          onClick={() => router.push('/assessment')}
+          className="mb-7 flex w-full items-center gap-4 rounded-2xl border border-rose/30 bg-gradient-to-br from-rose/10 to-rose/5 p-4 text-left shadow-card transition-all hover:border-rose active:scale-[0.98]"
+        >
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-white text-rose">
+            <ClipboardCheck className="h-6 w-6" strokeWidth={1.5} />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-ink">Tes Kesiapan Hubungan</p>
+            <p className="mt-0.5 text-xs text-ink-muted">
+              Cek kesiapan kalian: komunikasi, nilai &amp; visi, keuangan, keluarga, komitmen
+            </p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-rose" />
+        </button>
+
         <p className="mb-4 text-xs font-bold uppercase tracking-widest text-ink-muted/50">
           Tes Kepribadian
         </p>

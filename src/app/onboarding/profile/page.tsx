@@ -1,14 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Smile } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
+import { createClient, getClientUser } from '@/lib/supabase'
+import { getMyCouple, seedCalendarEvents } from '@/lib/couple'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 
+interface SavedDates {
+  birthday: string | null
+  relationship_start_date: string | null
+}
+
 export default function OnboardingProfilePage() {
   const router = useRouter()
+  const [userId, setUserId] = useState<string | null>(null)
+  const [saved, setSaved] = useState<SavedDates | null>(null)
   const [name, setName] = useState('')
   const [gender, setGender] = useState<'male' | 'female' | ''>('')
   const [birthday, setBirthday] = useState('')
@@ -16,16 +24,41 @@ export default function OnboardingProfilePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Pre-fill whatever is already saved (returning to this step, or sent here
+  // by the middleware because the name is missing).
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      const supabase = createClient()
+      const user = await getClientUser()
+      if (!user) { router.replace('/auth/login'); return }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name, gender, birthday, relationship_start_date')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (cancelled) return
+      setUserId(user.id)
+      if (profile) {
+        setName(profile.name ?? '')
+        setGender(profile.gender === 'male' || profile.gender === 'female' ? profile.gender : '')
+        setBirthday(profile.birthday ?? '')
+        setRelationshipStart(profile.relationship_start_date ?? '')
+        setSaved({ birthday: profile.birthday, relationship_start_date: profile.relationship_start_date })
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [router])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!userId || loading) return
     if (!name.trim()) { setError('Nama tidak boleh kosong'); return }
     setError('')
     setLoading(true)
 
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/auth/login'); return }
-
     const { error: updateError } = await supabase
       .from('profiles')
       .update({
@@ -34,7 +67,7 @@ export default function OnboardingProfilePage() {
         birthday: birthday || null,
         relationship_start_date: relationshipStart || null,
       })
-      .eq('id', user.id)
+      .eq('id', userId)
 
     if (updateError) {
       setError(updateError.message)
@@ -42,6 +75,19 @@ export default function OnboardingProfilePage() {
       return
     }
 
+    // Joined through an invite before filling the profile? Then the couple
+    // step is done — seed the calendar now that the dates exist, and move on.
+    let couple = null
+    try {
+      couple = await getMyCouple(userId)
+    } catch {
+      // Unknown — the couple step re-checks and forwards if needed.
+    }
+    if (couple) {
+      await seedCalendarEvents(userId, couple.id, saved).catch((err) => console.warn('seedCalendarEvents', err))
+      router.push(couple.memberCount >= 2 ? '/onboarding/install' : '/onboarding/invite')
+      return
+    }
     router.push('/onboarding/couple')
   }
 
@@ -128,7 +174,7 @@ export default function OnboardingProfilePage() {
         </div>
 
         <div className="pt-2">
-          <Button type="submit" loading={loading} size="lg">
+          <Button type="submit" loading={loading} disabled={!userId} size="lg">
             Lanjut
           </Button>
         </div>

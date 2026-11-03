@@ -1,3 +1,5 @@
+import { todayJakarta } from '@/lib/dates'
+
 export const DAILY_QUESTIONS: string[] = [
   'Apa momen favoritmu bersama pasangan selama sebulan terakhir?',
   'Apa satu hal kecil yang dilakukan pasanganmu yang membuatmu senyum hari ini?',
@@ -51,10 +53,14 @@ export const DAILY_QUESTIONS: string[] = [
   'Apa satu hal yang selalu ingin kamu ingat tentang masa ini bersama pasanganmu?',
 ]
 
-export function getTodayQuestion(): { question: string; index: number } {
-  const dayOfYear = Math.floor(
-    (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000
-  )
+/**
+ * Question of the day, rotating by day-of-year of the JAKARTA date (Jan 1 = 1).
+ * The home page renders on the server (UTC on Vercel), so the server clock's
+ * local date would roll at 07:00 WIB instead of midnight.
+ */
+export function getTodayQuestion(dateKey: string = todayJakarta()): { question: string; index: number } {
+  const [y, m, d] = dateKey.split('-').map(Number)
+  const dayOfYear = Math.round((Date.UTC(y, m - 1, d) - Date.UTC(y, 0, 0)) / 86400000)
   const index = dayOfYear % DAILY_QUESTIONS.length
   return { question: DAILY_QUESTIONS[index], index }
 }

@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
 
@@ -13,6 +14,9 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children, className }: ModalProps) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
   // Prevent body scroll when open
   useEffect(() => {
     if (open) document.body.style.overflow = 'hidden'
@@ -20,10 +24,19 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
     return () => { document.body.style.overflow = '' }
   }, [open])
 
-  if (!open) return null
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+  if (!open || !mounted) return null
+
+  // Portal to <body>: pages animate in with a transform, which traps a nested
+  // z-50 under the bottom nav (the nav stayed tappable over the backdrop).
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-end justify-center" role="dialog" aria-modal="true" aria-label={title}>
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
@@ -32,7 +45,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
       {/* Sheet */}
       <div
         className={cn(
-          'relative w-full max-w-lg animate-slide-up rounded-t-3xl border-t border-border bg-surface px-6 pb-24 pt-5',
+          'relative max-h-[92vh] w-full max-w-lg animate-slide-up overflow-y-auto rounded-t-3xl border-t border-border bg-surface px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-5',
           className
         )}
       >
@@ -44,6 +57,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
             <h3 className="text-base font-bold text-ink">{title}</h3>
             <button
               onClick={onClose}
+              aria-label="Tutup"
               className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-ink-muted"
             >
               <X className="h-4 w-4" />
@@ -52,6 +66,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

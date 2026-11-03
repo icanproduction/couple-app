@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
+import { createClient, getClientUser } from '@/lib/supabase'
 import { SPENDING_QUESTIONS } from '@/lib/spending-assessment/questions'
 import { calculateSpendingType } from '@/lib/spending-assessment/calculate'
 import type { SpendingAnswer } from '@/lib/spending-assessment/types'
@@ -16,87 +16,129 @@ export default function SpendingQuestionsPage() {
   const [answers, setAnswers] = useState<Record<string, SpendingAnswer>>({})
   const [animating, setAnimating] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  // Ignore taps while sliding to the next question / while saving — a double
+  // tap used to skip a question or run past the last one (crash).
+  const busyRef = useRef(false)
 
-  const question = SPENDING_QUESTIONS[current]
-  const progress = ((current + 1) / SPENDING_QUESTIONS.length) * 100
+  const lastIndex = SPENDING_QUESTIONS.length - 1
+  const qIndex = Math.min(Math.max(current, 0), lastIndex)
+  const question = SPENDING_QUESTIONS[qIndex]
+  const progress = ((qIndex + 1) / SPENDING_QUESTIONS.length) * 100
 
-  // Restore from localStorage
+  // Restore from localStorage (clamped: the saved index may be stale)
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        setAnswers(parsed.answers ?? {})
-        setCurrent(parsed.current ?? 0)
-      } catch { /* ignore */ }
-    }
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (!saved) return
+      const parsed = JSON.parse(saved)
+      setAnswers(parsed.answers ?? {})
+      const idx = Number(parsed.current)
+      setCurrent(Number.isInteger(idx) ? Math.min(Math.max(idx, 0), SPENDING_QUESTIONS.length - 1) : 0)
+    } catch { /* ignore */ }
   }, [])
 
   // Save to localStorage on change
   useEffect(() => {
     if (Object.keys(answers).length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ answers, current }))
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ answers, current: qIndex })) } catch { /* ignore */ }
     }
-  }, [answers, current])
+  }, [answers, qIndex])
 
   async function handleAnswer(key: SpendingAnswer) {
+    if (busyRef.current) return
+    busyRef.current = true
     const newAnswers = { ...answers, [`q${question.id}`]: key }
     setAnswers(newAnswers)
 
-    if (current < SPENDING_QUESTIONS.length - 1) {
+    if (qIndex < lastIndex) {
       setAnimating(true)
       setTimeout(() => {
-        setCurrent(c => c + 1)
+        setCurrent(c => Math.min(c + 1, lastIndex))
         setAnimating(false)
+        busyRef.current = false
       }, 250)
-    } else {
-      // Last question — calculate and save
-      setSubmitting(true)
-      const result = calculateSpendingType(newAnswers)
-
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data: membership } = await supabase
-        .from('couple_members').select('couple_id').eq('profile_id', user.id).single()
-
-      if (membership?.couple_id) {
-        await supabase.from('spending_results').upsert({
-          couple_id: membership.couple_id,
-          profile_id: user.id,
-          spending_type: result.spendingType,
-          scores: result.scores,
-          answers: newAnswers,
-        }, { onConflict: 'couple_id,profile_id' })
-
-        // Notify partner
-        const { data: partnerMembers } = await supabase
-          .from('couple_members').select('profile_id')
-          .eq('couple_id', membership.couple_id).neq('profile_id', user.id)
-
-        const { data: myProfile } = await supabase
-          .from('profiles').select('name').eq('id', user.id).single()
-
-        if (partnerMembers?.[0]) {
-          try {
-            await fetch('/api/push/send', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                recipientId: partnerMembers[0].profile_id,
-                title: 'Nanti Kita',
-                body: `${myProfile?.name ?? 'Pasanganmu'} baru selesai tes Spending Habits! Cek hasilnya dan tes kamu juga`,
-                url: '/app/about-me/spending-habits',
-              }),
-            })
-          } catch { /* optional */ }
-        }
-      }
-
-      localStorage.removeItem(STORAGE_KEY)
-      router.push('/app/about-me/spending-habits/result')
+      return
     }
+
+    // Last question — calculate and save
+    const saved = await submit(newAnswers)
+    if (!saved) busyRef.current = false
+  }
+
+  /** Saves the result; on failure keeps the answers (state + localStorage) for a retry */
+  async function submit(newAnswers: Record<string, SpendingAnswer>): Promise<boolean> {
+    setSubmitting(true)
+    setSubmitError('')
+    const result = calculateSpendingType(newAnswers)
+
+    const supabase = createClient()
+    const user = await getClientUser()
+    if (!user) { router.replace('/auth/login'); return false }
+
+    const { data: membership } = await supabase
+      .from('couple_members').select('couple_id').eq('profile_id', user.id).maybeSingle()
+
+    if (!membership?.couple_id) {
+      setSubmitError('Hubungkan akunmu dengan pasangan dulu supaya hasilnya bisa disimpan.')
+      setSubmitting(false)
+      return false
+    }
+
+    {
+      const { error } = await supabase.from('spending_results').upsert({
+        couple_id: membership.couple_id,
+        profile_id: user.id,
+        spending_type: result.spendingType,
+        scores: result.scores,
+        answers: newAnswers,
+      }, { onConflict: 'couple_id,profile_id' })
+
+      if (error) {
+        setSubmitError('Hasil belum tersimpan. Jawabanmu masih aman — coba lagi ya.')
+        setSubmitting(false)
+        return false
+      }
+    }
+
+    // Notify partner
+    const { data: partnerMembers } = await supabase
+      .from('couple_members').select('profile_id')
+      .eq('couple_id', membership.couple_id).neq('profile_id', user.id)
+
+    const { data: myProfile } = await supabase
+      .from('profiles').select('name').eq('id', user.id).maybeSingle()
+
+    if (partnerMembers?.[0]) {
+      try {
+        await fetch('/api/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipientId: partnerMembers[0].profile_id,
+            title: 'Nanti Kita',
+            body: `${myProfile?.name ?? 'Pasanganmu'} baru selesai tes Spending Habits! Cek hasilnya dan tes kamu juga`,
+            url: '/app/about-me/spending-habits',
+            kind: 'activity',
+          }),
+        })
+      } catch { /* optional */ }
+    }
+
+    try { localStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
+    router.push('/app/about-me/spending-habits/result')
+    return true
+  }
+
+  function goBack() {
+    if (busyRef.current || qIndex === 0) return
+    busyRef.current = true
+    setAnimating(true)
+    setTimeout(() => {
+      setCurrent(c => Math.max(c - 1, 0))
+      setAnimating(false)
+      busyRef.current = false
+    }, 200)
   }
 
   if (submitting) {
@@ -113,7 +155,7 @@ export default function SpendingQuestionsPage() {
       {/* Header */}
       <div className="mb-6">
         <div className="mb-3 flex items-center justify-between">
-          <span className="text-xs font-medium text-ink-muted">{current + 1} dari {SPENDING_QUESTIONS.length}</span>
+          <span className="text-xs font-medium text-ink-muted">{qIndex + 1} dari {SPENDING_QUESTIONS.length}</span>
           <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">Spending Habits</span>
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-border">
@@ -156,10 +198,28 @@ export default function SpendingQuestionsPage() {
         </div>
       </div>
 
+      {/* Save failed: answers are kept, retry from here */}
+      {submitError && (
+        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-center">
+          <p className="text-sm text-red-600">{submitError}</p>
+          <button
+            onClick={async () => {
+              if (busyRef.current) return
+              busyRef.current = true
+              const ok = await submit(answers)
+              if (!ok) busyRef.current = false
+            }}
+            className="mt-2 text-sm font-bold text-rose underline"
+          >
+            Coba simpan lagi
+          </button>
+        </div>
+      )}
+
       {/* Back */}
-      {current > 0 && (
+      {qIndex > 0 && (
         <button
-          onClick={() => { setAnimating(true); setTimeout(() => { setCurrent(c => c - 1); setAnimating(false) }, 200) }}
+          onClick={goBack}
           className="mt-6 flex items-center justify-center gap-1.5 text-sm text-ink-muted hover:text-ink"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Kembali

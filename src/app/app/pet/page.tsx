@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, getServerUser } from '@/lib/supabase-server'
+import { ensureCareRoles } from '@/lib/pet'
 import PetRoom from '@/components/app/PetRoom'
 
 export default async function PetPage() {
   const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getServerUser(supabase)
   if (!user) redirect('/auth/login')
 
   // Get couple
@@ -12,39 +13,42 @@ export default async function PetPage() {
     .from('couple_members')
     .select('couple_id')
     .eq('profile_id', user.id)
-    .single()
+    .maybeSingle()
 
   if (!membership) redirect('/app/home')
 
-  // Get pet
-  const { data: pet } = await supabase
+  // Get pet (one per couple — unique index). Only a successful empty result
+  // means "adopt"; a failed query must not bounce between /pet and /pet/adopt.
+  const { data: pet, error: petError } = await supabase
     .from('couple_pets')
     .select('*')
     .eq('couple_id', membership.couple_id)
-    .single()
+    .maybeSingle()
 
+  if (petError) throw new Error('Gagal memuat pet')
   if (!pet) redirect('/app/pet/adopt')
 
-  // Get mood state
+  // Get mood state (may be missing — the first care action creates it)
   const { data: moodState } = await supabase
     .from('pet_mood_state')
     .select('*')
     .eq('pet_id', pet.id)
-    .single()
+    .maybeSingle()
 
-  // Get care roles for current user
-  const { data: myRoles } = await supabase
-    .from('pet_care_roles')
-    .select('actions')
-    .eq('pet_id', pet.id)
-    .eq('profile_id', user.id)
-    .single()
+  // Care roles for both members; a partner who joined after adoption gets a
+  // share instead of an empty list
+  const { data: members } = await supabase
+    .from('couple_members')
+    .select('profile_id')
+    .eq('couple_id', membership.couple_id)
+  const memberIds = Array.from(new Set([user.id, ...(members ?? []).map(m => m.profile_id)]))
+  const roles = await ensureCareRoles(supabase, pet.id, membership.couple_id, memberIds)
 
   return (
     <PetRoom
       pet={pet}
       moodState={moodState}
-      myActions={myRoles?.actions || []}
+      myActions={roles[user.id] ?? []}
       userId={user.id}
       coupleId={membership.couple_id}
     />

@@ -1,12 +1,17 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
-  Plus, Trash2, CalendarDays, Gift, Heart, Star, Bell,
+  Plus, Trash2, CalendarDays, Gift, Heart, Star, Bell, Pencil, Camera,
   MapPin, Wallet, Sparkles, ChevronRight, ChevronLeft, RefreshCw, Users, User,
 } from 'lucide-react'
+import { isAuthApiError, isAuthSessionMissingError } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
-import { daysUntil, getNextOccurrence, formatDateID } from '@/lib/dates'
+import { useCoupleRealtime } from '@/lib/realtime'
+import { daysUntil, getNextOccurrence, formatDateID, todayJakarta } from '@/lib/dates'
+import { REMIND_OPTIONS, flipScopeForViewer as flipScope, occursOn as occursOnDate, remindLabel } from '@/lib/reminders'
 import { getRandomDateIdea, type DateIdea } from '@/data/dateIdeas'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -22,9 +27,67 @@ interface CoupleEvent {
   event_scope: string | null
   budget: number | null
   is_completed: boolean | null
+  created_by: string | null
+  remind_days_before: number | null
+}
+
+/** No session, or the auth server rejected it (not a network failure) */
+function isSignedOutError(error: unknown): boolean {
+  if (isAuthSessionMissingError(error)) return true
+  return isAuthApiError(error) && error.status >= 400 && error.status < 500 && error.status !== 429
 }
 
 type Tab = 'semua' | 'personal' | 'partner' | 'couple'
+type Owner = 'me' | 'partner' | 'couple'
+
+/**
+ * Whose event this is, from MY point of view. event_scope is written from the
+ * creator's point of view: "personal" = the creator's own, "partner" = for the
+ * creator's partner. So the partner's "personal" event is "Pasangan" for me.
+ */
+function ownerOf(ev: CoupleEvent, userId: string | null): Owner {
+  const createdByMe = !ev.created_by || ev.created_by === userId
+  if (ev.event_scope === 'personal') return createdByMe ? 'me' : 'partner'
+  if (ev.event_scope === 'partner') return createdByMe ? 'partner' : 'me'
+  return 'couple'
+}
+
+/**
+ * Does the event fall on this date ("YYYY-MM-DD")? Recurring events repeat
+ * every year on their month/day from their first date on (Feb 29 → Mar 1 in
+ * non-leap years, like getNextOccurrence). Shared with the reminder cron.
+ */
+function occursOn(ev: CoupleEvent, dateKey: string): boolean {
+  return occursOnDate(ev.event_date, ev.is_recurring, dateKey)
+}
+
+/** Types that get location + budget fields and the "Abadikan jadi Moment" link */
+const OUTING_TYPES = ['date_plan', 'event']
+
+function momentHref(ev: { title: string; location: string | null }, date: string): string {
+  const params = new URLSearchParams({ title: ev.title, date })
+  if (ev.location) params.set('location', ev.location)
+  return `/app/moments/baru?${params.toString()}`
+}
+
+function RemindPicker({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
+  return (
+    <div>
+      <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-ink-muted">
+        <Bell className="h-3 w-3" /> Ingatkan
+      </p>
+      <div className="grid grid-cols-5 gap-1.5">
+        {REMIND_OPTIONS.map(opt => (
+          <button key={String(opt.value)} type="button" onClick={() => onChange(opt.value)}
+            aria-pressed={value === opt.value}
+            className={`rounded-lg border px-1 py-1.5 text-xs font-medium transition-colors ${
+              value === opt.value ? 'border-rose bg-rose-50 text-rose' : 'border-border text-ink-muted hover:border-rose'
+            }`}>{opt.label}</button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 const EVENT_ICONS: Record<string, typeof Heart> = {
   anniversary: Heart, birthday: Gift, milestone: Star,
@@ -43,19 +106,16 @@ const EVENT_DOT_COLORS: Record<string, string> = {
   reminder: 'bg-blue-500', event: 'bg-ink-muted', other: 'bg-ink-muted',
 }
 
-const SCOPE_LABELS: Record<string, { icon: typeof Users; label: string }> = {
+// Keyed by owner (my point of view), not by the raw event_scope
+const OWNER_LABELS: Record<Owner, { icon: typeof Users; label: string }> = {
   couple: { icon: Users, label: 'Bersama' },
-  personal: { icon: User, label: 'Pribadi' },
+  me: { icon: User, label: 'Pribadi' },
   partner: { icon: Heart, label: 'Pasangan' },
 }
 
 const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
 const DAY_NAMES = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
-
-function toDateKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
 
 function countdownText(days: number): string {
   if (days === 0) return 'Hari ini'
@@ -70,6 +130,7 @@ function dayName(dateStr: string): string {
 }
 
 export default function CalendarPage() {
+  const router = useRouter()
   const [coupleId, setCoupleId] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
@@ -81,10 +142,10 @@ export default function CalendarPage() {
   const [datePlanModal, setDatePlanModal] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
-  // Calendar navigation
-  const now = new Date()
-  const [calMonth, setCalMonth] = useState(now.getMonth())
-  const [calYear, setCalYear] = useState(now.getFullYear())
+  // Calendar navigation — "today" is the Jakarta date, not the device clock's
+  const todayKey = todayJakarta()
+  const [calMonth, setCalMonth] = useState(() => Number(todayJakarta().slice(5, 7)) - 1)
+  const [calYear, setCalYear] = useState(() => Number(todayJakarta().slice(0, 4)))
 
   // Form state
   const [newTitle, setNewTitle] = useState('')
@@ -95,50 +156,58 @@ export default function CalendarPage() {
   const [newDescription, setNewDescription] = useState('')
   const [newLocation, setNewLocation] = useState('')
   const [newBudget, setNewBudget] = useState('')
+  const [newRemind, setNewRemind] = useState<number | null>(null)
+  /** Set while the form edits an existing event (F08) */
+  const [editingId, setEditingId] = useState<string | null>(null)
+  /** The edited event was created by my partner: its scope is stored from their side */
+  const [editingPartnerEvent, setEditingPartnerEvent] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
+  const [listError, setListError] = useState('')
+  const [loadError, setLoadError] = useState('')
+  /** Event whose inline "hapus?" confirm is open */
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const [dateIdea, setDateIdea] = useState<DateIdea | null>(null)
 
+  // Runs on mount, on every realtime change and when the app comes back to the
+  // foreground. A failed run keeps what is on screen and offers a retry.
   const loadData = useCallback(async () => {
+    const failed = () => { setLoadError('Gagal memuat kalender. Cek koneksi lalu coba lagi.'); setLoading(false) }
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (!user) {
+      // A network blip is not a logout: keep the page and offer a retry.
+      if (!authError || isSignedOutError(authError)) router.replace('/auth/login')
+      else failed()
+      return
+    }
     setUserId(user.id)
 
-    const { data: membership } = await supabase
-      .from('couple_members').select('couple_id').eq('profile_id', user.id).single()
-
+    const { data: membership, error: memberError } = await supabase
+      .from('couple_members').select('couple_id').eq('profile_id', user.id).maybeSingle()
+    if (memberError) { failed(); return }
     if (!membership?.couple_id) { setLoading(false); return }
     setCoupleId(membership.couple_id)
 
     // Load my name + partner id
-    const { data: myProfile } = await supabase.from('profiles').select('name').eq('id', user.id).single()
-    setUserName(myProfile?.name ?? null)
+    const { data: myProfile } = await supabase.from('profiles').select('name').eq('id', user.id).maybeSingle()
+    if (myProfile) setUserName(myProfile.name ?? null)
     const { data: members } = await supabase.from('couple_members').select('profile_id').eq('couple_id', membership.couple_id).neq('profile_id', user.id)
     if (members?.[0]) setPartnerId(members[0].profile_id)
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('couple_events').select('*').eq('couple_id', membership.couple_id).order('event_date')
 
-    setEvents(data ?? [])
+    if (error) { failed(); return }
+    setEvents(data ?? []); setLoadError('')
     setLoading(false)
-  }, [])
+  }, [router])
 
   useEffect(() => { loadData() }, [loadData])
+  useCoupleRealtime(coupleId, ['couple_events'], loadData)
   useEffect(() => { setDateIdea(getRandomDateIdea()) }, [])
-
-  // Build a map of date -> events for calendar dots
-  const eventsByDate = useMemo(() => {
-    const map = new Map<string, CoupleEvent[]>()
-    events.forEach(ev => {
-      const next = ev.is_recurring ? getNextOccurrence(ev.event_date) : ev.event_date
-      const key = next
-      const list = map.get(key) ?? []
-      list.push(ev)
-      map.set(key, list)
-    })
-    return map
-  }, [events])
 
   // Calendar grid
   const calendarDays = useMemo(() => {
@@ -171,7 +240,16 @@ export default function CalendarPage() {
     return cells
   }, [calMonth, calYear])
 
-  const todayKey = toDateKey(now)
+  // Events per visible cell. Recurring events show on their month/day in
+  // every displayed year, not only at their next occurrence.
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, CoupleEvent[]>()
+    for (const cell of calendarDays) {
+      const list = events.filter(ev => occursOn(ev, cell.dateKey))
+      if (list.length > 0) map.set(cell.dateKey, list)
+    }
+    return map
+  }, [events, calendarDays])
 
   function prevMonth() {
     if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) }
@@ -184,43 +262,71 @@ export default function CalendarPage() {
     setSelectedDate(null)
   }
   function goToday() {
-    setCalMonth(now.getMonth())
-    setCalYear(now.getFullYear())
+    setCalMonth(Number(todayKey.slice(5, 7)) - 1)
+    setCalYear(Number(todayKey.slice(0, 4)))
     setSelectedDate(todayKey)
   }
 
   function resetForm() {
     setNewTitle(''); setNewDate(''); setNewType('event'); setNewScope('couple')
     setNewRecurring(false); setNewDescription(''); setNewLocation(''); setNewBudget('')
+    setNewRemind(null); setEditingId(null); setEditingPartnerEvent(false)
+    setFormError('')
   }
 
-  async function addEvent(e: React.FormEvent) {
+  /** Open the same form prefilled with an existing event (F08) */
+  function openEdit(ev: CoupleEvent) {
+    const byPartner = !!ev.created_by && ev.created_by !== userId
+    setEditingId(ev.id); setEditingPartnerEvent(byPartner)
+    setNewTitle(ev.title); setNewDate(ev.event_date); setNewType(ev.event_type)
+    setNewScope(flipScope(ev.event_scope ?? 'couple', byPartner)); setNewRecurring(ev.is_recurring)
+    setNewDescription(ev.description ?? ''); setNewLocation(ev.location ?? '')
+    setNewBudget(ev.budget != null ? Number(ev.budget).toLocaleString('id-ID') : '')
+    setNewRemind(ev.remind_days_before ?? null)
+    setFormError(''); setModalOpen(true)
+  }
+
+  async function saveEvent(e: React.FormEvent) {
     e.preventDefault()
-    if (!coupleId || !userId || !newTitle.trim() || !newDate) return
+    if (!coupleId || !userId || !newTitle.trim() || !newDate || saving) return
     setSaving(true)
+    setFormError('')
     const supabase = createClient()
-    await supabase.from('couple_events').insert({
-      couple_id: coupleId, title: newTitle.trim(), event_date: newDate,
-      event_type: newType, is_recurring: newRecurring, event_scope: newScope,
-      description: newDescription || null, location: newLocation || null,
+    const isEdit = editingId !== null
+    const fields = {
+      title: newTitle.trim(), event_date: newDate,
+      event_type: newType, is_recurring: newRecurring,
+      // Back to the creator's point of view (only my partner's events differ)
+      event_scope: flipScope(newScope, isEdit && editingPartnerEvent),
+      description: newDescription.trim() || null, location: newLocation.trim() || null,
       budget: newBudget ? parseInt(newBudget.replace(/\D/g, ''), 10) : null,
-      created_by: userId,
-    })
-    // Notify partner
-    if (partnerId) {
+      remind_days_before: newRemind,
+    }
+    const { data, error } = isEdit
+      ? await supabase.from('couple_events').update(fields).eq('id', editingId).select('id')
+      : await supabase.from('couple_events').insert({ ...fields, couple_id: coupleId, created_by: userId }).select('id')
+    if (error || !data?.length) {
+      // Keep the form open with everything that was typed
+      setFormError(isEdit && !error
+        ? 'Acara ini sudah tidak ada. Mungkin baru dihapus pasanganmu.'
+        : 'Gagal menyimpan acara. Coba lagi ya.')
+      setSaving(false)
+      return
+    }
+    // Notify partner about a new entry (best-effort, never blocks the form)
+    if (partnerId && !isEdit) {
       const typeLabel = newType === 'date_plan' ? 'date plan' : newType === 'reminder' ? 'pengingat' : 'acara'
-      try {
-        await fetch('/api/push/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            recipientId: partnerId,
-            title: 'Nanti Kita',
-            body: `${userName ?? 'Pasanganmu'} menambahkan ${typeLabel}: "${newTitle.trim()}"`,
-            url: '/app/calendar',
-          }),
-        })
-      } catch { /* optional */ }
+      void fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipientId: partnerId,
+          title: 'Nanti Kita',
+          body: `${userName ?? 'Pasanganmu'} menambahkan ${typeLabel}: "${newTitle.trim()}"`,
+          url: '/app/calendar',
+          kind: 'activity',
+        }),
+      }).catch(() => { /* optional */ })
     }
 
     resetForm(); setSaving(false); setModalOpen(false); setDatePlanModal(false)
@@ -228,47 +334,64 @@ export default function CalendarPage() {
   }
 
   function openDatePlanFromIdea(idea: DateIdea) {
+    // Start clean: no date, location or budget left over from an earlier draft
+    resetForm()
     setNewTitle(idea.title); setNewDescription(idea.description)
-    setNewType('date_plan'); setNewScope('couple'); setDatePlanModal(true)
+    setNewType('date_plan'); setDatePlanModal(true)
   }
 
   async function deleteEvent(id: string) {
+    if (deletingId) return
+    setListError(''); setDeletingId(id)
     const supabase = createClient()
-    await supabase.from('couple_events').delete().eq('id', id)
+    const { error } = await supabase.from('couple_events').delete().eq('id', id)
+    setDeletingId(null)
+    if (error) { setListError('Gagal menghapus acara. Coba lagi ya.'); return }
+    setConfirmDeleteId(null)
     setEvents(prev => prev.filter(ev => ev.id !== id))
   }
 
   async function toggleComplete(ev: CoupleEvent) {
+    setListError('')
     const supabase = createClient()
-    await supabase.from('couple_events').update({ is_completed: !ev.is_completed }).eq('id', ev.id)
+    const { error } = await supabase.from('couple_events').update({ is_completed: !ev.is_completed }).eq('id', ev.id)
+    if (error) { setListError('Gagal mengubah status. Coba lagi ya.'); return }
     setEvents(prev => prev.map(e => e.id === ev.id ? { ...e, is_completed: !e.is_completed } : e))
   }
 
-  // Filter events by scope — if a date is selected on calendar, filter to that date
+  // Filter by whose event it is (from my point of view) — not by raw scope
   const filtered = events.filter(ev => {
-    if (tab === 'personal') return ev.event_scope === 'personal'
-    if (tab === 'partner') return ev.event_scope === 'partner'
-    if (tab === 'couple') return ev.event_scope === 'couple'
+    if (tab === 'personal') return ownerOf(ev, userId) === 'me'
+    if (tab === 'partner') return ownerOf(ev, userId) === 'partner'
+    if (tab === 'couple') return ownerOf(ev, userId) === 'couple'
     return true
   })
 
-  const sorted = [...filtered].map(ev => {
-    const next = ev.is_recurring ? getNextOccurrence(ev.event_date) : ev.event_date
-    return { ...ev, nextDate: next, daysLeft: daysUntil(next) }
-  }).filter(ev => {
-    if (selectedDate) return ev.nextDate === selectedDate
-    return true
-  }).sort((a, b) => a.daysLeft - b.daysLeft)
+  // With a date selected, show that date's occurrence; otherwise the next one.
+  // Upcoming first (soonest first), then past events (most recent first).
+  const sorted = filtered
+    .filter(ev => !selectedDate || occursOn(ev, selectedDate))
+    .map(ev => {
+      const shownDate = selectedDate ?? (ev.is_recurring ? getNextOccurrence(ev.event_date) : ev.event_date)
+      return { ...ev, nextDate: shownDate, daysLeft: daysUntil(shownDate) }
+    })
+    .sort((a, b) => {
+      const aPast = a.daysLeft < 0
+      const bPast = b.daysLeft < 0
+      if (aPast !== bPast) return aPast ? 1 : -1
+      return aPast ? b.daysLeft - a.daysLeft : a.daysLeft - b.daysLeft
+    })
 
   if (loading) {
     return <div className="flex items-center justify-center py-20"><div className="h-6 w-6 animate-spin rounded-full border-2 border-rose border-t-transparent" /></div>
   }
 
+  const countOwner = (o: Owner) => events.filter(e => ownerOf(e, userId) === o).length
   const TABS: { key: Tab; label: string; count: number }[] = [
     { key: 'semua', label: 'Semua', count: events.length },
-    { key: 'personal', label: 'Acara Saya', count: events.filter(e => e.event_scope === 'personal').length },
-    { key: 'partner', label: 'Pasangan', count: events.filter(e => e.event_scope === 'partner').length },
-    { key: 'couple', label: 'Bersama', count: events.filter(e => e.event_scope === 'couple').length },
+    { key: 'personal', label: 'Acara Saya', count: countOwner('me') },
+    { key: 'partner', label: 'Pasangan', count: countOwner('partner') },
+    { key: 'couple', label: 'Bersama', count: countOwner('couple') },
   ]
 
   return (
@@ -280,6 +403,7 @@ export default function CalendarPage() {
           <p className="text-xs text-ink-muted">Tanggal penting & date plan</p>
         </div>
         <button onClick={() => { resetForm(); setModalOpen(true) }}
+          aria-label="Tambah acara"
           className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose text-white shadow-sm">
           <Plus className="h-4 w-4" />
         </button>
@@ -289,14 +413,14 @@ export default function CalendarPage() {
       <div className="bg-white px-4 pb-3 pt-2">
         {/* Month nav */}
         <div className="mb-3 flex items-center justify-between">
-          <button onClick={prevMonth} className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-cream">
+          <button onClick={prevMonth} aria-label="Bulan sebelumnya" className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-cream">
             <ChevronLeft className="h-4 w-4 text-ink-muted" />
           </button>
           <button onClick={goToday} className="flex items-center gap-1.5">
             <span className="text-sm font-bold text-ink">{MONTH_NAMES[calMonth]}</span>
             <span className="text-sm text-ink-muted">{calYear}</span>
           </button>
-          <button onClick={nextMonth} className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-cream">
+          <button onClick={nextMonth} aria-label="Bulan berikutnya" className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-cream">
             <ChevronRight className="h-4 w-4 text-ink-muted" />
           </button>
         </div>
@@ -363,10 +487,11 @@ export default function CalendarPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-border bg-white px-6 py-2 mt-2">
+      <div className="mt-2 flex gap-1 overflow-x-auto border-b border-border bg-white px-6 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map(t => (
           <button key={t.key} onClick={() => { setTab(t.key); setSelectedDate(null) }}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+            aria-pressed={tab === t.key}
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
               tab === t.key ? 'bg-rose text-white' : 'text-ink-muted hover:bg-cream'
             }`}>
             {t.label}
@@ -386,7 +511,7 @@ export default function CalendarPage() {
                 <Sparkles className="h-4 w-4 text-purple-500" />
                 <span className="text-xs font-bold uppercase tracking-wider text-purple-600">Ide Date</span>
               </div>
-              <button onClick={() => setDateIdea(getRandomDateIdea())}
+              <button onClick={() => setDateIdea(getRandomDateIdea())} aria-label="Ganti ide date"
                 className="rounded-lg p-1 text-purple-400 hover:text-purple-600">
                 <RefreshCw className="h-3.5 w-3.5" />
               </button>
@@ -405,6 +530,18 @@ export default function CalendarPage() {
           </div>
         )}
 
+        {loadError && (
+          <div role="alert" className="flex items-center justify-between gap-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
+            <span>{loadError}</span>
+            <button onClick={() => { void loadData() }} className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold text-red-700 hover:bg-red-100">
+              Coba lagi
+            </button>
+          </div>
+        )}
+        {listError && (
+          <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{listError}</p>
+        )}
+
         {/* Event List */}
         {sorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-center">
@@ -420,35 +557,47 @@ export default function CalendarPage() {
               const Icon = EVENT_ICONS[ev.event_type] ?? CalendarDays
               const colorClass = EVENT_COLORS[ev.event_type] ?? EVENT_COLORS.other
               const isToday = ev.daysLeft === 0
-              const isPast = ev.daysLeft < 0 && !ev.is_recurring
-              const scopeInfo = ev.event_scope ? SCOPE_LABELS[ev.event_scope] : undefined
+              const isPast = ev.daysLeft < 0
+              const scopeInfo = OWNER_LABELS[ownerOf(ev, userId)]
+              const remindText = remindLabel(ev.remind_days_before)
+              // A past outing (or a finished date plan) can become a Moment
+              const canMoment = OUTING_TYPES.includes(ev.event_type) && (isPast || (!!ev.is_completed && ev.daysLeft <= 0))
 
               return (
                 <div key={ev.id}
                   className={`rounded-2xl border bg-white shadow-card overflow-hidden ${
                     isToday ? 'border-rose' : ev.is_completed ? 'border-sage/30 opacity-60' : 'border-border'
                   }`}>
-                  <div className="flex items-center gap-3 p-4">
+                  {/* Narrow phones: title may take two lines and the meta chips wrap
+                      under the date, so nothing squeezes into the countdown badge. */}
+                  <div className="flex items-start gap-3 p-4">
                     <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${colorClass}`}>
                       <Icon className="h-5 w-5" strokeWidth={2} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold truncate ${ev.is_completed ? 'line-through text-ink-muted' : 'text-ink'}`}>
+                      <p className={`line-clamp-2 break-words text-sm font-semibold ${ev.is_completed ? 'line-through text-ink-muted' : 'text-ink'}`}>
                         {ev.title}
                       </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-xs text-ink-muted">
-                          {dayName(ev.nextDate)}, {formatDateID(ev.nextDate)}
-                        </p>
-                        {ev.is_recurring && <span className="text-[10px] text-ink-muted/50">tiap tahun</span>}
-                        {scopeInfo && (
-                          <span className="flex items-center gap-0.5 text-[10px] text-ink-muted/50">
-                            <scopeInfo.icon className="h-2.5 w-2.5" /> {scopeInfo.label}
-                          </span>
-                        )}
-                      </div>
+                      <p className="mt-0.5 text-xs text-ink-muted">
+                        {dayName(ev.nextDate)}, {formatDateID(ev.nextDate)}
+                      </p>
+                      {(ev.is_recurring || scopeInfo || remindText) && (
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[10px] text-ink-muted/60">
+                          {ev.is_recurring && <span className="whitespace-nowrap">Tiap tahun</span>}
+                          {scopeInfo && (
+                            <span className="flex items-center gap-0.5 whitespace-nowrap">
+                              <scopeInfo.icon className="h-2.5 w-2.5" /> {scopeInfo.label}
+                            </span>
+                          )}
+                          {remindText && (
+                            <span className="flex items-center gap-0.5 whitespace-nowrap" title="Pengingat">
+                              <Bell className="h-2.5 w-2.5" /> {remindText}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap ${
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap ${
                       ev.is_completed ? 'bg-sage/10 text-sage-dark'
                         : isToday ? 'bg-rose text-white'
                         : isPast ? 'bg-ink/5 text-ink-muted'
@@ -460,33 +609,67 @@ export default function CalendarPage() {
                     </span>
                   </div>
 
-                  {(ev.description || ev.location || ev.budget) && (
-                    <div className="border-t border-border px-4 py-2.5 flex items-center gap-3 text-xs text-ink-muted">
-                      {ev.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{ev.location}</span>}
-                      {ev.budget && <span className="flex items-center gap-1"><Wallet className="h-3 w-3" />Rp {Number(ev.budget).toLocaleString('id-ID')}</span>}
-                      {ev.description && !ev.location && !ev.budget && <span>{ev.description}</span>}
+                  {/* Ternaries, not &&: a budget of 0 would otherwise print "0" */}
+                  {ev.description || ev.location || ev.budget ? (
+                    <div className="border-t border-border px-4 py-2.5 flex flex-wrap items-start gap-x-3 gap-y-1 text-xs text-ink-muted">
+                      {ev.location ? (
+                        <span className="flex min-w-0 flex-1 items-start gap-1 break-words">
+                          <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
+                          <span className="line-clamp-2">{ev.location}</span>
+                        </span>
+                      ) : null}
+                      {ev.budget ? (
+                        <span className="flex shrink-0 items-center gap-1 whitespace-nowrap">
+                          <Wallet className="h-3 w-3" />Rp {Number(ev.budget).toLocaleString('id-ID')}
+                        </span>
+                      ) : null}
+                      {ev.description && !ev.location && !ev.budget ? <span className="line-clamp-3 break-words">{ev.description}</span> : null}
                     </div>
-                  )}
+                  ) : null}
 
-                  {ev.event_type === 'date_plan' && (
-                    <div className="flex border-t border-border">
-                      <button onClick={() => toggleComplete(ev)}
-                        className="flex-1 py-2 text-xs font-semibold text-sage-dark hover:bg-sage/5">
-                        {ev.is_completed ? 'Belum selesai' : 'Tandai selesai'}
+                  {confirmDeleteId === ev.id ? (
+                    <div className="border-t border-red-200 bg-red-50 px-4 py-3 text-center">
+                      <p className="text-sm font-semibold text-red-700">Hapus acara &ldquo;{ev.title}&rdquo;?</p>
+                      <p className="mt-0.5 text-xs text-red-600/80">Acara ini hilang dari kalender kalian berdua.</p>
+                      <div className="mt-2.5 flex gap-2">
+                        <button onClick={() => setConfirmDeleteId(null)} disabled={deletingId === ev.id}
+                          className="flex-1 rounded-xl border border-border bg-white py-2 text-xs font-semibold text-ink-muted">
+                          Batal
+                        </button>
+                        <button onClick={() => deleteEvent(ev.id)} disabled={deletingId === ev.id}
+                          className="flex-1 rounded-xl bg-red-500 py-2 text-xs font-bold text-white disabled:opacity-60">
+                          {deletingId === ev.id ? 'Menghapus...' : 'Ya, hapus'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                  <div className="flex items-stretch border-t border-border">
+                    {ev.event_type === 'date_plan' && (
+                      <>
+                        <button onClick={() => toggleComplete(ev)}
+                          className="flex-1 py-2 text-xs font-semibold text-sage-dark hover:bg-sage/5">
+                          {ev.is_completed ? 'Belum selesai' : 'Tandai selesai'}
+                        </button>
+                        <div className="w-px bg-border" />
+                      </>
+                    )}
+                    {canMoment && (
+                      <Link href={momentHref(ev, ev.nextDate)}
+                        className="flex items-center gap-1 whitespace-nowrap px-3 py-2 text-xs font-semibold text-rose hover:bg-rose/5">
+                        <Camera className="h-3.5 w-3.5" /> Abadikan jadi Moment
+                      </Link>
+                    )}
+                    <div className="ml-auto flex">
+                      <button onClick={() => openEdit(ev)} aria-label={`Ubah acara ${ev.title}`}
+                        className="px-3 py-2 text-ink-muted/50 hover:text-rose">
+                        <Pencil className="h-3.5 w-3.5" />
                       </button>
-                      <div className="w-px bg-border" />
-                      <button onClick={() => deleteEvent(ev.id)}
-                        className="px-4 py-2 text-xs text-ink-muted/40 hover:text-red-400">
+                      <button onClick={() => { setConfirmDeleteId(ev.id); setListError('') }} aria-label={`Hapus acara ${ev.title}`}
+                        className="px-3 py-2 text-ink-muted/30 hover:text-red-400">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                  )}
-                  {ev.event_type !== 'date_plan' && (
-                    <div className="flex justify-end border-t border-border px-4">
-                      <button onClick={() => deleteEvent(ev.id)} className="py-2 text-ink-muted/30 hover:text-red-400">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+                  </div>
                   )}
                 </div>
               )
@@ -495,12 +678,15 @@ export default function CalendarPage() {
         )}
       </div>
 
-      {/* ===== ADD EVENT MODAL ===== */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Tambah ke Kalender">
-        <form onSubmit={addEvent} className="space-y-4">
-          <input type="text" placeholder="Judul acara" value={newTitle} onChange={e => setNewTitle(e.target.value)} required
+      {/* ===== ADD / EDIT EVENT MODAL ===== */}
+      <Modal open={modalOpen}
+        onClose={() => { setModalOpen(false); if (editingId) resetForm() }}
+        title={editingId ? 'Ubah Acara' : 'Tambah ke Kalender'}
+        className="max-h-[92vh] overflow-y-auto">
+        <form onSubmit={saveEvent} className="space-y-4">
+          <input type="text" placeholder="Judul acara" aria-label="Judul acara" value={newTitle} onChange={e => setNewTitle(e.target.value)} required
             className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm font-medium focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20" />
-          <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} required
+          <input type="date" aria-label="Tanggal" value={newDate} onChange={e => setNewDate(e.target.value)} required
             className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20" />
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-muted">Jenis</label>
@@ -537,15 +723,15 @@ export default function CalendarPage() {
               })}
             </div>
           </div>
-          <input type="text" placeholder="Catatan (opsional)" value={newDescription} onChange={e => setNewDescription(e.target.value)}
+          <input type="text" placeholder="Catatan (opsional)" aria-label="Catatan" value={newDescription} onChange={e => setNewDescription(e.target.value)}
             className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20" />
-          {newType === 'date_plan' && (
+          {OUTING_TYPES.includes(newType) && (
             <>
-              <input type="text" placeholder="Lokasi (opsional)" value={newLocation} onChange={e => setNewLocation(e.target.value)}
+              <input type="text" placeholder="Lokasi (opsional)" aria-label="Lokasi" value={newLocation} onChange={e => setNewLocation(e.target.value)}
                 className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20" />
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs text-ink-muted">Rp</span>
-                <input type="text" inputMode="numeric" placeholder="Budget (opsional)" value={newBudget}
+                <input type="text" inputMode="numeric" placeholder="Budget (opsional)" aria-label="Budget" value={newBudget}
                   onChange={e => { const n = e.target.value.replace(/\D/g, ''); setNewBudget(n ? parseInt(n,10).toLocaleString('id-ID') : '') }}
                   className="w-full rounded-2xl border border-border bg-white py-3 pl-9 pr-4 text-sm focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20" />
               </div>
@@ -556,13 +742,15 @@ export default function CalendarPage() {
               className="h-4 w-4 rounded border-border text-rose focus:ring-rose" />
             <span className="text-sm text-ink">Berulang setiap tahun</span>
           </label>
-          <Button type="submit" loading={saving} size="lg">Simpan</Button>
+          <RemindPicker value={newRemind} onChange={setNewRemind} />
+          {formError && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{formError}</p>}
+          <Button type="submit" loading={saving} size="lg">{editingId ? 'Simpan Perubahan' : 'Simpan'}</Button>
         </form>
       </Modal>
 
       {/* ===== DATE PLAN FROM IDEA MODAL ===== */}
       <Modal open={datePlanModal} onClose={() => { setDatePlanModal(false); resetForm() }} title="Buat Date Plan">
-        <form onSubmit={addEvent} className="space-y-4">
+        <form onSubmit={saveEvent} className="space-y-4">
           <div className="rounded-xl bg-purple-50 p-3">
             <p className="text-sm font-bold text-purple-700">{newTitle}</p>
             <p className="text-xs text-purple-600/70">{newDescription}</p>
@@ -572,8 +760,10 @@ export default function CalendarPage() {
             <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} required
               className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20" />
           </div>
-          <input type="text" placeholder="Lokasi (opsional)" value={newLocation} onChange={e => setNewLocation(e.target.value)}
+          <input type="text" placeholder="Lokasi (opsional)" aria-label="Lokasi" value={newLocation} onChange={e => setNewLocation(e.target.value)}
             className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20" />
+          <RemindPicker value={newRemind} onChange={setNewRemind} />
+          {formError && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{formError}</p>}
           <Button type="submit" loading={saving} size="lg">Simpan Date Plan</Button>
         </form>
       </Modal>

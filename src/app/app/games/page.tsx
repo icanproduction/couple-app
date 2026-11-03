@@ -26,13 +26,13 @@ const GAMES = [
   },
   {
     id: 'deep-talk',
-    title: 'Obrolan Bareng',
-    desc: 'Pertanyaan untuk saling kenal lebih dalam',
+    title: 'Deep Talk',
+    desc: 'Obrolan bertema untuk saling kenal lebih dalam',
     icon: MessageCircleHeart,
     color: 'bg-rose/10 text-rose',
     available: true,
     href: '/app/games/deep-talk',
-    badge: '5 Topik',
+    badge: 'Gratis',
   },
   {
     id: 'truth-or-dare',

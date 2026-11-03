@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import type { RoundResult, RoundType, BroadcastPayload, GameSession } from '@/types/samakan'
+import type { RoundResult, RoundType, BroadcastPayload, GameSession, GamePresence, GameStatus } from '@/types/samakan'
 import type { Json } from '@/types/database'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
@@ -48,24 +48,46 @@ export function getScoreForRound(type: RoundType, hostAnswer: unknown, guestAnsw
   }
 }
 
-// ─── DB OPERATIONS ───
+export type RoundTone = 'match' | 'close' | 'miss'
 
-export async function createGameSession(
-  coupleId: string, createdBy: string, partnerId: string, chapterId: string, roundTypes: string[]
-): Promise<string | null> {
-  const supabase = createClient()
-  const { data, error } = await supabase.from('game_sessions').insert({
-    couple_id: coupleId,
-    created_by: createdBy,
-    partner_id: partnerId,
-    chapter_id: chapterId,
-    round_types: roundTypes,
-    rounds: [] as Json[],
-    status: 'waiting',
-  }).select('id').single()
-  if (error) { console.error('createGameSession error:', error); return null }
-  return data.id
+/**
+ * How a round "felt", decided per round type: slider rounds give partial
+ * points (17/14/10/7/5/3), so a raw score threshold mislabels them.
+ */
+export function getRoundVerdict(result: Pick<RoundResult, 'type' | 'score'>): { tone: RoundTone; label: string } {
+  const { type, score } = result
+  switch (type) {
+    case 'pilih_sama':
+      return score >= 20 ? { tone: 'match', label: 'Kompak!' } : { tone: 'miss', label: 'Belum sama...' }
+    case 'slider_sama':
+    case 'tebak_angka':
+      if (score >= 20) return { tone: 'match', label: 'Persis sama!' }
+      if (score >= 14) return { tone: 'match', label: 'Kompak!' } // selisih ≤ 2
+      if (score >= 7) return { tone: 'close', label: 'Hampir sama' } // selisih 3–4
+      return { tone: 'miss', label: 'Beda jauh...' }
+    case 'tebak_pasangan':
+      if (score >= 20) return { tone: 'match', label: 'Saling kenal banget!' }
+      if (score >= 10) return { tone: 'close', label: 'Setengah benar' }
+      return { tone: 'miss', label: 'Belum ketebak...' }
+    default:
+      return score >= 15 ? { tone: 'match', label: 'Kompak!' } : { tone: 'miss', label: 'Belum sama...' }
+  }
 }
+
+export function sumScores(results: RoundResult[]): number {
+  return results.reduce((total, r) => total + (r.score ?? 0), 0)
+}
+
+/** One result per round, in round order (later entries win). */
+export function normalizeResults(results: RoundResult[]): RoundResult[] {
+  const byRound = new Map<number, RoundResult>()
+  for (const r of results) {
+    if (r && typeof r.roundIndex === 'number') byRound.set(r.roundIndex, r)
+  }
+  return Array.from(byRound.values()).sort((a, b) => a.roundIndex - b.roundIndex)
+}
+
+// ─── DB OPERATIONS ───
 
 export async function getGameSession(sessionId: string): Promise<GameSession | null> {
   const supabase = createClient()
@@ -73,34 +95,55 @@ export async function getGameSession(sessionId: string): Promise<GameSession | n
     .from('game_sessions')
     .select('*')
     .eq('id', sessionId)
-    .single()
+    .maybeSingle()
   return data as GameSession | null
 }
 
-export async function updateSessionPlaying(sessionId: string) {
+/**
+ * waiting → playing, only from 'waiting' so an expired or completed session
+ * is never reopened. Returns the session status after the call.
+ */
+export async function updateSessionPlaying(sessionId: string): Promise<GameStatus | null> {
   const supabase = createClient()
-  await supabase.from('game_sessions').update({
+  const { data, error } = await supabase.from('game_sessions').update({
     status: 'playing',
     started_at: new Date().toISOString(),
-  }).eq('id', sessionId)
+  }).eq('id', sessionId).eq('status', 'waiting').select('status')
+  if (error) console.error('[samakan] gagal memulai sesi:', error.message)
+  if (data && data.length > 0) return 'playing'
+  const current = await getGameSession(sessionId)
+  return current?.status ?? null
 }
 
-export async function updateSessionRound(sessionId: string, roundResult: RoundResult) {
+/** Persists every scored round so a refreshed host can rebuild the game. */
+export async function saveSessionRounds(sessionId: string, results: RoundResult[], totalScore: number) {
   const supabase = createClient()
-  // Fetch current rounds, append new result
-  const { data: session } = await supabase.from('game_sessions').select('rounds').eq('id', sessionId).single()
-  const rounds = [...((session?.rounds as unknown as RoundResult[]) ?? []), roundResult]
-  await supabase.from('game_sessions').update({ rounds: rounds as unknown as Json[] }).eq('id', sessionId)
+  const { error } = await supabase.from('game_sessions').update({
+    rounds: results as unknown as Json[],
+    total_score: totalScore,
+  }).eq('id', sessionId).in('status', ['waiting', 'playing'])
+  if (error) console.error('[samakan] gagal menyimpan ronde:', error.message)
 }
 
 export async function completeGameSession(sessionId: string, totalScore: number, results: RoundResult[]) {
   const supabase = createClient()
-  await supabase.from('game_sessions').update({
+  const { error } = await supabase.from('game_sessions').update({
     status: 'completed',
     total_score: totalScore,
     rounds: results as unknown as Json[],
     completed_at: new Date().toISOString(),
-  }).eq('id', sessionId)
+  }).eq('id', sessionId).neq('status', 'completed')
+  if (error) console.error('[samakan] gagal menyelesaikan sesi:', error.message)
+}
+
+/** Closing the game ends it for both players (frees the couple's open slot). */
+export async function expireGameSession(sessionId: string) {
+  const supabase = createClient()
+  const { error } = await supabase.from('game_sessions')
+    .update({ status: 'expired' })
+    .eq('id', sessionId)
+    .in('status', ['waiting', 'playing'])
+  if (error) console.error('[samakan] gagal mengakhiri sesi:', error.message)
 }
 
 export async function getGameHistory(coupleId: string, limit = 10): Promise<GameSession[]> {
@@ -115,60 +158,69 @@ export async function getGameHistory(coupleId: string, limit = 10): Promise<Game
   return (data ?? []) as unknown as GameSession[]
 }
 
-export async function expireStaleSession(coupleId: string) {
-  const supabase = createClient()
-  const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString()
-  await supabase.from('game_sessions').update({ status: 'expired' })
-    .eq('couple_id', coupleId)
-    .eq('status', 'waiting')
-    .lt('created_at', tenMinAgo)
-}
-
 // ─── REALTIME HOOK ───
 
+/**
+ * Channel `game:<sessionId>`: broadcast for game events, presence for who is
+ * here and who is ready. Presence is keyed by user id, so two tabs of the same
+ * person never count as "partner connected".
+ */
 export function useGameChannel(sessionId: string, userId: string) {
   const supabaseRef = useRef(createClient())
   const channelRef = useRef<RealtimeChannel | null>(null)
-  const [isPartnerConnected, setIsPartnerConnected] = useState(false)
+  const subscribedRef = useRef(false)
+  const presenceRef = useRef<GamePresence>({ user_id: userId, ready: false })
   const eventHandlerRef = useRef<((payload: BroadcastPayload) => void) | null>(null)
-  const userIdRef = useRef(userId)
-  userIdRef.current = userId
+  const partnerJoinRef = useRef<(() => void) | null>(null)
+  const [isPartnerConnected, setIsPartnerConnected] = useState(false)
+  const [isPartnerReady, setIsPartnerReady] = useState(false)
 
   useEffect(() => {
     // Don't connect until we have a real userId
-    if (!userId || userId === 'init') return
+    if (!userId) return
 
     const supabase = supabaseRef.current
+    presenceRef.current = { ...presenceRef.current, user_id: userId }
     const channel = supabase.channel(`game:${sessionId}`, {
-      config: { broadcast: { self: false } },
+      config: { broadcast: { self: false }, presence: { key: userId } },
     })
 
     const checkPresence = () => {
-      const state = channel.presenceState()
-      const keys = Object.keys(state)
-      setIsPartnerConnected(keys.length >= 2)
+      const state = channel.presenceState<GamePresence>()
+      const partnerMetas = Object.entries(state)
+        .filter(([key]) => key !== userId)
+        .flatMap(([, metas]) => metas)
+      setIsPartnerConnected(partnerMetas.length > 0)
+      setIsPartnerReady(partnerMetas.some((m) => m.ready === true))
     }
 
     channel
       .on('broadcast', { event: 'game_event' }, ({ payload }) => {
-        if (eventHandlerRef.current) {
-          eventHandlerRef.current(payload as BroadcastPayload)
-        }
+        eventHandlerRef.current?.(payload as BroadcastPayload)
       })
+      // 'sync' fires after every join/leave once the state is updated
       .on('presence', { event: 'sync' }, checkPresence)
-      .on('presence', { event: 'join' }, checkPresence)
-      .on('presence', { event: 'leave' }, checkPresence)
+      .on('presence', { event: 'join' }, ({ key }) => {
+        if (key !== userId) partnerJoinRef.current?.()
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await channel.track({ user_id: userIdRef.current, online_at: Date.now() })
-          // Check presence immediately after tracking
-          setTimeout(checkPresence, 500)
+          // Also runs after a reconnect: re-announce the latest presence
+          subscribedRef.current = true
+          await channel.track(presenceRef.current)
+          checkPresence()
+        } else {
+          subscribedRef.current = false
         }
       })
 
     channelRef.current = channel
 
     return () => {
+      subscribedRef.current = false
+      channelRef.current = null
+      setIsPartnerConnected(false)
+      setIsPartnerReady(false)
       supabase.removeChannel(channel)
     }
   }, [sessionId, userId])
@@ -181,9 +233,22 @@ export function useGameChannel(sessionId: string, userId: string) {
     })
   }, [])
 
+  /** Lobby readiness lives in presence, so a reconnect cannot lose it. */
+  const setReady = useCallback((ready: boolean) => {
+    presenceRef.current = { ...presenceRef.current, ready }
+    if (subscribedRef.current) {
+      channelRef.current?.track(presenceRef.current)
+    }
+  }, [])
+
   const onEvent = useCallback((handler: (payload: BroadcastPayload) => void) => {
     eventHandlerRef.current = handler
   }, [])
 
-  return { broadcast, onEvent, isPartnerConnected }
+  /** Called whenever the partner (re)appears in presence. */
+  const onPartnerJoin = useCallback((handler: () => void) => {
+    partnerJoinRef.current = handler
+  }, [])
+
+  return { broadcast, onEvent, onPartnerJoin, setReady, isPartnerConnected, isPartnerReady }
 }

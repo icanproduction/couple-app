@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Lock, MailOpen, Mail, ChevronRight, Clock, BookOpen, Inbox, PenLine } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
+import { createClient, getClientUser } from '@/lib/supabase'
 
 interface Letter {
   id: string
@@ -13,8 +13,8 @@ interface Letter {
   occasion_label: string | null
   unlock_date: string
   is_opened: boolean | null
+  opened_at: string | null
   created_at: string | null
-  content: string
 }
 
 const OCCASION_LABELS: Record<string, string> = {
@@ -59,14 +59,21 @@ export default function LettersPage() {
   const [letters, setLetters] = useState<Letter[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'diterima' | 'dikirim'>('diterima')
+  const [loadError, setLoadError] = useState('')
+  // Re-render every minute so countdowns tick and unlocked letters flip state
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setTick(n => n + 1), 60000)
+    return () => clearInterval(t)
+  }, [])
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const user = await getClientUser()
+    if (!user) { router.replace('/auth/login'); return }
     setMyId(user.id)
 
-    const { data: membership } = await supabase.from('couple_members').select('couple_id').eq('profile_id', user.id).single()
+    const { data: membership } = await supabase.from('couple_members').select('couple_id').eq('profile_id', user.id).maybeSingle()
     if (!membership?.couple_id) { setLoading(false); return }
 
     const { data: partnerMembers } = await supabase.from('couple_members').select('profile_id').eq('couple_id', membership.couple_id).neq('profile_id', user.id)
@@ -75,15 +82,18 @@ export default function LettersPage() {
       if (pp?.name) setPartnerName(pp.name)
     }
 
-    const { data } = await supabase
+    // Never select `content` here: it is only readable through read_letter()
+    // once the letter is unlocked (the column is not granted to clients).
+    const { data, error } = await supabase
       .from('letters')
-      .select('id, sender_id, receiver_id, occasion, occasion_label, unlock_date, is_opened, created_at, content')
+      .select('id, sender_id, receiver_id, occasion, occasion_label, unlock_date, is_opened, opened_at, created_at')
       .eq('couple_id', membership.couple_id)
       .order('unlock_date', { ascending: true })
 
+    if (error) setLoadError('Gagal memuat surat. Coba muat ulang halaman.')
     setLetters((data ?? []) as Letter[])
     setLoading(false)
-  }, [])
+  }, [router])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -103,7 +113,9 @@ export default function LettersPage() {
     const ms = msUntil(letter.unlock_date)
     const isUnlocked = ms <= 0
     const isMine = letter.sender_id === myId
-    const isOpened = letter.is_opened
+    const isOpened = !!letter.is_opened
+    // Only the receiver gets the "ready to open" highlight
+    const isReady = isUnlocked && !isOpened && !isMine
     const daysLeft = Math.ceil(ms / 86400000)
 
     const occasion = letter.occasion ? (OCCASION_LABELS[letter.occasion] ?? 'Surat') : 'Surat Rahasia'
@@ -113,7 +125,7 @@ export default function LettersPage() {
         key={letter.id}
         onClick={() => isUnlocked || isMine ? router.push(`/app/letters/${letter.id}`) : undefined}
         className={`flex w-full items-start gap-4 rounded-2xl border bg-white p-4 text-left shadow-card transition-all ${
-          isUnlocked && !isOpened ? 'border-rose/40 hover:border-rose' :
+          isReady ? 'border-rose/40 hover:border-rose' :
           isUnlocked ? 'border-border hover:border-sage' :
           isMine ? 'border-border hover:border-border/60' :
           'border-border cursor-default'
@@ -121,11 +133,11 @@ export default function LettersPage() {
       >
         {/* Envelope icon */}
         <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl transition-all ${
-          isUnlocked && !isOpened ? 'bg-rose/10 animate-pulse' :
+          isReady ? 'bg-rose/10 animate-pulse' :
           isUnlocked ? 'bg-sage/10' :
           'bg-cream'
         }`}>
-          {isUnlocked && !isOpened
+          {isReady
             ? <MailOpen className="h-5 w-5 text-rose" />
             : isUnlocked
             ? <BookOpen className="h-5 w-5 text-sage-dark" />
@@ -135,7 +147,7 @@ export default function LettersPage() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
             <p className="text-xs font-semibold text-ink-muted">{occasion}</p>
-            {isUnlocked && !isOpened && (
+            {isReady && (
               <span className="rounded-full bg-rose px-2 py-0.5 text-[10px] font-bold text-white">BUKA!</span>
             )}
             {!isUnlocked && !isMine && daysLeft <= 7 && (
@@ -147,7 +159,11 @@ export default function LettersPage() {
           </p>
           <p className="mt-0.5 text-xs text-ink-muted">
             {isUnlocked ? (
-              isOpened ? `Dibuka ${formatWIB(letter.unlock_date)}` : `Bisa dibuka sekarang!`
+              isOpened
+                ? (letter.opened_at
+                    ? `${isMine ? `Dibaca ${partnerName}` : 'Dibuka'} ${formatWIB(letter.opened_at)}`
+                    : isMine ? `Sudah dibaca ${partnerName}` : 'Sudah dibuka')
+                : isMine ? `Sudah terbuka · belum dibaca ${partnerName}` : 'Bisa dibuka sekarang!'
             ) : (
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3 flex-shrink-0" />
@@ -167,14 +183,14 @@ export default function LettersPage() {
   return (
     <div className="animate-fade-in pb-6">
       <div className="border-b border-border bg-white px-6 py-5">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <h1 className="text-xl font-bold text-ink">Surat Rahasia</h1>
             <p className="text-sm text-ink-muted">Pesan terkunci untuk momen spesial</p>
           </div>
           <button
             onClick={() => router.push('/app/letters/tulis')}
-            className="flex items-center gap-1.5 rounded-xl bg-rose px-3 py-2 text-xs font-bold text-white shadow-sm"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl bg-rose px-3 py-2 text-xs font-bold text-white shadow-sm"
           >
             <Plus className="h-4 w-4" /> Tulis
           </button>
@@ -201,6 +217,9 @@ export default function LettersPage() {
       </div>
 
       <div className="space-y-3 px-6 pt-5">
+        {loadError && (
+          <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{loadError}</p>
+        )}
         {loading ? (
           <div className="flex justify-center py-12"><div className="h-5 w-5 animate-spin rounded-full border-2 border-rose border-t-transparent" /></div>
         ) : displayed.length === 0 ? (

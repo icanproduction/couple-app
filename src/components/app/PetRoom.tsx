@@ -8,6 +8,7 @@ import PetSvgDog from './PetSvgDog'
 import { CARE_ACTION_META, MOOD_META, type CareAction, type PetMood } from '@/types/pet'
 import { performCareAction, getDecayedStats, getLastCareAction, calculateMood } from '@/lib/pet'
 import { createClient } from '@/lib/supabase'
+import { daysSince, todayJakarta } from '@/lib/dates'
 
 interface Props {
   pet: { id: string; couple_id: string; name: string; pet_type: string; level: number; xp: number; created_at: string | null }
@@ -23,18 +24,27 @@ const ACTION_EMOJIS: Record<CareAction, string> = {
 
 export default function PetRoom({ pet, moodState, myActions, userId, coupleId }: Props) {
   const router = useRouter()
-  const daysSinceAdopt = pet.created_at ? Math.floor((Date.now() - new Date(pet.created_at).getTime()) / 86400000) : 0
+  // Calendar days in Jakarta since adoption
+  const daysSinceAdopt = pet.created_at ? Math.max(0, daysSince(todayJakarta(new Date(pet.created_at)))) : 0
 
+  // No mood row yet → DB defaults (70); the first care action creates the row
   const decayed = moodState && moodState.updated_at
     ? getDecayedStats({ ...moodState, updated_at: moodState.updated_at })
     : moodState
       ? { hunger: moodState.hunger, happiness: moodState.happiness, cleanliness: moodState.cleanliness, mood: calculateMood(moodState.hunger, moodState.happiness, moodState.cleanliness) }
-      : { hunger: 80, happiness: 80, cleanliness: 80, mood: 'happy' as PetMood }
+      : { hunger: 70, happiness: 70, cleanliness: 70, mood: 'happy' as PetMood }
 
   const [stats, setStats] = useState(decayed)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [cooldowns, setCooldowns] = useState<Record<string, boolean>>({})
   const [cooldownsLoaded, setCooldownsLoaded] = useState(false)
+  const [actionError, setActionError] = useState('')
+
+  useEffect(() => {
+    if (!actionError) return
+    const t = setTimeout(() => setActionError(''), 3500)
+    return () => clearTimeout(t)
+  }, [actionError])
 
   const mood = stats.mood
   const moodMeta = MOOD_META[mood]
@@ -70,21 +80,12 @@ export default function PetRoom({ pet, moodState, myActions, userId, coupleId }:
   const handleAction = useCallback(async (action: CareAction) => {
     if (cooldowns[action] || actionLoading) return
     setActionLoading(action)
+    setActionError('')
     try {
       const meta = CARE_ACTION_META[action]
-      await performCareAction(pet.id, action, userId, meta)
-
-      // Update local stats
-      const stat = meta.stat
-      setStats(prev => {
-        const newVal = Math.min(100, prev[stat] + meta.restoreAmount)
-        const h = stat === 'hunger' ? newVal : prev.hunger
-        const ha = stat === 'happiness' ? newVal : prev.happiness
-        const c = stat === 'cleanliness' ? newVal : prev.cleanliness
-        const avg = (h + ha + c) / 3
-        const m: PetMood = avg >= 80 ? 'thriving' : avg >= 60 ? 'happy' : avg >= 40 ? 'neutral' : avg >= 20 ? 'lonely' : 'sad'
-        return { hunger: h, happiness: ha, cleanliness: c, mood: m }
-      })
+      // Returns the saved stats (decayed first, then restored) — same as the DB
+      const next = await performCareAction(pet.id, action, userId, meta)
+      setStats(next)
 
       // Set cooldown with auto-expiry timer
       setCooldowns(prev => ({ ...prev, [action]: true }))
@@ -108,11 +109,16 @@ export default function PetRoom({ pet, moodState, myActions, userId, coupleId }:
             title: `${pet.name} dirawat! 🐾`,
             body: `Pasanganmu baru saja ${CARE_ACTION_META[action].label.toLowerCase()} ${pet.name}`,
             url: '/app/pet',
+            kind: 'activity',
           }),
         }).catch(() => {})
       }
     } catch (e) {
-      console.error('Care action failed:', e)
+      const onCooldown = e instanceof Error && e.message.includes('cooldown')
+      if (onCooldown) setCooldowns(prev => ({ ...prev, [action]: true }))
+      setActionError(onCooldown
+        ? `${CARE_ACTION_META[action].label} baru saja dilakukan, tunggu sebentar ya.`
+        : 'Gagal merawat, coba lagi ya.')
     } finally {
       setActionLoading(null)
     }
@@ -225,8 +231,17 @@ export default function PetRoom({ pet, moodState, myActions, userId, coupleId }:
         {pet.pet_type === 'cat' ? <PetSvgCat /> : <PetSvgDog />}
       </div>
 
+      {/* Action feedback */}
+      {actionError && (
+        <div className="absolute bottom-[120px] left-4 right-4 z-[10] rounded-xl bg-white/95 px-3 py-2 text-center text-[11px] font-semibold text-rose shadow-sm">
+          {actionError}
+        </div>
+      )}
+
       {/* Quick action buttons */}
-      <div className="absolute bottom-[72px] left-0 right-0 flex justify-center gap-2 px-3.5 z-[8]">
+      {/* Equal columns, emoji above the label: four buttons in a row overflowed
+          both edges on 360px phones (centered flex row with no wrapping). */}
+      <div className="absolute bottom-[72px] left-0 right-0 flex gap-2 px-3.5 z-[8]">
         {availableQuickActions.map((action, i) => {
           const isOnCooldown = cooldowns[action]
           const isLoading = actionLoading === action
@@ -236,7 +251,7 @@ export default function PetRoom({ pet, moodState, myActions, userId, coupleId }:
               key={action}
               onClick={() => handleAction(action)}
               disabled={disabled}
-              className={`flex items-center gap-1.5 rounded-[14px] px-3 py-2 border transition-transform ${
+              className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-[14px] px-1.5 py-2 border transition-transform ${
                 i === 0 && !isOnCooldown && cooldownsLoaded
                   ? 'bg-rose border-rose text-white shadow-[0_4px_12px_rgba(240,107,107,0.3)]'
                   : isOnCooldown || !cooldownsLoaded
@@ -245,7 +260,7 @@ export default function PetRoom({ pet, moodState, myActions, userId, coupleId }:
               } ${!disabled ? 'hover:-translate-y-0.5' : ''}`}
             >
               <span className="text-[15px]">{isLoading ? '⏳' : ACTION_EMOJIS[action]}</span>
-              <span className={`text-[10px] font-bold ${i === 0 && !isOnCooldown && cooldownsLoaded ? 'text-white' : 'text-ink'}`}>
+              <span className={`whitespace-nowrap text-[10px] font-bold ${i === 0 && !isOnCooldown && cooldownsLoaded ? 'text-white' : 'text-ink'}`}>
                 {CARE_ACTION_META[action].label}
               </span>
             </button>
@@ -253,10 +268,10 @@ export default function PetRoom({ pet, moodState, myActions, userId, coupleId }:
         })}
         <button
           onClick={() => router.push('/app/pet/care')}
-          className="flex items-center gap-1.5 rounded-[14px] px-3 py-2 border border-[#F0E4D8] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 transition-transform"
+          className="flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-[14px] px-1.5 py-2 border border-[#F0E4D8] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 transition-transform"
         >
           <span className="text-[15px]">📋</span>
-          <span className="text-[10px] font-bold text-ink">Semua</span>
+          <span className="whitespace-nowrap text-[10px] font-bold text-ink">Semua</span>
         </button>
       </div>
 

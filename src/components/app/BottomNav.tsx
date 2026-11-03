@@ -2,12 +2,13 @@
 
 import { memo, useTransition, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Home, Heart, Wallet, CalendarDays, User } from 'lucide-react'
+import { Home, Compass, Wallet, CalendarDays, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+// Pasangan moved into Jelajah (the hub of every feature) to make room.
 const leftTabs = [
   { href: '/app/home',     icon: Home,     label: 'Beranda' },
-  { href: '/app/partner',   icon: Heart,    label: 'Pasangan' },
+  { href: '/app/jelajah',  icon: Compass,  label: 'Jelajah' },
 ]
 
 const rightTabs = [
@@ -21,18 +22,23 @@ function BottomNavInner() {
   const [isPending, startTransition] = useTransition()
 
   const navigate = useCallback((href: string) => {
-    if (pathname.startsWith(href)) return // already on this tab
+    // Exact match only: from a sub-page (/app/profile/notifikasi) the tab goes back to its root.
+    if (pathname === href) return
     startTransition(() => {
       router.push(href)
     })
   }, [pathname, router, startTransition])
 
+  // Every page without its own tab (Moment, Mood, Games…) lives under Jelajah.
+  const ownTab = ['/app/home', '/app/finance', '/app/calendar', '/app/profile'].some((h) => pathname.startsWith(h))
+
   function renderTab(href: string, Icon: typeof Home, label: string) {
-    const active = pathname.startsWith(href)
+    const active = pathname.startsWith(href) || (href === '/app/jelajah' && !ownTab)
     return (
       <button
         key={href}
         onClick={() => navigate(href)}
+        aria-current={active ? 'page' : undefined}
         className="flex flex-1 flex-col items-center gap-0.5 py-2"
       >
         <div className={cn(
@@ -55,7 +61,7 @@ function BottomNavInner() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-1/2 w-full max-w-lg -translate-x-1/2 border-t border-border bg-surface">
+    <nav className="fixed bottom-0 left-1/2 w-full max-w-lg -translate-x-1/2 border-t border-border bg-surface print:hidden">
       {/* Loading indicator */}
       {isPending && (
         <div className="absolute left-0 right-0 top-0 h-0.5 overflow-hidden">
@@ -70,6 +76,8 @@ function BottomNavInner() {
         <div className="flex flex-1 flex-col items-center -mt-5">
           <button
             onClick={() => navigate('/app/finance')}
+            aria-label="Keuangan"
+            aria-current={pathname.startsWith('/app/finance') ? 'page' : undefined}
             className={cn(
               'flex h-14 w-14 items-center justify-center rounded-full shadow-elevated transition-all active:scale-95',
               pathname.startsWith('/app/finance') ? 'bg-rose-dark' : 'bg-rose'
@@ -77,7 +85,7 @@ function BottomNavInner() {
           >
             <Wallet className="h-6 w-6 text-white" strokeWidth={2} />
           </button>
-          <span className={cn(
+          <span aria-hidden className={cn(
             'mt-1 text-[10px] font-medium leading-none',
             pathname.startsWith('/app/finance') ? 'text-rose' : 'text-ink-muted'
           )}>

@@ -1,6 +1,7 @@
 import BottomNav from '@/components/app/BottomNav'
 
-// Auth is already checked by middleware — no duplicate check needed here
+// The middleware already requires a signed-in user with a name and a couple
+// (unfinished accounts are sent back to onboarding) — no duplicate check here.
 export default function AppLayout({
   children,
 }: {

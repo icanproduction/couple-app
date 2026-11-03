@@ -3,11 +3,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Heart } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
+import { todayJakarta } from '@/lib/dates'
 
 interface MissYouButtonProps {
   myId: string
   myName: string
   partnerId: string | null
+  partnerName?: string | null
   coupleId: string | null
 }
 
@@ -22,22 +24,22 @@ function formatCountdown(ms: number): string {
   return `${m}m`
 }
 
-function isToday(dateStr: string): boolean {
-  const d = new Date(dateStr)
-  const now = new Date()
-  return d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
+/** Same Jakarta calendar day as now (the daily limit resets at 00:00 WIB) */
+function isToday(dateStr: string | null): boolean {
+  if (!dateStr) return false
+  return todayJakarta(new Date(dateStr)) === todayJakarta()
 }
 
-export default function MissYouButton({ myId, myName, partnerId, coupleId }: MissYouButtonProps) {
+export default function MissYouButton({ myId, myName, partnerId, partnerName, coupleId }: MissYouButtonProps) {
   const [sending, setSending] = useState(false)
   const [justSent, setJustSent] = useState(false)
+  const [sendError, setSendError] = useState('')
   const [pushStatus, setPushStatus] = useState<'idle' | 'sent' | 'no_sub'>('idle')
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null) // timestamp ms
   const [usedToday, setUsedToday] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [tick, setTick] = useState(0)
+  const [repliedAt, setRepliedAt] = useState<string | null>(null)
+  const [, setTick] = useState(0)
 
   // countdown timer
   useEffect(() => {
@@ -51,14 +53,19 @@ export default function MissYouButton({ myId, myName, partnerId, coupleId }: Mis
     const supabase = createClient()
     const { data } = await supabase
       .from('miss_you')
-      .select('created_at')
+      .select('created_at, responded, responded_at')
       .eq('sender_id', myId)
       .order('created_at', { ascending: false })
       .limit(10)
 
     const rows = data ?? []
-    const todayCount = rows.filter(r => isToday(r.created_at!)).length
+    const todayCount = rows.filter(r => isToday(r.created_at)).length
     setUsedToday(todayCount)
+
+    // The partner answered my latest kangen ("kangen kamu juga") in the last day
+    const answered = rows[0]?.responded && rows[0].responded_at
+      && Date.now() - new Date(rows[0].responded_at).getTime() < 24 * 3600000
+    setRepliedAt(answered ? rows[0].responded_at : null)
 
     const latest = rows[0]
     if (latest) {
@@ -82,6 +89,7 @@ export default function MissYouButton({ myId, myName, partnerId, coupleId }: Mis
   async function handleTap() {
     if (isDisabled) return
     setSending(true)
+    setSendError('')
     const supabase = createClient()
 
     // Server-side cooldown check: query last tap
@@ -110,8 +118,11 @@ export default function MissYouButton({ myId, myName, partnerId, coupleId }: Mis
       receiver_id: partnerId!,
     })
 
-    if (!error) {
+    if (error) {
+      setSendError('Kangen belum terkirim. Coba lagi ya.')
+    } else {
       setJustSent(true)
+      setRepliedAt(null)
       setCooldownUntil(Date.now() + COOLDOWN_MINUTES * 60 * 1000)
       setUsedToday(u => u + 1)
       setTimeout(() => setJustSent(false), 3000)
@@ -126,6 +137,7 @@ export default function MissYouButton({ myId, myName, partnerId, coupleId }: Mis
             title: '💓 Nanti Kita',
             body: `${myName} lagi kangen kamu`,
             url: '/app/home',
+            kind: 'kangen',
           }),
         })
         const pushData = await pushRes.json()
@@ -203,6 +215,14 @@ export default function MissYouButton({ myId, myName, partnerId, coupleId }: Mis
           ) : (
             <span className="text-ink-muted">Mengirim...</span>
           )}
+        </p>
+      )}
+      {sendError && (
+        <p className="mt-1.5 text-center text-xs font-medium text-red-500">{sendError}</p>
+      )}
+      {!justSent && repliedAt && (
+        <p className="mt-1.5 flex items-center justify-center gap-1 text-center text-xs font-semibold text-rose animate-fade-in">
+          <Heart className="h-3 w-3" fill="currentColor" /> {partnerName ?? 'Pasanganmu'} kangen kamu juga
         </p>
       )}
     </div>

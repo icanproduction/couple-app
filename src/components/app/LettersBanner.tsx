@@ -20,9 +20,10 @@ export default function LettersBanner({ myId, coupleId }: LettersBannerProps) {
     const supabase = createClient()
     const now = new Date().toISOString()
 
+    // select('id'): `*` would include the non-granted `content` column (403)
     const { count } = await supabase
       .from('letters')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('receiver_id', myId)
       .eq('is_opened', false)
       .lte('unlock_date', now)
@@ -40,7 +41,7 @@ export default function LettersBanner({ myId, coupleId }: LettersBannerProps) {
     return (
       <button
         onClick={() => router.push('/app/letters')}
-        className="mx-4 flex w-[calc(100%-2rem)] items-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 p-4 text-left shadow-elevated transition-all active:scale-[0.98]"
+        className="mx-6 flex w-[calc(100%-3rem)] items-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 p-4 text-left shadow-elevated transition-all active:scale-[0.98]"
       >
         <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm animate-bounce">
           <Mail className="h-5 w-5 text-white" />
@@ -60,7 +61,7 @@ export default function LettersBanner({ myId, coupleId }: LettersBannerProps) {
   return (
     <button
       onClick={() => router.push('/app/letters')}
-      className="mx-4 flex w-[calc(100%-2rem)] items-center gap-4 rounded-2xl border border-border bg-white p-4 text-left shadow-card transition-all active:scale-[0.98]"
+      className="mx-6 flex w-[calc(100%-3rem)] items-center gap-4 rounded-2xl border border-border bg-white p-4 text-left shadow-card transition-all active:scale-[0.98]"
     >
       <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-amber-50">
         <Mail className="h-5 w-5 text-amber-600" />
