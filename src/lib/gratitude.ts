@@ -1,4 +1,4 @@
-// Toples Apresiasi (F18): short notes of appreciation to your partner, kept
+// Jar (was "Jar Apresiasi", F18): short notes of appreciation to your partner, kept
 // sealed in a jar until the partner draws one at random. The DB lets only the
 // recipient set opened_at (column grant) and only the sender delete a note
 // while it's still unopened. Runtime-import-free so scripts/verify can load it.

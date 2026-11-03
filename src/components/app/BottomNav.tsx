@@ -2,7 +2,7 @@
 
 import { memo, useTransition, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Home, Compass, Wallet, CalendarDays, User } from 'lucide-react'
+import { Home, Compass, Camera, CalendarDays, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // The partner page moved into Jelajah (the hub of every feature) to make room.
@@ -29,8 +29,9 @@ function BottomNavInner() {
     })
   }, [pathname, router, startTransition])
 
-  // Every page without its own tab (Moment, Mood, Games…) lives under Jelajah.
-  const ownTab = ['/app/home', '/app/finance', '/app/calendar', '/app/profile'].some((h) => pathname.startsWith(h))
+  // Every page without its own tab (Money, Mood, Games…) lives under Jelajah.
+  const ownTab = ['/app/home', '/app/moments', '/app/calendar', '/app/profile'].some((h) => pathname.startsWith(h))
+  const momentsActive = pathname.startsWith('/app/moments')
 
   function renderTab(href: string, Icon: typeof Home, label: string) {
     const active = pathname.startsWith(href) || (href === '/app/jelajah' && !ownTab)
@@ -72,24 +73,24 @@ function BottomNavInner() {
       <div className="flex items-center justify-around px-2 pb-safe-nav pt-1">
         {leftTabs.map(({ href, icon, label }) => renderTab(href, icon, label))}
 
-        {/* Center floating button — Finance */}
+        {/* Center floating button: Moments (Money lives in Jelajah → Plans) */}
         <div className="flex flex-1 flex-col items-center -mt-5">
           <button
-            onClick={() => navigate('/app/finance')}
-            aria-label="Money"
-            aria-current={pathname.startsWith('/app/finance') ? 'page' : undefined}
+            onClick={() => navigate('/app/moments')}
+            aria-label="Moments"
+            aria-current={momentsActive ? 'page' : undefined}
             className={cn(
               'flex h-14 w-14 items-center justify-center rounded-full shadow-elevated transition-all active:scale-95',
-              pathname.startsWith('/app/finance') ? 'bg-rose-dark' : 'bg-rose'
+              momentsActive ? 'bg-rose-dark' : 'bg-rose'
             )}
           >
-            <Wallet className="h-6 w-6 text-white" strokeWidth={2} />
+            <Camera className="h-6 w-6 text-white" strokeWidth={2} />
           </button>
           <span aria-hidden className={cn(
             'mt-1 text-[10px] font-medium leading-none',
-            pathname.startsWith('/app/finance') ? 'text-rose' : 'text-ink-muted'
+            momentsActive ? 'text-rose' : 'text-ink-muted'
           )}>
-            Money
+            Moments
           </span>
         </div>
 

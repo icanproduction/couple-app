@@ -707,7 +707,7 @@ export default function ProfilePage() {
         <p>
           The memory archive with your previous partner will be
           <span className="font-semibold text-danger"> deleted for good and can&apos;t be recovered</span>:
-          moments and their photos, letters, savings, calendar, Bucket List, Toples, moods and more.
+          moments and their photos, letters, savings, calendar, Bucket List, Jar, moods and more.
         </p>
         <p>Your account stays. After this you can start a new space or join one with an invite code.</p>
         <p className="text-xs">
@@ -748,7 +748,7 @@ export default function ProfilePage() {
         {hasPartner ? (
           <p>
             The moments, savings, calendar and Bucket List you filled in together stay saved for your partner.
-            Letters and Toples notes between you two are deleted too.
+            Letters and Jar notes between you two are deleted too.
           </p>
         ) : couple ? (
           <p>You&apos;re the only member, so all of this couple&apos;s data is deleted too, including Moment photos.</p>

@@ -33,7 +33,7 @@ const SECTIONS: Section[] = [
     tiles: [
       { href: '/app/partner', icon: Heart, label: 'Partner', desc: 'Get to know them better', tone: ROSE },
       { href: '/app/mood', icon: Smile, label: 'Daily Mood', desc: 'How you feel today', tone: GOLD, badge: 'New' },
-      { href: '/app/toples', icon: Gift, label: 'Toples', desc: 'Little notes of thanks', tone: ROSE, badge: 'New' },
+      { href: '/app/toples', icon: Gift, label: 'Jar', desc: 'Little notes of thanks', tone: ROSE, badge: 'New' },
       { href: '/app/aktivitas', icon: Bell, label: 'Activity', desc: "What's new with you two", tone: BLUE, badge: 'New' },
       { href: '/app/milestone', icon: Trophy, label: 'Milestones', desc: '100 days, 1 year and more', tone: GOLD, badge: 'New' },
       { href: '/app/perjalanan', icon: Route, label: 'Our Story', desc: 'Everything on one timeline', tone: PURPLE, badge: 'New' },

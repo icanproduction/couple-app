@@ -65,7 +65,7 @@ const MARKERS = [
 const MARKER_RE = new RegExp(`\\b(${[...new Set(MARKERS)].join('|')})\\b`, 'i')
 const NYA_RE = /\b[a-z]{3,}nya\b/i
 // Kept Indonesian names (docs/COPY-GUIDE.md §Glossary). Removed before testing.
-const ALLOW = ['Nanti Kita', 'Pet Kita', 'Kangen', 'Toples', 'Jelajah', 'Samakan']
+const ALLOW = ['Nanti Kita', 'Pet Kita', 'Kangen', 'Jelajah', 'Samakan']
 const EM_DASH = '—'
 
 const UI_ATTRS = new Set([

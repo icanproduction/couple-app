@@ -96,14 +96,14 @@ export default function ToplesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           recipientId: partnerId,
-          title: 'Toples',
-          body: `${myName} put a new note of thanks in your Toples`,
+          title: 'Jar',
+          body: `${myName} put a new note of thanks in your Jar`,
           url: '/app/toples',
           kind: 'activity',
         }),
       }).catch(() => {})
     } catch {
-      setSendError("Your note didn't make it into the Toples. Try again.")
+      setSendError("Your note didn't make it into the Jar. Try again.")
     } finally {
       setSending(false)
     }
@@ -131,7 +131,7 @@ export default function ToplesPage() {
         setNotes(fresh)
         candidates = splitNotes(fresh, userId).waiting
       }
-      setDrawError('The Toples is empty after all. Wait for the next note.')
+      setDrawError('The Jar is empty after all. Wait for the next note.')
     } catch {
       setDrawError("Couldn't take a note out. Try again.")
     } finally {
@@ -162,7 +162,7 @@ export default function ToplesPage() {
         <Link href="/app/jelajah" className="mb-3 flex w-fit items-center gap-1 text-sm text-ink-muted">
           <ArrowLeft className="h-4 w-4" /> Jelajah
         </Link>
-        <h1 className="text-xl font-bold text-ink">Toples</h1>
+        <h1 className="text-xl font-bold text-ink">Jar</h1>
         <p className="text-sm text-ink-muted">Little notes of thanks for {partnerName}</p>
       </div>
 
@@ -173,7 +173,7 @@ export default function ToplesPage() {
         </div>
       ) : status === 'nocouple' ? (
         <div className="px-8 pt-16 text-center">
-          <p className="text-sm text-ink-muted">Connect with your partner first to start filling the Toples.</p>
+          <p className="text-sm text-ink-muted">Connect with your partner first to start filling the Jar.</p>
           <Link href="/app/profile" className="mt-4 inline-block text-sm font-semibold text-rose">Go to Profile</Link>
         </div>
       ) : status === 'error' && !jar ? (
@@ -202,7 +202,7 @@ export default function ToplesPage() {
                 </>
               ) : (
                 <>
-                  <p className="text-base font-bold text-ink">Your Toples is empty</p>
+                  <p className="text-base font-bold text-ink">Your Jar is empty</p>
                   <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-ink-muted">
                     {partnerId
                       ? `When ${partnerName} writes you a note of thanks, it shows up here.`
@@ -244,14 +244,14 @@ export default function ToplesPage() {
                 {sendError && <p className="mt-2 text-xs font-medium text-red-600">{sendError}</p>}
                 {sentFlash && (
                   <p className="mt-2 flex animate-fade-in items-center gap-1.5 rounded-xl bg-sage/10 px-3 py-2 text-xs font-semibold text-sage-dark" role="status">
-                    <Check className="h-3.5 w-3.5" /> Added to {partnerName}&apos;s Toples
+                    <Check className="h-3.5 w-3.5" /> Added to {partnerName}&apos;s Jar
                   </p>
                 )}
               </form>
             ) : (
               <div className="mt-2 rounded-xl bg-cream px-3 py-3">
                 <p className="text-xs text-ink-muted">
-                  Your partner hasn&apos;t joined yet. Share the invite code from Profile so you can fill each other&apos;s Toples.
+                  Your partner hasn&apos;t joined yet. Share the invite code from Profile so you can fill each other&apos;s Jar.
                 </p>
                 <Link href="/app/profile" className="mt-2 inline-block text-xs font-semibold text-rose">Go to Profile</Link>
               </div>
@@ -277,7 +277,7 @@ export default function ToplesPage() {
                         {dateOf(n.created_at)} ·{' '}
                         {n.opened_at
                           ? <span className="font-semibold text-sage-dark">Opened {dateOf(n.opened_at)}</span>
-                          : 'Still in the Toples'}
+                          : 'Still in the Jar'}
                       </p>
                     </div>
                     {!n.opened_at && (
@@ -329,7 +329,7 @@ export default function ToplesPage() {
 
       <Modal open={!!confirmDelete} onClose={() => !deleting && setConfirmDelete(null)} title="Delete this note?">
         <p className="mb-5 break-words text-sm text-ink-light">
-          “{confirmDelete?.body}” will come out of {partnerName}&apos;s Toples before they open it.
+          “{confirmDelete?.body}” will come out of {partnerName}&apos;s Jar before they open it.
         </p>
         <div className="flex gap-3">
           <Button variant="secondary" onClick={() => setConfirmDelete(null)} disabled={deleting}>Cancel</Button>
@@ -343,7 +343,7 @@ export default function ToplesPage() {
 function ErrorBox({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="mx-6 mt-5 flex items-center justify-between gap-3 rounded-xl bg-red-50 px-3 py-2">
-      <p className="text-sm text-red-600">Couldn&apos;t load the Toples.</p>
+      <p className="text-sm text-red-600">Couldn&apos;t load the Jar.</p>
       <button onClick={onRetry} className="flex items-center gap-1 text-xs font-semibold text-red-600">
         <RefreshCw className="h-3.5 w-3.5" /> Try again
       </button>
@@ -355,7 +355,7 @@ function ErrorBox({ onRetry }: { onRetry: () => void }) {
 function Jar({ count }: { count: number }) {
   const papers = Math.min(count, MAX_PAPERS)
   return (
-    <div className="relative mx-auto h-48 w-40" role="img" aria-label={`Toples holding ${count} ${count === 1 ? 'note' : 'notes'}`}>
+    <div className="relative mx-auto h-48 w-40" role="img" aria-label={`Jar holding ${count} ${count === 1 ? 'note' : 'notes'}`}>
       {/* Lid */}
       <div className="absolute left-1/2 top-0 z-10 h-5 w-28 -translate-x-1/2 rounded-lg bg-gold shadow-card" />
       <div className="absolute left-1/2 top-4 h-3 w-24 -translate-x-1/2 rounded-sm bg-gold-dark/60" />

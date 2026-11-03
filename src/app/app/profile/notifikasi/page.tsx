@@ -36,7 +36,7 @@ const KINDS: { key: KindKey; label: string; desc: string }[] = [
   { key: 'letters', label: 'Letters', desc: 'New letters, and letters that are ready to open' },
   { key: 'moments', label: 'Moments', desc: 'New moments, comments and reactions' },
   { key: 'reminders', label: 'Calendar reminders', desc: 'Birthdays, anniversaries and events you set a reminder for' },
-  { key: 'activity', label: 'Partner activity', desc: 'Daily Mood, Bucket List, Savings, Toples and the Daily Question' },
+  { key: 'activity', label: 'Partner activity', desc: 'Daily Mood, Bucket List, Savings, Jar and the Daily Question' },
 ]
 
 function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: () => void; label: string; disabled?: boolean }) {

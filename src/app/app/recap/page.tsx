@@ -258,7 +258,7 @@ export default function RecapPage() {
                 <StatTile icon={MessageSquareHeart} tone="bg-gold/20 text-gold-dark" value={recap.dailyBothDays} label={recap.dailyBothDays === 1 ? 'day in sync' : 'days in sync'} sub="you both answered" />
                 <StatTile icon={CircleCheck} tone="bg-sage/20 text-sage-dark" value={recap.bucketDone} label={recap.bucketDone === 1 ? 'wish ticked off' : 'wishes ticked off'} sub={recap.bucketDoneTitles[0] ?? null} />
                 <StatTile icon={Mail} tone="bg-purple-100 text-purple-600" value={recap.lettersWritten} label={recap.lettersWritten === 1 ? 'letter written' : 'letters written'} />
-                <StatTile icon={HeartHandshake} tone="bg-gold/20 text-gold-dark" value={recap.gratitudeNotes} label={recap.gratitudeNotes === 1 ? 'note in the Toples' : 'notes in the Toples'} />
+                <StatTile icon={HeartHandshake} tone="bg-gold/20 text-gold-dark" value={recap.gratitudeNotes} label={recap.gratitudeNotes === 1 ? 'note in the Jar' : 'notes in the Jar'} />
                 <StatTile icon={Gamepad2} tone="bg-blue-50 text-blue-600" value={recap.gamesCompleted} label={recap.gamesCompleted === 1 ? 'Samakan game played' : 'Samakan games played'} />
                 <StatTile
                   icon={PiggyBank}

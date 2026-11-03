@@ -52,7 +52,11 @@ export default function WriteLetter() {
   const [myId, setMyId] = useState<string | null>(null)
 
   const [occasion, setOccasion] = useState('anniversary')
-  const [unlockDate, setUnlockDate] = useState(() => todayJakarta())
+  // Date-dependent values are set after mount: this page is prerendered at build
+  // time, so a build-day "today" in the HTML would not match the browser's today
+  // (React hydration errors #418/#423/#425 after midnight WIB).
+  const [unlockDate, setUnlockDate] = useState('')
+  const [minDate, setMinDate] = useState('')
   const [unlockHour, setUnlockHour] = useState(7) // 07:00 WIB default
   const [content, setContent] = useState('')
   const [pendingCount, setPendingCount] = useState(0)
@@ -60,7 +64,11 @@ export default function WriteLetter() {
   const [error, setError] = useState('')
   const [lockedUntil, setLockedUntil] = useState<string | null>(null)
 
-  const minDate = todayJakarta()
+  useEffect(() => {
+    const today = todayJakarta()
+    setMinDate(today)
+    setUnlockDate((d) => d || today)
+  }, [])
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
@@ -202,7 +210,7 @@ export default function WriteLetter() {
             <input
               type="date"
               value={unlockDate}
-              min={minDate}
+              min={minDate || undefined}
               onChange={e => setUnlockDate(e.target.value)}
               aria-label="Date the letter opens"
               className="min-w-0 flex-1 rounded-xl border border-border bg-white px-4 py-3 text-sm text-ink focus:border-rose focus:outline-none"

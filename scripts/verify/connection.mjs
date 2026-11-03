@@ -235,7 +235,7 @@ async function activities({ a, b, c, aid, bid, cid }) {
   const leaks = (rows ?? []).filter((r) => /RAHASIA/.test(r.summary))
   ok('no note / letter / mood-note text in activity summaries', leaks.length === 0, leaks.map((r) => r.kind).join(','))
   const grat = (rows ?? []).filter((r) => r.kind === 'gratitude')
-  ok('gratitude summary is generic', grat.length >= 3 && grat.every((r) => r.summary === 'left a note of thanks in the Toples' && r.url === '/app/toples'))
+  ok('gratitude summary is generic', grat.length >= 3 && grat.every((r) => r.summary === 'left a note of thanks in the Jar' && r.url === '/app/toples'))
   const { data: cRows } = await c.from('activities').select('id').eq('couple_id', cid)
   ok('other couple reads no activities', (cRows ?? []).length === 0)
 }

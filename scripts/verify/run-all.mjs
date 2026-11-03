@@ -10,7 +10,7 @@
 // Prints "all verify suites passed" only when every suite passed.
 
 import { spawn, spawnSync } from 'node:child_process'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 
@@ -101,10 +101,16 @@ for (const [name, marker] of SUITES) {
   const counts = out.match(/(\d+) passed, (\d+) failed/g)?.pop() ?? out.match(/\d+ page renders, \d+ with issues/)?.[0] ?? ''
   results.push([name, ok, `${counts} ${((Date.now() - t0) / 1000).toFixed(0)}s`.trim()])
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}  ${counts}`)
-  if (!ok) console.log(out.split('\n').filter((l) => /fail|error|✗|FAIL|DRIFT|issue/i.test(l)).slice(0, 25).join('\n'))
+  if (!ok) {
+    console.log(out.split('\n').filter((l) => /fail|error|✗|FAIL|DRIFT|issue/i.test(l)).slice(0, 25).join('\n'))
+    // Full output on disk: gate evidence is capped, so a failure must stay readable.
+    mkdirSync(path.join(ROOT, '.unlazy'), { recursive: true })
+    writeFileSync(path.join(ROOT, '.unlazy', `run-all.${name}.fail.log`), out)
+  }
 }
 stop()
 const failed = results.filter((r) => !r[1])
 console.log(`\n${results.length - failed.length}/${results.length} suites passed`)
-if (failed.length) { console.log(`run-all FAILED: ${failed.map((f) => f[0]).join(', ')}`); process.exit(1) }
+// Summary first in the final output so capped evidence still names the failing suite.
+if (failed.length) { console.log(`run-all FAILED: ${failed.map((f) => f[0]).join(', ')} (full logs: .unlazy/run-all.<suite>.fail.log)`); process.exit(1) }
 console.log('all verify suites passed')

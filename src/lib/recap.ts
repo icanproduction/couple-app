@@ -101,7 +101,7 @@ export function recapHeadline(r: HeadlineInput): string {
   if (r.bucketDone) parts.push(`${count(r.bucketDone, 'dream')} ticked off`)
   if (r.gamesCompleted) parts.push(`${count(r.gamesCompleted, 'game')} of Samakan`)
   if (r.lettersWritten) parts.push(count(r.lettersWritten, 'letter'))
-  if (r.gratitudeNotes) parts.push(count(r.gratitudeNotes, 'Toples note'))
+  if (r.gratitudeNotes) parts.push(count(r.gratitudeNotes, 'Jar note'))
   if (r.savingsIn) parts.push(`savings up ${formatRupiah(r.savingsIn)}`)
   if (parts.length === 0) return 'A quiet month. Time to make some new stories together.'
 
@@ -248,7 +248,7 @@ export function recapShareText(r: MonthRecap, partnerNames: Record<string, strin
   }
   const extras = [
     r.lettersWritten ? count(r.lettersWritten, 'letter') : '',
-    r.gratitudeNotes ? count(r.gratitudeNotes, 'Toples note') : '',
+    r.gratitudeNotes ? count(r.gratitudeNotes, 'Jar note') : '',
     r.gamesCompleted ? `${count(r.gamesCompleted, 'game')} of Samakan` : '',
   ].filter(Boolean)
   if (extras.length) lines.push(`• ${joinList(extras)}`)

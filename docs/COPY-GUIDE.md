@@ -24,7 +24,6 @@ brackets. Describe them in English around the name instead.
 |---|---|---|
 | Nanti Kita | the app | "Welcome to Nanti Kita" |
 | Kangen | the miss-you ping | "Send a Kangen", "Kezia sent you a Kangen" |
-| Toples | appreciation jar (was "Toples Apresiasi") | "Toples", subtitle "Little notes of thanks" |
 | Jelajah | the explore tab | tab label "Jelajah" |
 | Samakan | the real-time sync game (was shown as "Sinkronisasi") | "Play Samakan" |
 | Pet Kita | the shared virtual pet | "Pet Kita is hungry" |
@@ -46,6 +45,7 @@ brackets. Describe them in English around the name instead.
 | Kenangan | Memories |
 | Moment / Peta Moment | Moments / Moments Map |
 | Kenangan hari ini | On This Day |
+| Toples / Toples Apresiasi | Jar (renamed 2026-11-03; route stays /app/toples) |
 | Scrapbook | Scrapbook |
 | Surat Rahasia / surat | Letters / letter |
 | surat terkunci sampai … | locked until … |

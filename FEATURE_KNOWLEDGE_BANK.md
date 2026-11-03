@@ -406,7 +406,7 @@ Navigation: bottom nav is Beranda · **Jelajah** · Keuangan · Kalender · Prof
 |---|---|---|
 | Mood check-in | home card, `/app/mood` | 8 moods, one per person per Jakarta day, 14-day history |
 | Bucket list | `/app/bucket-list` | categories, cost, done → "Abadikan jadi Moment"; AI ideas land here with an "Ide AI" badge |
-| Toples Apresiasi | `/app/toples` | notes to the partner, drawn one at a time ("Ambil satu") |
+| Jar (was Toples Apresiasi) | `/app/toples` | notes to the partner, drawn one at a time ("Ambil satu") |
 | Arsip jawaban | `/app/arsip-pertanyaan` | past daily questions; partner's answer only on days you answered too |
 | Milestone | home card, `/app/milestone` | 7, 30, every 100 days to 1000, then every 500; yearly anniversaries |
 | Ide Date AI | `/app/ide-date` | budget / vibe / setting / city → 3 ideas (GPT Luna via OpenRouter, strict structured JSON), 5 per couple per day |
@@ -426,7 +426,9 @@ Privacy rules worth remembering: letters are readable only by sender and receive
 
 ## 20. v0.7: ENGLISH + THREE NEW GAMES (2026-11-03)
 
-**Language.** Every screen, toast, push notification, SQL message, AI output and question bank is English. The rules, glossary and kept Indonesian names (Nanti Kita, Kangen, Toples, Jelajah, Samakan, Pet Kita) are in `docs/COPY-GUIDE.md`. Routes, table/column names and stored values did not change (mood keys, categories, assessment score keys stay Indonesian and are mapped to English labels). Dates use `en-GB`, money stays `id-ID` with "Rp". Migration `20261103120000_english_content.sql` re-creates 20 SQL functions with English strings only (logic proven identical) and translates the 10 Deep Talk packs, 30 levels and 180 questions in place; `20261103140000_mood_feed_label.sql` makes the feed name the mood again ("Kezia checked in: Missing you"). AI prompts share `src/lib/ai-style.ts` (English, local context, no dashes, banned slop words) and `tidyAiText()` strips dashes from model output.
+**Language.** Every screen, toast, push notification, SQL message, AI output and question bank is English. The rules, glossary and kept Indonesian names (Nanti Kita, Kangen, Jelajah, Samakan, Pet Kita; Toples became "Jar") are in `docs/COPY-GUIDE.md`. Routes, table/column names and stored values did not change (mood keys, categories, assessment score keys stay Indonesian and are mapped to English labels). Dates use `en-GB`, money stays `id-ID` with "Rp". Migration `20261103120000_english_content.sql` re-creates 20 SQL functions with English strings only (logic proven identical) and translates the 10 Deep Talk packs, 30 levels and 180 questions in place; `20261103140000_mood_feed_label.sql` makes the feed name the mood again ("Kezia checked in: Missing you"). AI prompts share `src/lib/ai-style.ts` (English, local context, no dashes, banned slop words) and `tidyAiText()` strips dashes from model output.
+
+**Navigation:** bottom nav is Home · Jelajah · **Moments** (center) · Calendar · Profile; Money lives in Jelajah → Plans.
 
 **Games hub** (`/app/games`): Pet Kita · Samakan · Deep Talk · the three below (badge NEW). "Compatibility Test" was dropped because the readiness assessment covers it.
 

@@ -50,7 +50,7 @@ export function DiscardCoupleModal({ open, onClose, onConfirm, loading, error, c
           : 'Your current couple space already has memories in it.'}{' '}
         To join with this code,
         <span className="font-semibold text-danger"> that space and everything in it is deleted for good</span>:
-        moments with their photos, letters, savings, the calendar, the bucket list, Toples, moods, all of it.
+        moments with their photos, letters, savings, the calendar, the bucket list, Jar, moods, all of it.
       </p>
       <p>This can&apos;t be undone. Your own account stays.</p>
       <div className="rounded-xl bg-cream px-3 py-2.5">

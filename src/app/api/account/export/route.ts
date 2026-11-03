@@ -123,12 +123,12 @@ export async function GET() {
         ...(contentOf.has(l.id) ? {} : { content_hidden: 'Letter text not exported: you haven\'t opened it yet, or it isn\'t a letter from or to you.' }),
       }))
 
-      // Toples notes: a note to me that I haven't opened stays a surprise —
+      // Jar notes: a note to me that I haven't opened stays a surprise —
       // listed (id, dates) without its text. Notes I sent keep their text.
       type Note = { id: string; from_id: string; to_id: string; body: string | null; opened_at: string | null }
       const gratitudeNotes = (gratitude as Note[]).map((n) =>
         n.to_id === uid && n.from_id !== uid && !n.opened_at
-          ? { ...n, body: null, body_hidden: 'Note text not exported: you haven\'t opened it in the Toples yet.' }
+          ? { ...n, body: null, body_hidden: 'Note text not exported: you haven\'t opened it in the Jar yet.' }
           : n)
 
       shared = {
@@ -161,7 +161,7 @@ export async function GET() {
       results: { assessment: assessments, mbti, spending, love_languages: loveLanguages },
       notes: {
         photos: 'Moment photos are stored privately. storage_path points to a file in the "moments" bucket.',
-        scope: 'Contains the data you can see in the app. Your partner\'s answers are not included, and neither is the text of letters or Toples notes you haven\'t opened.',
+        scope: 'Contains the data you can see in the app. Your partner\'s answers are not included, and neither is the text of letters or Jar notes you haven\'t opened.',
       },
     }
 

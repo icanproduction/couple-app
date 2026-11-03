@@ -70,8 +70,9 @@ input[type='range']::-moz-range-thumb {
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom, 8px);
   }
-  /* Nav bar needs extra padding — sits above bezel like Instagram */
+  /* Nav bar keeps clear of the bezel: the home indicator inset on iPhone,
+     and at least 14px on phones that report no inset (was 6px there). */
   .pb-safe-nav {
-    padding-bottom: calc(env(safe-area-inset-bottom, 12px) + 6px);
+    padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), 14px) + 6px);
   }
 }

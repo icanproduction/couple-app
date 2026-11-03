@@ -48,7 +48,7 @@ const SECTIONS = [
       'You can delete Moments, photos, transactions and other data directly in the app.',
       'Export my data (Profile → Settings) gives you a copy of your data in one file.',
       'Leave this couple (Profile → Danger zone) closes your shared space: your shared memories stay saved for your partner, but no one new can join that space.',
-      'Delete account (Profile → Danger zone) deletes your account, your profile, your profile photo, and the letters and Toples notes that involve you. If you are the last member, the whole space and its photos are deleted too.',
+      'Delete account (Profile → Danger zone) deletes your account, your profile, your profile photo, and the letters and Jar notes that involve you. If you are the last member, the whole space and its photos are deleted too.',
     ],
   },
 ]

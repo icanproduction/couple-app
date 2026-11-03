@@ -190,7 +190,7 @@ async function main() {
   ok('deposit summary formatted', acts.some((x) => x.kind === 'saving' && x.summary === 'saved Rp 50.000'), acts.filter((x) => x.kind === 'saving').map((x) => x.summary).join('|'))
   ok('withdrawal summary formatted', acts.some((x) => x.kind === 'saving' && x.summary === 'took Rp 20.000 out of savings'))
   ok('letter summary is metadata only', byKind('letter')?.summary === 'wrote a letter')
-  ok('gratitude summary is generic', byKind('gratitude')?.summary === 'left a note of thanks in the Toples')
+  ok('gratitude summary is generic', byKind('gratitude')?.summary === 'left a note of thanks in the Jar')
   ok('mood summary has mood only', acts.filter((x) => x.kind === 'mood').map((x) => x.summary).join('|') === 'checked in: Happy|checked in: Tired')
 
   // ============ Activities are read-only for users ============
