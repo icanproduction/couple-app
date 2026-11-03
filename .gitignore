@@ -39,3 +39,4 @@ coverage/
 
 # Local audit ledger
 .unlazy/
+.env*
