@@ -2,6 +2,7 @@
 // Used by /api/couple/join, /api/couple/leave and /api/account/delete. Never
 // import from a client component (it reaches for the service role).
 import { createServerSupabaseClient, createServiceRoleClient } from './supabase-server'
+import { removeCoupleBucketPictures } from './bucket'
 
 type UserClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
 type AdminClient = ReturnType<typeof createServiceRoleClient>
@@ -143,6 +144,11 @@ export async function joinCoupleAs(supabase: UserClient, userId: string, code: s
         removedFiles = await removeCouplePhotos(previous)
       } catch (e) {
         console.error('[account] old couple photo cleanup failed:', previous, e instanceof Error ? e.message : e)
+      }
+      try {
+        removedFiles += await removeCoupleBucketPictures(admin, previous)
+      } catch (e) {
+        console.error('[account] old couple bucket picture cleanup failed:', previous, e instanceof Error ? e.message : e)
       }
     }
   }

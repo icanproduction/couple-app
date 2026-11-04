@@ -163,6 +163,56 @@ export type Database = {
           },
         ]
       }
+      ai_usage: {
+        Row: {
+          cache_read_tokens: number
+          cache_write_tokens: number
+          cost_usd: number
+          couple_id: string | null
+          created_at: string
+          day: string
+          feature: string
+          id: string
+          input_tokens: number
+          outcome: string
+          output_tokens: number
+        }
+        Insert: {
+          cache_read_tokens?: number
+          cache_write_tokens?: number
+          cost_usd?: number
+          couple_id?: string | null
+          created_at?: string
+          day?: string
+          feature: string
+          id?: string
+          input_tokens?: number
+          outcome?: string
+          output_tokens?: number
+        }
+        Update: {
+          cache_read_tokens?: number
+          cache_write_tokens?: number
+          cost_usd?: number
+          couple_id?: string | null
+          created_at?: string
+          day?: string
+          feature?: string
+          id?: string
+          input_tokens?: number
+          outcome?: string
+          output_tokens?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessment_results: {
         Row: {
           answers: Json
@@ -214,9 +264,11 @@ export type Database = {
           done_at: string | null
           estimated_cost: number | null
           id: string
+          image_path: string | null
           is_done: boolean
           moment_id: string | null
           note: string | null
+          reference_url: string | null
           source: string
           title: string
           updated_at: string
@@ -229,9 +281,11 @@ export type Database = {
           done_at?: string | null
           estimated_cost?: number | null
           id?: string
+          image_path?: string | null
           is_done?: boolean
           moment_id?: string | null
           note?: string | null
+          reference_url?: string | null
           source?: string
           title: string
           updated_at?: string
@@ -244,9 +298,11 @@ export type Database = {
           done_at?: string | null
           estimated_cost?: number | null
           id?: string
+          image_path?: string | null
           is_done?: boolean
           moment_id?: string | null
           note?: string | null
+          reference_url?: string | null
           source?: string
           title?: string
           updated_at?: string
@@ -381,6 +437,7 @@ export type Database = {
         Row: {
           couple_id: string
           created_at: string | null
+          hatched_at: string | null
           id: string
           level: number
           name: string
@@ -390,6 +447,7 @@ export type Database = {
         Insert: {
           couple_id: string
           created_at?: string | null
+          hatched_at?: string | null
           id?: string
           level?: number
           name: string
@@ -399,6 +457,7 @@ export type Database = {
         Update: {
           couple_id?: string
           created_at?: string | null
+          hatched_at?: string | null
           id?: string
           level?: number
           name?: string
@@ -482,6 +541,7 @@ export type Database = {
           invite_code: string
           invite_expires_at: string
           is_premium: boolean
+          samakan_personal: boolean
           unlocked_at: string | null
         }
         Insert: {
@@ -492,6 +552,7 @@ export type Database = {
           invite_code: string
           invite_expires_at?: string
           is_premium?: boolean
+          samakan_personal?: boolean
           unlocked_at?: string | null
         }
         Update: {
@@ -502,6 +563,7 @@ export type Database = {
           invite_code?: string
           invite_expires_at?: string
           is_premium?: boolean
+          samakan_personal?: boolean
           unlocked_at?: string | null
         }
         Relationships: [
@@ -1383,9 +1445,11 @@ export type Database = {
       notification_prefs: {
         Row: {
           activity: boolean
+          games: boolean
           kangen: boolean
           letters: boolean
           moments: boolean
+          pet: boolean
           profile_id: string
           quiet_end: number | null
           quiet_start: number | null
@@ -1394,9 +1458,11 @@ export type Database = {
         }
         Insert: {
           activity?: boolean
+          games?: boolean
           kangen?: boolean
           letters?: boolean
           moments?: boolean
+          pet?: boolean
           profile_id: string
           quiet_end?: number | null
           quiet_start?: number | null
@@ -1405,9 +1471,11 @@ export type Database = {
         }
         Update: {
           activity?: boolean
+          games?: boolean
           kangen?: boolean
           letters?: boolean
           moments?: boolean
+          pet?: boolean
           profile_id?: string
           quiet_end?: number | null
           quiet_start?: number | null
@@ -1509,6 +1577,87 @@ export type Database = {
           },
         ]
       }
+      pet_daily_notes: {
+        Row: {
+          attempts: number
+          cache_read_tokens: number | null
+          cache_write_tokens: number | null
+          cost_usd: number | null
+          couple_id: string
+          created_at: string
+          highlight: string | null
+          input_tokens: number | null
+          kind: string
+          line: string | null
+          model: string | null
+          note_date: string
+          output_tokens: number | null
+          pet_id: string
+          pose: string | null
+          source: string | null
+          status: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          cache_read_tokens?: number | null
+          cache_write_tokens?: number | null
+          cost_usd?: number | null
+          couple_id: string
+          created_at?: string
+          highlight?: string | null
+          input_tokens?: number | null
+          kind?: string
+          line?: string | null
+          model?: string | null
+          note_date: string
+          output_tokens?: number | null
+          pet_id: string
+          pose?: string | null
+          source?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          cache_read_tokens?: number | null
+          cache_write_tokens?: number | null
+          cost_usd?: number | null
+          couple_id?: string
+          created_at?: string
+          highlight?: string | null
+          input_tokens?: number | null
+          kind?: string
+          line?: string | null
+          model?: string | null
+          note_date?: string
+          output_tokens?: number | null
+          pet_id?: string
+          pose?: string | null
+          source?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_daily_notes_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_daily_notes_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "couple_pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pet_mood_state: {
         Row: {
           cleanliness: number
@@ -1543,6 +1692,112 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "pet_mood_state_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "couple_pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pet_visits: {
+        Row: {
+          celebrated_level: number
+          created_at: string
+          intro_seen_at: string | null
+          last_seen_at: string
+          pet_id: string
+          profile_id: string
+        }
+        Insert: {
+          celebrated_level?: number
+          created_at?: string
+          intro_seen_at?: string | null
+          last_seen_at?: string
+          pet_id: string
+          profile_id: string
+        }
+        Update: {
+          celebrated_level?: number
+          created_at?: string
+          intro_seen_at?: string | null
+          last_seen_at?: string
+          pet_id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_visits_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "couple_pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_visits_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pet_warmth_events: {
+        Row: {
+          actor_id: string | null
+          couple_id: string
+          created_at: string
+          day: string
+          detail: string | null
+          gesture: string | null
+          id: string
+          pet_id: string
+          points: number
+          ref_id: string | null
+          source: string
+        }
+        Insert: {
+          actor_id?: string | null
+          couple_id: string
+          created_at?: string
+          day?: string
+          detail?: string | null
+          gesture?: string | null
+          id?: string
+          pet_id: string
+          points?: number
+          ref_id?: string | null
+          source: string
+        }
+        Update: {
+          actor_id?: string | null
+          couple_id?: string
+          created_at?: string
+          day?: string
+          detail?: string | null
+          gesture?: string | null
+          id?: string
+          pet_id?: string
+          points?: number
+          ref_id?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_warmth_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_warmth_events_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_warmth_events_pet_id_fkey"
             columns: ["pet_id"]
             isOneToOne: false
             referencedRelation: "couple_pets"
@@ -1615,6 +1870,380 @@ export type Database = {
           {
             foreignKeyName: "push_subscriptions_profile_id_fkey"
             columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      samakan_answers: {
+        Row: {
+          answered_at: string
+          guess: number | null
+          id: string
+          pick: number
+          profile_id: string | null
+          round_id: string
+          set_id: string
+          updated_at: string
+        }
+        Insert: {
+          answered_at?: string
+          guess?: number | null
+          id?: string
+          pick: number
+          profile_id?: string | null
+          round_id: string
+          set_id: string
+          updated_at?: string
+        }
+        Update: {
+          answered_at?: string
+          guess?: number | null
+          id?: string
+          pick?: number
+          profile_id?: string | null
+          round_id?: string
+          set_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "samakan_answers_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "samakan_answers_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "samakan_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "samakan_answers_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "samakan_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      samakan_live_invites: {
+        Row: {
+          accepted_at: string | null
+          couple_id: string
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          jakarta_date: string
+          pushed_at: string | null
+          recipient_id: string | null
+          set_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          couple_id: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          jakarta_date?: string
+          pushed_at?: string | null
+          recipient_id?: string | null
+          set_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          couple_id?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          jakarta_date?: string
+          pushed_at?: string | null
+          recipient_id?: string | null
+          set_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "samakan_live_invites_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "samakan_live_invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "samakan_live_invites_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "samakan_live_invites_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "samakan_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      samakan_push_log: {
+        Row: {
+          couple_id: string
+          created_at: string
+          id: string
+          invite_id: string | null
+          jakarta_date: string
+          kind: string
+          recipient_id: string
+          set_id: string
+        }
+        Insert: {
+          couple_id: string
+          created_at?: string
+          id?: string
+          invite_id?: string | null
+          jakarta_date?: string
+          kind: string
+          recipient_id: string
+          set_id: string
+        }
+        Update: {
+          couple_id?: string
+          created_at?: string
+          id?: string
+          invite_id?: string | null
+          jakarta_date?: string
+          kind?: string
+          recipient_id?: string
+          set_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "samakan_push_log_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "samakan_push_log_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "samakan_live_invites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "samakan_push_log_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "samakan_push_log_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "samakan_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      samakan_rounds: {
+        Row: {
+          bank_id: string | null
+          couple_id: string
+          created_at: string
+          high_label: string | null
+          id: string
+          kind: string
+          learned: number | null
+          low_label: string | null
+          options: string[]
+          position: number
+          prompt: string
+          revealed_at: string | null
+          score: number | null
+          set_id: string
+          skipped_at: string | null
+          skipped_by: string | null
+          source: string
+          talk: string
+        }
+        Insert: {
+          bank_id?: string | null
+          couple_id: string
+          created_at?: string
+          high_label?: string | null
+          id?: string
+          kind: string
+          learned?: number | null
+          low_label?: string | null
+          options?: string[]
+          position: number
+          prompt: string
+          revealed_at?: string | null
+          score?: number | null
+          set_id: string
+          skipped_at?: string | null
+          skipped_by?: string | null
+          source?: string
+          talk?: string
+        }
+        Update: {
+          bank_id?: string | null
+          couple_id?: string
+          created_at?: string
+          high_label?: string | null
+          id?: string
+          kind?: string
+          learned?: number | null
+          low_label?: string | null
+          options?: string[]
+          position?: number
+          prompt?: string
+          revealed_at?: string | null
+          score?: number | null
+          set_id?: string
+          skipped_at?: string | null
+          skipped_by?: string | null
+          source?: string
+          talk?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "samakan_rounds_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "samakan_rounds_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "samakan_sets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "samakan_rounds_skipped_by_fkey"
+            columns: ["skipped_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      samakan_sets: {
+        Row: {
+          couple_id: string
+          created_at: string
+          created_by: string | null
+          ended_at: string | null
+          ended_by: string | null
+          fallback_reason: string | null
+          finished_at: string | null
+          finished_by: string | null
+          id: string
+          learned: number
+          matches: number
+          max_matches: number
+          progress: Json
+          readout: Json | null
+          readout_claimed_at: string | null
+          readout_status: string
+          revealed: number
+          skips: number
+          source: string
+          status: string
+          theme: string
+          version: number
+        }
+        Insert: {
+          couple_id: string
+          created_at?: string
+          created_by?: string | null
+          ended_at?: string | null
+          ended_by?: string | null
+          fallback_reason?: string | null
+          finished_at?: string | null
+          finished_by?: string | null
+          id?: string
+          learned?: number
+          matches?: number
+          max_matches?: number
+          progress?: Json
+          readout?: Json | null
+          readout_claimed_at?: string | null
+          readout_status?: string
+          revealed?: number
+          skips?: number
+          source: string
+          status?: string
+          theme: string
+          version?: number
+        }
+        Update: {
+          couple_id?: string
+          created_at?: string
+          created_by?: string | null
+          ended_at?: string | null
+          ended_by?: string | null
+          fallback_reason?: string | null
+          finished_at?: string | null
+          finished_by?: string | null
+          id?: string
+          learned?: number
+          matches?: number
+          max_matches?: number
+          progress?: Json
+          readout?: Json | null
+          readout_claimed_at?: string | null
+          readout_status?: string
+          revealed?: number
+          skips?: number
+          source?: string
+          status?: string
+          theme?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "samakan_sets_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "samakan_sets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "samakan_sets_ended_by_fkey"
+            columns: ["ended_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "samakan_sets_finished_by_fkey"
+            columns: ["finished_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1965,6 +2594,38 @@ export type Database = {
       admin_llm_status: { Args: never; Returns: Json }
       admin_set_llm_key: { Args: { p_key: string }; Returns: Json }
       admin_set_llm_model: { Args: { p_model: string }; Returns: Json }
+      adopt_pet: {
+        Args: { p_name: string; p_type: string }
+        Returns: {
+          couple_id: string
+          created_at: string | null
+          hatched_at: string | null
+          id: string
+          level: number
+          name: string
+          pet_type: string
+          xp: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "couple_pets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      ai_usage_reserve: {
+        Args: {
+          p_cap: number
+          p_couple: string
+          p_estimate: number
+          p_feature: string
+        }
+        Returns: Json
+      }
+      can_access_bucket_picture: {
+        Args: { object_name: string }
+        Returns: boolean
+      }
       can_access_couple_folder: {
         Args: { object_name: string }
         Returns: boolean
@@ -1993,6 +2654,7 @@ export type Database = {
           invite_code: string
           invite_expires_at: string
           is_premium: boolean
+          samakan_personal: boolean
           unlocked_at: string | null
         }
         SetofOptions: {
@@ -2041,11 +2703,37 @@ export type Database = {
         Args: { p_action: string; p_pet_id: string }
         Returns: Json
       }
+      pet_award: {
+        Args: {
+          p_actor: string
+          p_couple: string
+          p_detail?: string
+          p_gesture?: string
+          p_ref_id?: string
+          p_source: string
+        }
+        Returns: number
+      }
       pet_care_rules: { Args: never; Returns: Json }
+      pet_claim_note: {
+        Args: { p_kind?: string; p_note_date?: string; p_pet_id: string }
+        Returns: Json
+      }
+      pet_mark_visit: {
+        Args: {
+          p_celebrated_level?: number
+          p_intro_seen?: boolean
+          p_pet_id?: string
+        }
+        Returns: Json
+      }
       pet_mood_of: {
         Args: { c: number; h: number; ha: number }
         Returns: string
       }
+      pet_rules: { Args: never; Returns: Json }
+      pet_say_hi: { Args: { p_gesture?: string }; Returns: Json }
+      pet_status: { Args: { p_pet_id?: string }; Returns: Json }
       read_letter: {
         Args: { p_letter_id: string }
         Returns: {
@@ -2069,6 +2757,7 @@ export type Database = {
           invite_code: string
           invite_expires_at: string
           is_premium: boolean
+          samakan_personal: boolean
           unlocked_at: string | null
         }
         SetofOptions: {
@@ -2078,6 +2767,67 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      samakan_answer: {
+        Args: { p_guess?: number; p_pick: number; p_round_id: string }
+        Returns: Json
+      }
+      samakan_claim_push: {
+        Args: { p_kind: string; p_recipient: string; p_set_id: string }
+        Returns: Json
+      }
+      samakan_claim_readout: { Args: { p_set_id: string }; Returns: boolean }
+      samakan_end: { Args: { p_set_id: string }; Returns: Json }
+      samakan_expire_stale: { Args: { p_couple: string }; Returns: number }
+      samakan_finish_if_complete: {
+        Args: { p_actor: string; p_set_id: string }
+        Returns: boolean
+      }
+      samakan_history: { Args: { p_couple: string }; Returns: Json }
+      samakan_hub: { Args: never; Returns: Json }
+      samakan_insert_set: {
+        Args: {
+          p_couple: string
+          p_creator: string
+          p_reason: string
+          p_rounds: Json
+          p_source: string
+          p_theme: string
+        }
+        Returns: Json
+      }
+      samakan_invite_json: { Args: { p_invite_id: string }; Returns: Json }
+      samakan_kind_max: { Args: { p_kind: string }; Returns: number }
+      samakan_live_accept: { Args: { p_invite_id: string }; Returns: Json }
+      samakan_live_invite: { Args: { p_set_id: string }; Returns: Json }
+      samakan_personal_used_today: {
+        Args: { p_couple: string }
+        Returns: boolean
+      }
+      samakan_save_readout: {
+        Args: { p_readout: Json; p_set_id: string }
+        Returns: boolean
+      }
+      samakan_score: {
+        Args: {
+          p_a_guess: number
+          p_a_pick: number
+          p_b_guess: number
+          p_b_pick: number
+          p_kind: string
+        }
+        Returns: Record<string, unknown>
+      }
+      samakan_set_json: {
+        Args: {
+          p_set: Database["public"]["Tables"]["samakan_sets"]["Row"]
+          p_uid: string
+        }
+        Returns: Json
+      }
+      samakan_set_personal: { Args: { p_on: boolean }; Returns: boolean }
+      samakan_set_state: { Args: { p_set_id: string }; Returns: Json }
+      samakan_skip: { Args: { p_round_id: string }; Returns: Json }
+      samakan_stats: { Args: { p_couple: string }; Returns: Json }
       save_push_subscription: {
         Args: { p_auth_key: string; p_endpoint: string; p_p256dh: string }
         Returns: undefined

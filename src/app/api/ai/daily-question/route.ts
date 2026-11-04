@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase-server'
 import { daysSince, todayJakarta } from '@/lib/dates'
-import { getLlm } from '@/lib/llm-config'
-import { AI_NOT_CONFIGURED, describeProviderError, providerFailure } from '@/lib/ai-errors'
+import { claudeConfigured, SONNET } from '@/lib/claude'
+import { AI_NOT_CONFIGURED, aiFailure, describeAiFailure, shouldLogFailure } from '@/lib/ai-errors'
 import { generateDailyQuestion, type DailyQuestionContext } from '@/lib/daily-question'
 
 // A claim older than this with no question means the generating request died.
@@ -29,8 +29,8 @@ async function getCoupleId(supabase: Awaited<ReturnType<typeof createServerSupab
 /**
  * Generates today's question once per couple. The first request claims the
  * (couple, date) row with the service role; only the claimant calls the model
- * (GPT Luna via OpenRouter), so double taps, both partners at once, or
- * deleting the row can't run up cost.
+ * (Claude Sonnet, under the couple's daily AI cap), so double taps, both
+ * partners at once, or deleting the row can't run up cost.
  */
 export async function POST() {
   try {
@@ -41,9 +41,8 @@ export async function POST() {
     const coupleId = await getCoupleId(supabase, user.id)
     if (!coupleId) return NextResponse.json({ error: 'You\'re not connected with a partner yet' }, { status: 400 })
 
-    // Key pasted in Admin → AI, else LLM_API_KEY.
-    const llm = await getLlm()
-    if (!llm.configured) {
+    // No ANTHROPIC_API_KEY: answer before claiming anything.
+    if (!claudeConfigured()) {
       return NextResponse.json({ error: AI_NOT_CONFIGURED.error }, { status: AI_NOT_CONFIGURED.status })
     }
 
@@ -86,26 +85,29 @@ export async function POST() {
       claimId = retaken.id
     }
 
+    // Release the claim so the next tap can try again.
+    const questionId: string = claimId
+    const release = () => admin.from('ai_daily_questions').delete().eq('id', questionId).is('question', null)
     try {
       const context = await buildContext(supabase, user.id, coupleId, today)
-      const question = await generateDailyQuestion(llm, context)
+      const result = await generateDailyQuestion(coupleId, context)
+      if (!result.ok) {
+        await release()
+        if (shouldLogFailure(result)) console.error('[ai/daily-question] AI call failed:', describeAiFailure(result))
+        const failure = aiFailure(result, { retry: RETRY_MESSAGE })
+        return NextResponse.json({ error: failure.error }, { status: failure.status })
+      }
       // generated_by: the claimant's id while pending, the model id once saved.
       await admin
         .from('ai_daily_questions')
-        .update({ question, context_used: context, generated_by: llm.modelId })
-        .eq('id', claimId)
-      return NextResponse.json({ question, alreadyGenerated: false })
+        .update({ question: result.question, context_used: context, generated_by: SONNET })
+        .eq('id', questionId)
+      return NextResponse.json({ question: result.question, alreadyGenerated: false })
     } catch (err) {
-      // Release the claim so the next tap can try again.
-      await admin.from('ai_daily_questions').delete().eq('id', claimId).is('question', null)
+      await release()
       throw err
     }
   } catch (error) {
-    const failure = providerFailure(error, RETRY_MESSAGE)
-    if (failure) {
-      if (failure.status !== 429) console.error('[ai/daily-question] provider error', describeProviderError(error))
-      return NextResponse.json({ error: failure.error }, { status: failure.status })
-    }
     console.error('[ai/daily-question] error:', error)
     return NextResponse.json({ error: RETRY_MESSAGE }, { status: 500 })
   }

@@ -9,6 +9,7 @@
 import { useEffect, useRef } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
+import { subscribeAsUser } from '@/lib/realtime'
 import { isLoveScores, scoreAnswers, type LoveScores } from './bank'
 
 export type LoveResult = {
@@ -127,13 +128,13 @@ export function useLiveResults(coupleId: string | null, onChange: () => void) {
     for (const event of ['INSERT', 'UPDATE'] as const) {
       channel.on('postgres_changes', { event, schema: 'public', table: 'love_language_results', filter: `couple_id=eq.${coupleId}` }, fire)
     }
-    channel.subscribe()
+    const unsubscribe = subscribeAsUser(supabase, channel)
     const onVisible = () => { if (document.visibilityState === 'visible') fire() }
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       if (timer) clearTimeout(timer)
       document.removeEventListener('visibilitychange', onVisible)
-      void supabase.removeChannel(channel)
+      unsubscribe()
     }
   }, [coupleId])
 }

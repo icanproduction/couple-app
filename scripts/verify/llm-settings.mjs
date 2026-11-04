@@ -1,9 +1,12 @@
-// Admin → AI (paste the OpenRouter key in the app) against LOCAL Supabase and
-// the app on :3030.
-//   node scripts/verify/llm-settings.mjs
-// Prints "LLM SETTINGS VERIFY PASSED" only when every check passes. Refuses to
-// run while a key is already stored, so a real key is never overwritten. Never
-// calls OpenRouter (the connection test is only run with no key set).
+// Admin → AI (Claude status) against LOCAL Supabase and the app on :3030.
+//   node scripts/verify/llm-settings.mjs          # never calls Claude
+//   node scripts/verify/llm-settings.mjs --live   # also presses Test connection once (one tiny Sonnet call)
+// Prints "LLM SETTINGS VERIFY PASSED" only when every check passes.
+//
+// The contract: GET/POST /api/admin/llm are admin-only; the key comes from
+// ANTHROPIC_API_KEY on the server and is never echoed (last 4 characters at
+// most); the model is fixed to claude-sonnet-5-5; the old key/model editing
+// (PUT/DELETE) is gone; today's spend comes from ai_usage.
 import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -14,6 +17,8 @@ const root = join(here, '..', '..')
 const require = createRequire(join(root, 'package.json'))
 const { createClient } = require('@supabase/supabase-js')
 const { createServerClient } = require('@supabase/ssr')
+
+const LIVE = process.argv.includes('--live')
 
 const env = {}
 for (const f of ['.env', '.env.local', '.env.development', '.env.development.local']) {
@@ -30,15 +35,34 @@ if (!/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?/.test(URL_ ?? '') || !/^https?
   console.error('Refusing to run: Supabase or the app is not local')
   process.exit(1)
 }
+const reachable = await fetch(APP, { signal: AbortSignal.timeout(5_000) }).then(() => true, () => false)
+if (!reachable) {
+  console.error(`Refusing to run: the app is not answering on ${APP} (start it with next dev -p 3030)`)
+  process.exit(1)
+}
 const ANON = env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const opts = { auth: { persistSession: false, autoRefreshToken: false } }
 const mk = () => createClient(URL_, ANON, opts)
 const service = createClient(URL_, env.SUPABASE_SERVICE_ROLE_KEY, opts)
 
+/** What the app on :3030 is expected to use (it reads the same env files). */
+const KEY = (env.ANTHROPIC_API_KEY ?? '').trim()
+
+/** AI_DAILY_CAP_USD as written in src/lib/claude.ts (the one source of the caps). */
+function capsFromSource() {
+  const src = readFileSync(join(root, 'src', 'lib', 'claude.ts'), 'utf8')
+  const block = src.match(/export const AI_DAILY_CAP_USD[^=]*=\s*\{([\s\S]*?)\n\}/)?.[1] ?? ''
+  const caps = {}
+  for (const m of block.matchAll(/^\s*([a-z_]+):\s*([0-9.]+),?\s*$/gm)) caps[m[1]] = Number(m[2])
+  return caps
+}
+const SOURCE_CAPS = capsFromSource()
+
 let pass = 0
 const failures = []
 const ok = (name, cond, extra = '') => { if (cond) pass++; else failures.push(`${name}${extra ? ' — ' + extra : ''}`) }
 const created = []
+let coupleId = null
 
 async function signUp(client, tag) {
   const { data, error } = await client.auth.signUp({ email: `${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@verify.local`, password: 'verify-pass-123' })
@@ -74,36 +98,35 @@ async function api(method, cookie, body) {
   return { status: res.status, json, text }
 }
 
-// The admin page shows the last "Tes koneksi" result; put the real one back.
-let restoreTest = null
-
-const KEY = `sk-or-v1-verify${'0123456789abcdef'.repeat(3)}Z9yW`
-const KEY2 = `sk-or-v1-second${'fedcba9876543210'.repeat(3)}Q7xV`
+/** Neither the key nor any long piece of it may appear in a response. */
+const leaksKey = (text) => KEY.length >= 12 && (text.includes(KEY) || text.includes(KEY.slice(0, 12)) || text.includes(KEY.slice(-12)))
 
 async function main() {
-  const { data: before } = await service.rpc('llm_runtime_config')
-  if (before?.[0]?.api_key) {
-    console.error('Refusing to run: an API key is already stored in Admin → AI. Remove it first (or run on a fresh DB).')
-    process.exit(1)
-  }
-  const modelBefore = before?.[0]?.model ?? null
-  const { data: testBefore } = await service.from('llm_settings').select('tested_at, test_ok, test_message').single()
-  restoreTest = testBefore
-
-  const adminC = mk(), userC = mk(), anonC = mk()
+  const adminC = mk(), userC = mk()
   const adminId = await signUp(adminC, 'llm-admin')
   await signUp(userC, 'llm-user')
   await service.from('profiles').update({ role: 'admin' }).eq('id', adminId)
 
-  // --- RPC permissions -----------------------------------------------------
-  const uStatus = await userC.rpc('admin_llm_status')
-  ok('non-admin cannot read status', !!uStatus.error, JSON.stringify(uStatus.data))
-  const uSet = await userC.rpc('admin_set_llm_key', { p_key: KEY })
-  ok('non-admin cannot set a key', !!uSet.error)
+  // A spend row for today, so the page has something to total.
+  const { data: couple, error: coupleErr } = await service.from('couples')
+    .insert({ invite_code: `LLM${Math.random().toString(36).slice(2, 9).toUpperCase()}` }).select('id').single()
+  if (coupleErr) throw new Error(`couple insert: ${coupleErr.message}`)
+  coupleId = couple.id
+  const { error: usageErr } = await service.from('ai_usage').insert({ couple_id: coupleId, feature: 'daily_question', cost_usd: 0.0042, outcome: 'ok' })
+  ok('test spend row inserted', !usageErr, usageErr?.message)
+
+  // --- The old Vault key stays unreadable for users (rows left untouched) ------
+  // The v0.7 objects (llm_settings, the Vault secret, its RPCs) are no longer
+  // used by the app but still exist, so they must stay closed.
+  const anonC = mk()
   const uRuntime = await userC.rpc('llm_runtime_config')
-  ok('signed-in user cannot read the runtime key', !!uRuntime.error && !uRuntime.data)
+  ok('signed-in user cannot read the old runtime key', !!uRuntime.error && !uRuntime.data)
   const aRuntime = await anonC.rpc('llm_runtime_config')
-  ok('anon cannot read the runtime key', !!aRuntime.error && !aRuntime.data)
+  ok('anon cannot read the old runtime key', !!aRuntime.error && !aRuntime.data)
+  const uStatus = await userC.rpc('admin_llm_status')
+  ok('non-admin cannot read the old status RPC', !!uStatus.error, JSON.stringify(uStatus.data))
+  const uSet = await userC.rpc('admin_set_llm_key', { p_key: 'sk-ant-should-not-be-accepted-0000' })
+  ok('non-admin cannot set a key through the old RPC', !!uSet.error)
   const uTable = await userC.from('llm_settings').select('*')
   ok('llm_settings table not readable by users', !!uTable.error || (uTable.data ?? []).length === 0)
   const uRecord = await userC.rpc('record_llm_test', { p_ok: true, p_message: 'fake' })
@@ -111,67 +134,52 @@ async function main() {
   const vaultRead = await userC.schema('vault').from('decrypted_secrets').select('*')
   ok('users cannot read vault', !!vaultRead.error || (vaultRead.data ?? []).length === 0)
 
-  // --- Admin set / status / runtime ----------------------------------------
-  const bad = await adminC.rpc('admin_set_llm_key', { p_key: 'abc' })
-  ok('too-short key refused', /Unknown key format/.test(bad.error?.message ?? ''), bad.error?.message)
-  const spaced = await adminC.rpc('admin_set_llm_key', { p_key: 'sk-or-v1 has spaces in it 1234567890' })
-  ok('key with spaces refused', !!spaced.error)
-
-  const set = await adminC.rpc('admin_set_llm_key', { p_key: `  ${KEY}\n` })
-  ok('admin sets a key (trimmed)', !set.error && set.data?.key_set === true, set.error?.message)
-  ok('status shows only the last 4', set.data?.key_last4 === KEY.slice(-4) && !JSON.stringify(set.data).includes(KEY.slice(0, 20)))
-  const { data: rt } = await service.rpc('llm_runtime_config')
-  ok('server reads the exact key back', rt?.[0]?.api_key === KEY)
-  const { data: rawRow } = await service.from('llm_settings').select('*').single()
-  ok('settings row stores no key', !JSON.stringify(rawRow).includes(KEY.slice(0, 20)))
-
-  const replaced = await adminC.rpc('admin_set_llm_key', { p_key: KEY2 })
-  const { data: rt2 } = await service.rpc('llm_runtime_config')
-  ok('replacing the key updates the same secret', !replaced.error && rt2?.[0]?.api_key === KEY2 && replaced.data?.key_last4 === KEY2.slice(-4))
-  const tooLong = await adminC.rpc('admin_set_llm_key', { p_key: 'sk-' + 'a'.repeat(400) })
-  ok('over-long key refused', !!tooLong.error)
-
-  const badModel = await adminC.rpc('admin_set_llm_model', { p_model: 'not a model!' })
-  ok('invalid model id refused', !!badModel.error)
-  const model = await adminC.rpc('admin_set_llm_model', { p_model: 'openai/gpt-5.6-luna' })
-  ok('admin sets a model', model.data?.model === 'openai/gpt-5.6-luna')
-  const { data: rt3 } = await service.rpc('llm_runtime_config')
-  ok('server sees the model', rt3?.[0]?.model === 'openai/gpt-5.6-luna')
-  const reset = await adminC.rpc('admin_set_llm_model', { p_model: '' })
-  ok('empty model = default', reset.data?.model === null)
-
-  // --- API route -------------------------------------------------------------
+  // --- Access ------------------------------------------------------------------
   const adminCookie = await cookieFor(adminC)
   const userCookie = await cookieFor(userC)
-  ok('API: signed out → 401', (await api('GET', null)).status === 401)
-  ok('API: non-admin → 403', (await api('GET', userCookie)).status === 403)
-  const g = await api('GET', adminCookie)
-  ok('API: admin GET shows admin key in use', g.status === 200 && g.json?.in_use?.source === 'admin' && g.json?.key_last4 === KEY2.slice(-4), g.text.slice(0, 200))
-  ok('API: response never contains the key', !g.text.includes(KEY2.slice(0, 20)))
-  const putKey = await api('PUT', adminCookie, { apiKey: KEY })
-  ok('API: PUT key → last4 updated, key not echoed', putKey.status === 200 && putKey.json?.key_last4 === KEY.slice(-4) && !putKey.text.includes(KEY.slice(0, 20)))
-  const putBad = await api('PUT', adminCookie, { apiKey: 'x' })
-  ok('API: bad key → 400 with message', putBad.status === 400 && /Unknown key format/.test(putBad.json?.error ?? ''))
-  const putModel = await api('PUT', adminCookie, { model: 'openai/gpt-6-luna-pro' })
-  ok('API: PUT model', putModel.status === 200 && putModel.json?.in_use?.model === 'openai/gpt-6-luna-pro')
-  await api('PUT', adminCookie, { model: null })
-  const userPut = await api('PUT', userCookie, { apiKey: KEY2 })
-  ok('API: non-admin PUT → 403', userPut.status === 403)
-  const del = await api('DELETE', adminCookie)
-  ok('API: DELETE clears the key', del.status === 200 && del.json?.key_set === false && del.json?.key_last4 === null)
-  const { data: rt4 } = await service.rpc('llm_runtime_config')
-  ok('server sees no key after delete', !rt4?.[0]?.api_key)
-  const test = await api('POST', adminCookie, { action: 'test' })
-  const envHasKey = !!env.LLM_API_KEY
-  if (!envHasKey) {
-    ok('API: test with no key → not ok, no network', test.status === 200 && test.json?.check?.ok === false && /No API key yet/.test(test.json?.check?.message ?? ''), test.text.slice(0, 200))
-  } else {
-    pass++ // with an env key the test would call OpenRouter; skipped on purpose
-  }
-  ok('API: unknown action → 400', (await api('POST', adminCookie, { action: 'nope' })).status === 400)
+  ok('GET signed out → 401', (await api('GET', null)).status === 401)
+  ok('GET non-admin → 403', (await api('GET', userCookie)).status === 403)
+  ok('POST test signed out → 401', (await api('POST', null, { action: 'test' })).status === 401)
+  ok('POST test non-admin → 403', (await api('POST', userCookie, { action: 'test' })).status === 403)
 
-  // restore the model that was there before
-  if (modelBefore) await adminC.rpc('admin_set_llm_model', { p_model: modelBefore })
+  // --- Status ------------------------------------------------------------------
+  const g = await api('GET', adminCookie)
+  ok('GET admin → 200', g.status === 200, g.text.slice(0, 200))
+  ok('model is fixed to Sonnet 5.5', g.json?.model === 'claude-sonnet-5-5' && g.json?.model_label === 'Claude Sonnet 5.5')
+  ok('key comes from the server env', g.json?.key_source === 'env')
+  ok('configured matches ANTHROPIC_API_KEY', g.json?.configured === (KEY.length > 0))
+  ok('only the last 4 characters are shown', KEY ? g.json?.key_last4 === KEY.slice(-4) : g.json?.key_last4 === null, String(g.json?.key_last4))
+  ok('the key is never echoed', !leaksKey(g.text))
+  // Every feature's cap, exactly as AI_DAILY_CAP_USD in src/lib/claude.ts (six
+  // features; the values move when the driver retunes a cap, the contract doesn't).
+  const capKeys = Object.keys(SOURCE_CAPS).sort()
+  ok('source caps parsed (six features)', capKeys.join() === 'daily_question,date_ideas,pet_note,pet_weekly,samakan_readout,samakan_set'
+    && Object.values(SOURCE_CAPS).every((v) => Number.isFinite(v) && v > 0), JSON.stringify(SOURCE_CAPS))
+  ok('caps are listed per feature', Object.keys(g.json?.caps_usd ?? {}).sort().join() === capKeys.join()
+    && capKeys.every((k) => g.json.caps_usd[k] === SOURCE_CAPS[k]), JSON.stringify(g.json?.caps_usd))
+  ok('today\'s spend includes the ledger', typeof g.json?.spend_today_usd === 'number' && g.json.spend_today_usd >= 0.0042
+    && g.json?.spend_by_feature?.daily_question >= 0.0042, JSON.stringify({ total: g.json?.spend_today_usd, by: g.json?.spend_by_feature }))
+  ok('day is the Jakarta date', g.json?.day === new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()))
+
+  // --- Removed: pasting a key or overriding the model --------------------------
+  const put = await api('PUT', adminCookie, { apiKey: 'sk-ant-should-not-be-accepted-0000' })
+  ok('PUT (paste a key) is gone → 405', put.status === 405, String(put.status))
+  const del = await api('DELETE', adminCookie)
+  ok('DELETE (remove the key) is gone → 405', del.status === 405, String(del.status))
+  ok('unknown action → 400', (await api('POST', adminCookie, { action: 'nope' })).status === 400)
+
+  // --- Test connection ---------------------------------------------------------
+  if (!KEY) {
+    const t = await api('POST', adminCookie, { action: 'test' })
+    ok('test with no key → not ok, no network', t.status === 200 && t.json?.check?.ok === false && /No API key yet/.test(t.json?.check?.message ?? ''), t.text.slice(0, 200))
+  } else if (LIVE) {
+    const t = await api('POST', adminCookie, { action: 'test' })
+    ok('test connection → ok', t.status === 200 && t.json?.check?.ok === true, t.text.slice(0, 200))
+    ok('test response never echoes the key', !leaksKey(t.text))
+  } else {
+    // With a key the test would call Claude; run with --live to include it.
+    console.log('note: Test connection not pressed (a key is set and --live was not passed)')
+  }
 }
 
 try {
@@ -179,8 +187,8 @@ try {
 } catch (e) {
   failures.push(`crashed: ${e.message}`)
 } finally {
+  if (coupleId) await service.from('couples').delete().eq('id', coupleId)
   for (const id of created) await service.auth.admin.deleteUser(id)
-  if (restoreTest) await service.from('llm_settings').update(restoreTest).eq('id', true)
 }
 for (const f of failures) console.log('FAIL', f)
 console.log(`${pass} passed, ${failures.length} failed`)

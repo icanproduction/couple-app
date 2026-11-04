@@ -13,9 +13,12 @@ const LEVEL_COLORS = [
   { bg: 'bg-emerald-50', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-700', ring: 'ring-emerald-200' },
   { bg: 'bg-amber-50', text: 'text-amber-700', badge: 'bg-amber-100 text-amber-700', ring: 'ring-amber-200' },
   { bg: 'bg-rose/5', text: 'text-rose', badge: 'bg-rose/10 text-rose', ring: 'ring-rose/20' },
+  { bg: 'bg-violet-50', text: 'text-violet-700', badge: 'bg-violet-100 text-violet-700', ring: 'ring-violet-200' },
+  { bg: 'bg-indigo-50', text: 'text-indigo-800', badge: 'bg-indigo-100 text-indigo-800', ring: 'ring-indigo-200' },
 ]
 
-const LEVEL_EMOJIS = ['🌱', '🌿', '🔥']
+// Level icons are the content here (one per level), not decoration.
+const LEVEL_EMOJIS = ['🌱', '🌿', '🔥', '💎', '🌌']
 
 export default function PackDetailPage() {
   const router = useRouter()

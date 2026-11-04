@@ -33,6 +33,13 @@ const SUITES = [
   ['game-truth-or-dare', 'game truth-or-dare verification passed'],
   ['game-love-languages', 'game love-languages verification passed'],
   ['game-two-truths', 'game two-truths verification passed'],
+  ['bucket-reference', 'bucket reference verification passed'],
+  ['ai-core', 'ai core verification passed'],
+  ['pet-remake', 'pet remake verification passed'],
+  ['game-samakan', 'game samakan verification passed'],
+  ['samakan-ai', 'samakan ai verification passed'],
+  ['moment-autofill', 'moment autofill verification passed'],
+  ['realtime-browser', 'realtime browser verification passed'],
   ['layout-audit', 'LAYOUT AUDIT PASSED'],
 ].filter(([n]) => !only || only.includes(n))
 

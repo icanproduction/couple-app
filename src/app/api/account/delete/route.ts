@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase-server'
-import { DELETE_ACCOUNT_CONFIRM, isDeleteAccountConfirm, leaveCoupleAs, removeAvatarFiles } from '@/lib/account'
+import { DELETE_ACCOUNT_CONFIRM, isDeleteAccountConfirm, leaveCoupleAs, removeAvatarFiles, type LeaveResult } from '@/lib/account'
+import { removeCoupleBucketPictures } from '@/lib/bucket'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,7 +10,8 @@ export const dynamic = 'force-dynamic'
  * (the pre-English phrase 'HAPUS AKUN' is still accepted).
  *
  * 1. Leave the couple as myself (so auth.uid() works in leave_couple); if I
- *    was the last member that deletes the couple and its photos.
+ *    was the last member that deletes the couple, its Moments photos and its
+ *    bucket list pictures.
  * 2. Remove my avatar files.
  * 3. Delete the auth user. The profile cascades away with it; shared rows I
  *    wrote (moments, transactions, events, bucket list) keep their data with
@@ -31,14 +33,24 @@ export async function POST(req: NextRequest) {
     if (memberError) {
       return NextResponse.json({ error: 'Couldn\'t check your couple. Try again.' }, { status: 500 })
     }
+    const admin = createServiceRoleClient()
     if (membership) {
+      let left: LeaveResult
       try {
-        await leaveCoupleAs(supabase)
+        left = await leaveCoupleAs(supabase)
       } catch (e) {
         return NextResponse.json(
           { error: e instanceof Error ? e.message : 'Couldn\'t leave this couple' },
           { status: 400 }
         )
+      }
+      if (left.deleted) {
+        // Best effort, like the Moments photos: the rows are already gone.
+        try {
+          await removeCoupleBucketPictures(admin, left.coupleId)
+        } catch (e) {
+          console.error('[account/delete] bucket picture cleanup failed:', left.coupleId, e instanceof Error ? e.message : e)
+        }
       }
     }
 
@@ -50,7 +62,6 @@ export async function POST(req: NextRequest) {
       console.error('[account/delete] avatar cleanup failed:', user.id, e instanceof Error ? e.message : e)
     }
 
-    const admin = createServiceRoleClient()
     const { error: deleteError } = await admin.auth.admin.deleteUser(user.id)
     if (deleteError) {
       console.error('[account/delete] deleteUser failed:', deleteError.message)

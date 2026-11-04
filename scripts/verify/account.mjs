@@ -52,6 +52,16 @@ async function signUp(client, tag) {
   await client.from('profiles').update({ name: tag.toUpperCase() }).eq('id', data.user.id)
   return data.user.id
 }
+/** A valid Samakan v2 bank set: 7 rounds in the fixed kind order. */
+function samakanRounds(tag) {
+  const opts4 = ['Nasi goreng', 'Sate ayam', 'Bakso', 'Gado-gado']
+  const round = (kind, i) => ({
+    kind, prompt: `${tag} round ${i + 1}: which one tonight?`, source: 'general', talk: '', bank_id: `${tag}-${i}`,
+    options: kind === 'match' ? ['Stay in', 'Go out'] : kind === 'guess' ? opts4 : [],
+    ...(kind === 'scale' ? { low: 'Not at all', high: 'Very much' } : {}),
+  })
+  return ['match', 'guess', 'scale', 'guess', 'match', 'scale', 'guess'].map(round)
+}
 async function newCouple(client) {
   const { data, error } = await client.rpc('create_couple')
   if (error) throw new Error(`create_couple: ${error.message}`)
@@ -301,14 +311,28 @@ async function creatorDeletion() {
   const { data: goal } = await c.from('savings_goals').insert({ couple_id: couple.id, name: 'Rumah', target_amount: 5000000 }).select().single()
   const { data: tx } = await c.from('couple_transactions').insert({ couple_id: couple.id, goal_id: goal.id, amount: 75000, type: 'deposit', created_by: cid_ }).select().single()
   const { data: moment } = await c.from('moments').insert({ couple_id: couple.id, created_by: cid_, title: 'Pantai', moment_date: '2026-08-01' }).select().single()
-  // R10: a game the creator started and a pet care log they made.
-  const { data: game, error: gameE } = await c.from('game_sessions').insert({ couple_id: couple.id, created_by: cid_, partner_id: did, chapter_id: 'hari-pertama', round_types: ['a'], rounds: [] }).select('id').single()
-  const { data: pet } = await c.from('couple_pets').insert({ couple_id: couple.id, pet_type: 'cat', name: 'Mochi' }).select('id').single()
-  await c.from('pet_mood_state').insert({ pet_id: pet?.id, updated_at: new Date().toISOString() })
-  await c.from('pet_care_roles').insert({ couple_id: couple.id, pet_id: pet?.id, profile_id: cid_, actions: ['feed'] })
+  // R10: shared game and pet history the creator made. v0.8: clients can't
+  // write game_sessions any more (v1 games are history, written here by the
+  // service role) and the old care RPC no longer logs; the pet's history is
+  // the warmth ledger, and Samakan v2 sets are created by the server.
+  const clientGame = await c.from('game_sessions').insert({ couple_id: couple.id, created_by: cid_, partner_id: did, chapter_id: 'hari-pertama', round_types: ['a'], rounds: [] }).select('id').single()
+  ok('client can no longer start a v1 game session', !!clientGame.error && !clientGame.data, clientGame.error?.message ?? 'insert went through')
+  const nowIso = new Date().toISOString()
+  const { data: game, error: gameE } = await admin.from('game_sessions').insert({ couple_id: couple.id, created_by: cid_, partner_id: did, chapter_id: 'hari-pertama', status: 'completed', round_types: ['pilih_sama'], rounds: [], total_score: 0, completed_at: nowIso }).select('id').single()
+  const { data: pet, error: petE } = await c.rpc('adopt_pet', { p_type: 'cat', p_name: 'Mochi' })
+  const { data: careLog, error: logE } = await admin.from('pet_care_logs').insert({ pet_id: pet?.id, action_type: 'feed', done_by: cid_ }).select('id, done_by').single()
   const { error: careE } = await c.rpc('perform_pet_care', { p_pet_id: pet?.id, p_action: 'feed' })
-  const { data: careLog } = await admin.from('pet_care_logs').select('id, done_by').eq('pet_id', pet?.id).maybeSingle()
-  ok('setup game session + pet care log', !gameE && !careE && careLog?.done_by === cid_, gameE?.message ?? careE?.message)
+  const { count: logsAfterCare } = await admin.from('pet_care_logs').select('*', { count: 'exact', head: true }).eq('pet_id', pet?.id)
+  const { data: hiRows } = await admin.from('pet_warmth_events').select('id, actor_id, points').eq('pet_id', pet?.id).eq('source', 'hi')
+  const { data: petBefore } = await admin.from('couple_pets').select('xp').eq('id', pet?.id).single()
+  const set = await admin.rpc('samakan_insert_set', { p_couple: couple.id, p_creator: cid_, p_source: 'bank', p_theme: 'food', p_reason: null, p_rounds: samakanRounds('r10') })
+  const { data: setRounds } = await admin.from('samakan_rounds').select('id, position').eq('set_id', set.data?.id).order('position')
+  const ans = await c.rpc('samakan_answer', { p_round_id: setRounds?.[0]?.id, p_pick: 1 })
+  ok('setup v1 game, legacy care log, pet hi, Samakan set + answer',
+    !gameE && !petE && !logE && !careE && careLog?.done_by === cid_ && hiRows?.length === 1 && hiRows[0].actor_id === cid_
+      && !set.error && set.data?.existing === false && setRounds?.length === 7 && !ans.error,
+    gameE?.message ?? petE?.message ?? logE?.message ?? careE?.message ?? set.error?.message ?? ans.error?.message ?? JSON.stringify(hiRows))
+  ok('the old care RPC counts as a hi and writes no care log', logsAfterCare === 1 && hiRows?.[0]?.points === 5, `logs ${logsAfterCare}, hi ${JSON.stringify(hiRows)}`)
 
   const { error: delE } = await admin.auth.admin.deleteUser(cid_)
   ok('admin deletes creator', !delE, delE?.message)
@@ -326,6 +350,16 @@ async function creatorDeletion() {
   ok('partner keeps the game session (created_by null)', keptGame?.id === game?.id && keptGame.created_by === null, JSON.stringify(keptGame))
   const { data: keptLog } = await d.from('pet_care_logs').select('id, done_by').eq('id', careLog?.id).maybeSingle()
   ok('partner keeps the pet care log (done_by null)', keptLog?.id === careLog?.id && keptLog.done_by === null, JSON.stringify(keptLog))
+  const { data: keptHi } = await d.from('pet_warmth_events').select('id, actor_id, points').eq('id', hiRows?.[0]?.id).maybeSingle()
+  const { data: petAfter } = await d.from('couple_pets').select('xp').eq('id', pet?.id).maybeSingle()
+  ok('partner keeps the pet hi (actor null) and the XP', keptHi?.id === hiRows?.[0]?.id && keptHi.actor_id === null && keptHi.points === 5
+    && petAfter?.xp === petBefore?.xp, `${JSON.stringify(keptHi)} xp ${petBefore?.xp} → ${petAfter?.xp}`)
+  const { data: keptSet } = await d.from('samakan_sets').select('id, created_by').eq('id', set.data?.id).maybeSingle()
+  const { count: keptRounds } = await d.from('samakan_rounds').select('*', { count: 'exact', head: true }).eq('set_id', set.data?.id)
+  const { data: keptAns } = await admin.from('samakan_answers').select('profile_id, pick').eq('set_id', set.data?.id)
+  ok('partner keeps the Samakan set (created_by null) and its rounds', keptSet?.id === set.data?.id && keptSet.created_by === null && keptRounds === 7,
+    `${JSON.stringify(keptSet)} rounds ${keptRounds}`)
+  ok('the creator\'s Samakan answer stays, unattributed', keptAns?.length === 1 && keptAns[0].profile_id === null && keptAns[0].pick === 1, JSON.stringify(keptAns))
 }
 
 async function notificationPrefs() {
@@ -463,6 +497,15 @@ async function apiRoutes() {
   const { data: noteSealed, error: g3E } = await q.from('gratitude_notes').insert({ couple_id: cid, from_id: qid, to_id: pid, body: G_SEALED }).select('id').single()
   const { error: openE } = await p.from('gratitude_notes').update({ opened_at: new Date().toISOString() }).eq('id', noteOpened?.id)
   ok('setup toples notes', !g1E && !g2E && !g3E && !openE, g1E?.message ?? g2E?.message ?? g3E?.message ?? openE?.message)
+  // v0.8: a pet with my hi, and a Samakan set where each of us answered one round.
+  const { data: ePet, error: ePetE } = await p.rpc('adopt_pet', { p_type: 'dog', p_name: 'Kopi' })
+  const { error: eHiE } = await p.rpc('pet_say_hi', { p_gesture: 'pat' })
+  const eSet = await admin.rpc('samakan_insert_set', { p_couple: cid, p_creator: pid, p_source: 'bank', p_theme: 'food', p_reason: null, p_rounds: samakanRounds('export') })
+  const { data: eRounds } = await admin.from('samakan_rounds').select('id, position').eq('set_id', eSet.data?.id).order('position')
+  const eMine = await p.rpc('samakan_answer', { p_round_id: eRounds?.[0]?.id, p_pick: 0 })
+  const eTheirs = await q.rpc('samakan_answer', { p_round_id: eRounds?.[1]?.id, p_pick: 2, p_guess: 1 })
+  ok('setup pet hi + Samakan answers', !ePetE && !eHiE && !eSet.error && eRounds?.length === 7 && !eMine.error && !eTheirs.error,
+    ePetE?.message ?? eHiE?.message ?? eSet.error?.message ?? eMine.error?.message ?? eTheirs.error?.message)
 
   const pCookie = await cookieFor(p)
 
@@ -500,6 +543,12 @@ async function apiRoutes() {
   const sealedNote = (j.gratitude_notes ?? []).find((n) => n.id === noteSealed?.id)
   ok('export: unopened note still listed (id, body null, hidden note)', j.gratitude_notes?.length === 3 && sealedNote?.body === null && typeof sealedNote?.body_hidden === 'string', JSON.stringify(sealedNote))
   ok('export: couple carries closed_at', j.couple && 'closed_at' in j.couple && j.couple.closed_at === null)
+  ok('export: pet with my hi in the warmth ledger', j.pet?.pets?.length === 1 && j.pet.pets[0].id === ePet?.id
+    && (j.pet.warmth_events ?? []).some((e) => e.source === 'hi' && e.actor_id === pid), JSON.stringify(j.pet?.warmth_events))
+  ok('export: Samakan set with its 7 rounds', j.samakan?.sets?.length === 1 && j.samakan.sets[0].id === eSet.data?.id && j.samakan.rounds?.length === 7)
+  const myAns = j.samakan?.my_answers ?? []
+  ok('export: my Samakan answer in, partner\'s answer out', myAns.length === 1 && myAns[0].profile_id === pid && myAns[0].round_id === eRounds?.[0]?.id
+    && !myAns.some((a) => a.round_id === eRounds?.[1]?.id || a.profile_id === qid), JSON.stringify(myAns))
 
   const leave1 = await api('POST', '/api/couple/leave', pCookie)
   ok('API leave with partner → 200, not deleted', leave1.status === 200 && leave1.json?.deleted === false, `status ${leave1.status} ${leave1.text.slice(0, 120)}`)
@@ -574,6 +623,10 @@ async function accountDeletion({ phrase, wrongPhrase, tags }) {
 
 async function main() {
   quietHourCases()
+  // The invite pages and API routes need the app: say so instead of crashing
+  // later with a bare "fetch failed".
+  const ping = await fetch(APP, { signal: AbortSignal.timeout(10_000) }).catch(() => null)
+  if (!ping) { failures.push(`app not reachable at ${APP} (start it: next start -p 3030, or run scripts/verify/run-all.mjs)`); return }
   const pair = await inviteCodes()
   await leaveWithPartner(pair)
   await creatorDeletion()

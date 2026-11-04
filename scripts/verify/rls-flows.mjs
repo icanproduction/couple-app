@@ -56,6 +56,16 @@ const ok = (name, cond, extra = '') => {
 const created = []
 const extraCouples = []
 
+/** A valid Samakan v2 bank set: 7 rounds in the fixed kind order. */
+function samakanRounds(tag) {
+  const round = (kind, i) => ({
+    kind, prompt: `${tag} round ${i + 1}: which one tonight?`, source: 'general', talk: '', bank_id: `${tag}-${i}`,
+    options: kind === 'match' ? ['Stay in', 'Go out'] : kind === 'guess' ? ['Nasi goreng', 'Sate ayam', 'Bakso', 'Gado-gado'] : [],
+    ...(kind === 'scale' ? { low: 'Not at all', high: 'Very much' } : {}),
+  })
+  return ['match', 'guess', 'scale', 'guess', 'match', 'scale', 'guess'].map(round)
+}
+
 async function signUp(client, tag) {
   const email = `${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@verify.local`
   const { data, error } = await client.auth.signUp({ email, password: 'verify-pass-123' })
@@ -146,8 +156,7 @@ async function main() {
   const endpoint = `https://push.invalid/${Date.now()}`
   r.push = await b.rpc('save_push_subscription', { p_endpoint: endpoint, p_p256dh: 'k', p_auth_key: 'a' })
   r.pet = await b.from('couple_pets').insert({ couple_id: cid, pet_type: 'cat', name: 'Mochi' }).select().single()
-  r.mood = await b.from('pet_mood_state').insert({ pet_id: r.pet.data?.id, updated_at: new Date().toISOString() }).select().single()
-  r.roles = await b.from('pet_care_roles').insert({ couple_id: cid, pet_id: r.pet.data?.id, profile_id: bid, actions: ['feed'] })
+  // The old care RPC stays callable for old clients and counts as B's hi.
   r.care = await b.rpc('perform_pet_care', { p_pet_id: r.pet.data?.id, p_action: 'feed' })
   r.letter = await b.from('letters').insert({ couple_id: cid, sender_id: bid, receiver_id: aid, content: 'hai', unlock_date: new Date(Date.now() + 864e5).toISOString() })
   r.miss = await b.from('miss_you').insert({ couple_id: cid, sender_id: bid, receiver_id: aid })
@@ -156,12 +165,28 @@ async function main() {
   r.wed = await b.from('wedding_budget_items').insert({ couple_id: cid, category: 'venue', name: 'Gedung' })
   r.mbti = await b.from('mbti_results').insert({ profile_id: bid, couple_id: cid, mbti_type: 'INFJ', answers: {}, scores: {} })
   r.assess = await b.from('assessment_results').insert({ profile_id: bid, couple_id: cid, answers: {}, scores: {} })
-  r.game = await b.from('game_sessions').insert({ couple_id: cid, created_by: bid, partner_id: aid, chapter_id: 'hari-pertama', round_types: ['a'], rounds: [] }).select('id,status').single()
   r.dtp = await b.from('deep_talk_progress').upsert({ couple_id: cid, pack_id: PACK_1, level_number: 1, current_question_index: 2 }, { onConflict: 'couple_id,pack_id' })
   r.tx2 = await b.from('couple_transactions').insert({ couple_id: cid, goal_id: r.goal.data?.id, amount: -50000, type: 'withdrawal', created_by: bid })
   for (const [k, v] of Object.entries(r)) ok(`write ${k}`, !v.error, v.error?.message)
-  ok('pet mood defaults', r.mood.data?.mood === 'happy' && r.mood.data?.hunger === 70)
-  ok('game default status', r.game.data?.status === 'waiting')
+  // v0.8: a new pet starts with server-owned defaults (no mood state any more).
+  ok('new pet defaults: level 1, no XP, not home yet', r.pet.data?.level === 1 && r.pet.data?.xp === 0 && r.pet.data?.hatched_at === null, JSON.stringify(r.pet.data))
+  // v0.8: the old pet tables and game_sessions are read-only history for clients.
+  const moodW = await b.from('pet_mood_state').insert({ pet_id: r.pet.data?.id, updated_at: new Date().toISOString() }).select().single()
+  ok('client can no longer write pet mood state', !!moodW.error && !moodW.data, moodW.error?.message ?? 'insert went through')
+  const rolesW = await b.from('pet_care_roles').insert({ couple_id: cid, pet_id: r.pet.data?.id, profile_id: bid, actions: ['feed'] }).select()
+  ok('client can no longer write care roles', !!rolesW.error && !rolesW.data, rolesW.error?.message ?? 'insert went through')
+  const gameW = await b.from('game_sessions').insert({ couple_id: cid, created_by: bid, partner_id: aid, chapter_id: 'hari-pertama', round_types: ['a'], rounds: [] }).select('id,status').single()
+  ok('authenticated insert into game_sessions is refused', !!gameW.error && !gameW.data, gameW.error?.message ?? 'insert went through')
+  // A v1 game (written by the service role, as history) stays readable by the
+  // couple only, and no member can change or delete it.
+  const { data: v1, error: v1E } = await admin.from('game_sessions').insert({ couple_id: cid, created_by: bid, partner_id: aid, chapter_id: 'hari-pertama', status: 'completed', round_types: ['pilih_sama'], rounds: [], total_score: 12, completed_at: new Date().toISOString() }).select('id').single()
+  const { data: v1Read } = await b.from('game_sessions').select('id, status').eq('id', v1?.id)
+  const { data: v1Outsider } = await c.from('game_sessions').select('id').eq('id', v1?.id)
+  ok('v1 game readable by the couple, not by outsiders', !v1E && v1Read?.length === 1 && v1Read[0].status === 'completed' && (v1Outsider ?? []).length === 0, v1E?.message)
+  const { data: v1Upd } = await a.from('game_sessions').update({ total_score: 99 }).eq('id', v1?.id).select('id')
+  const { data: v1Del } = await b.from('game_sessions').delete().eq('id', v1?.id).select('id')
+  const { data: v1Now } = await admin.from('game_sessions').select('total_score').eq('id', v1?.id).maybeSingle()
+  ok('v1 game cannot be edited or deleted by members', (v1Upd ?? []).length === 0 && (v1Del ?? []).length === 0 && v1Now?.total_score === 12, JSON.stringify(v1Now))
 
   // --- Hardening: integrity rules -----------------------------------------
   const { data: goalNow } = await b.from('savings_goals').select('current_amount').eq('id', r.goal.data?.id).single()
@@ -170,8 +195,15 @@ async function main() {
   ok('users cannot write AI questions directly', !!aiqE)
   const { error: pet2E } = await a.from('couple_pets').insert({ couple_id: cid, pet_type: 'dog', name: 'Dua' })
   ok('second pet per couple rejected', !!pet2E)
-  const { error: game2E } = await a.from('game_sessions').insert({ couple_id: cid, created_by: aid, partner_id: bid, round_types: ['a'], rounds: [] })
-  ok('second open game session rejected', !!game2E)
+  // Samakan v2: one open set per couple, whoever starts it; clients never write sets.
+  const set1 = await admin.rpc('samakan_insert_set', { p_couple: cid, p_creator: aid, p_source: 'bank', p_theme: 'food', p_reason: null, p_rounds: samakanRounds('rls-1') })
+  const set2 = await admin.rpc('samakan_insert_set', { p_couple: cid, p_creator: bid, p_source: 'bank', p_theme: 'home', p_reason: null, p_rounds: samakanRounds('rls-2') })
+  const { error: rawOpenE } = await admin.from('samakan_sets').insert({ couple_id: cid, created_by: bid, source: 'bank', theme: 'travel' })
+  const { count: openSets } = await admin.from('samakan_sets').select('*', { count: 'exact', head: true }).eq('couple_id', cid).eq('status', 'open')
+  ok('second open Samakan set per couple rejected', !set1.error && set1.data?.existing === false && set2.data?.existing === true && set2.data?.id === set1.data?.id
+    && /samakan_sets_one_open|duplicate key/.test(rawOpenE?.message ?? '') && openSets === 1, `${JSON.stringify(set1.data ?? set1.error)} / ${JSON.stringify(set2.data ?? set2.error)} / ${rawOpenE?.message} / open=${openSets}`)
+  const { error: clientSetE } = await a.from('samakan_sets').insert({ couple_id: cid, created_by: aid, source: 'bank', theme: 'travel' })
+  ok('members cannot create Samakan sets directly', !!clientSetE)
   const { error: fakeMiss } = await b.from('miss_you').insert({ couple_id: cid, sender_id: aid, receiver_id: bid })
   ok('cannot send kangen as partner', !!fakeMiss)
   const { error: fakeTx } = await b.from('couple_transactions').insert({ couple_id: cid, amount: 1, type: 'deposit', created_by: aid })
@@ -179,19 +211,55 @@ async function main() {
   const { error: fakeAns } = await b.from('daily_responses').insert({ couple_id: cid, profile_id: aid, question_index: 1, answer: 'z', answered_date: today })
   ok('cannot answer as partner', !!fakeAns)
 
-  // Game rules enforced on the server.
+  // Pet rules enforced on the server (v0.8: no decay, roles or cooldowns; one
+  // hi per person per Jakarta day; XP only from the warmth ledger).
   const petId = r.pet.data?.id
-  ok('pet care restores from defaults', r.care.data?.hunger === 100 && r.care.data?.mood === 'thriving', JSON.stringify(r.care.data))
-  const { error: againE } = await b.rpc('perform_pet_care', { p_pet_id: petId, p_action: 'feed' })
-  ok('pet care cooldown enforced', /cooldown/.test(againE?.message ?? ''), againE?.message)
-  const { error: roleE } = await b.rpc('perform_pet_care', { p_pet_id: petId, p_action: 'play' })
-  ok('pet care role enforced', /your partner's job/.test(roleE?.message ?? ''), roleE?.message)
+  ok('old care RPC still answers old clients', r.care.data?.hunger === 100 && r.care.data?.mood === 'thriving', JSON.stringify(r.care.data))
+  const xpOf = async () => (await admin.from('couple_pets').select('xp, level, hatched_at').eq('id', petId).single()).data
+  const xpBeforeAgain = await xpOf()
+  const { data: againHi, error: againE } = await b.rpc('pet_say_hi', { p_gesture: 'play' })
+  const { error: againCareE } = await b.rpc('perform_pet_care', { p_pet_id: petId, p_action: 'play' })
+  const xpAfterAgain = await xpOf()
+  ok('say hi counts once a day', !againE && againHi?.counted === false && againHi?.points === 0 && !againCareE && xpAfterAgain?.xp === xpBeforeAgain?.xp,
+    `${againE?.message ?? JSON.stringify(againHi)} ${againCareE?.message ?? ''} xp ${xpBeforeAgain?.xp} → ${xpAfterAgain?.xp}`)
+  const { data: bHis } = await admin.from('pet_warmth_events').select('points, gesture').eq('pet_id', petId).eq('source', 'hi').eq('actor_id', bid)
+  ok('the old care RPC counted as one hi (+5, snack)', bHis?.length === 1 && bHis[0].points === 5 && bHis[0].gesture === 'snack', JSON.stringify(bHis))
+  const { data: aHi, error: aHiE } = await a.rpc('pet_say_hi', { p_gesture: 'pat' })
+  ok('partner\'s first hi adds the both-of-you bonus and brings the pet home', !aHiE && aHi?.counted === true && aHi?.points === 10 && aHi?.both_today === true
+    && aHi?.hatched === true && aHi?.just_hatched === true, aHiE?.message ?? JSON.stringify(aHi))
+  // Care roles and the pet itself: no client can rewrite roles or remove the
+  // pet. Legacy rows (as v0.7 left them) are seeded by the service role.
+  const { error: legacyRoleE } = await admin.from('pet_care_roles').insert({ couple_id: cid, pet_id: petId, profile_id: bid, actions: ['feed'] })
+  const { error: legacyMoodE } = await admin.from('pet_mood_state').insert({ pet_id: petId, updated_at: new Date().toISOString() })
+  ok('setup: legacy care role + mood rows (service role)', !legacyRoleE && !legacyMoodE, legacyRoleE?.message ?? legacyMoodE?.message)
+  const { data: roleHack, error: roleHackE } = await b.from('pet_care_roles').update({ actions: ['feed', 'play', 'walk'] }).eq('pet_id', petId).select('id')
+  const { data: roleDel } = await a.from('pet_care_roles').delete().eq('pet_id', petId).select('id')
+  const { data: roleNowRows } = await admin.from('pet_care_roles').select('actions').eq('pet_id', petId)
+  ok('client can no longer change or remove care roles', (!!roleHackE || (roleHack ?? []).length === 0) && (roleDel ?? []).length === 0
+    && roleNowRows?.length === 1 && roleNowRows[0].actions.join() === 'feed', JSON.stringify(roleNowRows))
+  const { data: petDel, error: petDelE } = await b.from('couple_pets').delete().eq('id', petId).select('id')
+  const { data: petDelA } = await a.from('couple_pets').delete().eq('couple_id', cid).select('id')
+  const { data: petStill } = await admin.from('couple_pets').select('id').eq('id', petId).maybeSingle()
+  ok('client can no longer delete the pet', (!!petDelE || (petDel ?? []).length === 0) && (petDelA ?? []).length === 0 && petStill?.id === petId)
   const { data: moodHack } = await b.from('pet_mood_state').update({ hunger: 100, happiness: 100 }).eq('pet_id', petId).select('id')
   const { error: logHack } = await b.from('pet_care_logs').insert({ pet_id: petId, action_type: 'play', done_by: bid })
   const { data: xpHack } = await b.from('couple_pets').update({ xp: 9999 }).eq('id', petId).select('id')
-  ok('pet stats/logs/xp not writable directly', (moodHack ?? []).length === 0 && !!logHack && (xpHack ?? []).length === 0)
-  const { data: petNow } = await b.from('couple_pets').select('xp, level').eq('id', petId).single()
-  ok('pet xp from one action', petNow?.xp === 10 && petNow?.level === 1, JSON.stringify(petNow))
+  const { data: moodNow } = await admin.from('pet_mood_state').select('hunger').eq('pet_id', petId).single()
+  ok('pet stats/logs/xp not writable directly', (moodHack ?? []).length === 0 && !!logHack && (xpHack ?? []).length === 0 && moodNow?.hunger !== 100, JSON.stringify(moodNow))
+  const { error: warmHack } = await b.from('pet_warmth_events').insert({ pet_id: petId, couple_id: cid, actor_id: bid, source: 'hi', points: 50 })
+  const { data: lvlHack } = await b.from('couple_pets').update({ level: 20 }).eq('id', petId).select('id')
+  const { data: hatchHack } = await b.from('couple_pets').update({ hatched_at: null }).eq('id', petId).select('id')
+  const { error: awardHack } = await b.rpc('pet_award', { p_couple: cid, p_actor: bid, p_source: 'moment' })
+  ok('warmth ledger, level and hatched_at not writable directly', !!warmHack && (lvlHack ?? []).length === 0 && (hatchHack ?? []).length === 0 && !!awardHack)
+  const { data: renamed, error: renameE } = await b.from('couple_pets').update({ name: 'Mochi Dua' }).eq('id', petId).select('name')
+  ok('members can still rename the pet', !renameE && renamed?.[0]?.name === 'Mochi Dua', renameE?.message)
+  const { count: careLogs } = await admin.from('pet_care_logs').select('*', { count: 'exact', head: true }).eq('pet_id', petId)
+  ok('the old care RPC writes no pet_care_logs', careLogs === 0, `logs=${careLogs}`)
+  const petNow = await xpOf()
+  const { data: ledger } = await admin.from('pet_warmth_events').select('points').eq('pet_id', petId)
+  const ledgerSum = (ledger ?? []).reduce((s, e) => s + e.points, 0)
+  ok('pet xp equals its warmth ledger (one hi each + the bonus included)', petNow?.xp === ledgerSum && petNow?.level === 1 && petNow?.hatched_at !== null && ledgerSum >= 15,
+    `${JSON.stringify(petNow)} ledger=${ledgerSum}`)
   const { error: kangen2 } = await b.from('miss_you').insert({ couple_id: cid, sender_id: bid, receiver_id: aid })
   ok('kangen cooldown enforced', /Wait a bit/.test(kangen2?.message ?? ''), kangen2?.message)
   const { error: overdraw } = await b.from('couple_transactions').insert({ couple_id: cid, goal_id: r.goal.data?.id, amount: -999999999, type: 'withdrawal', created_by: bid })
@@ -202,6 +270,10 @@ async function main() {
   if (cCouple?.id) extraCouples.push(cCouple.id)
   const { data: cGoal, error: cgE } = await c.from('savings_goals').insert({ couple_id: cCouple?.id, name: 'Motor', target_amount: 1000000 }).select().single()
   ok('setup: other couple with its own goal', !ccE && !cgE && cGoal?.id, ccE?.message ?? cgE?.message)
+  // A pet's XP, level and "home" state come from the server, never from the adopter.
+  const { error: richPetE } = await c.from('couple_pets').insert({ couple_id: cCouple?.id, pet_type: 'dog', name: 'Kaya', xp: 9999, level: 50, hatched_at: new Date().toISOString() })
+  const { count: cPets } = await admin.from('couple_pets').select('*', { count: 'exact', head: true }).eq('couple_id', cCouple?.id)
+  ok('client cannot adopt a pet with XP, level or hatched_at set', /permission denied/.test(richPetE?.message ?? '') && cPets === 0, richPetE?.message)
   const { error: crossTx } = await b.from('couple_transactions').insert({ couple_id: cid, goal_id: cGoal?.id, amount: 1000, type: 'deposit', created_by: bid })
   ok("transaction into another couple's goal rejected", !!crossTx)
   const { error: crossTx2 } = await c.from('couple_transactions').insert({ couple_id: cCouple?.id, goal_id: r.goal.data?.id, amount: 1000, type: 'deposit', created_by: sc.user.id })
@@ -255,20 +327,27 @@ async function main() {
   const { data: readNow } = await a.rpc('read_letter', { p_letter_id: opened?.id })
   ok('unlocked letter readable + marked opened', readNow?.[0]?.content === 'buka' && readNow?.[0]?.is_opened === true)
 
-  // Deep Talk: a free pack opens every level to a non-premium couple…
+  // Deep Talk: a free pack opens every level (1-5 since 20261104090000) to a
+  // non-premium couple…
   const { data: lvAll } = await b.from('deep_talk_levels').select('id, level_number').eq('pack_id', PACK_1)
   const { data: qFree } = await b.from('deep_talk_questions').select('id').in('level_id', (lvAll ?? []).map((l) => l.id))
-  ok('free pack: all 18 questions readable without premium', (qFree ?? []).length === 18, `got ${qFree?.length}`)
+  const { count: qAllAdmin } = await admin.from('deep_talk_questions').select('*', { count: 'exact', head: true }).in('level_id', (lvAll ?? []).map((l) => l.id))
+  ok('free pack: all 5 levels and all 30 questions readable without premium',
+    (lvAll ?? []).map((l) => l.level_number).sort().join() === '1,2,3,4,5' && (qFree ?? []).length === 30 && qAllAdmin === 30,
+    `levels ${lvAll?.map((l) => l.level_number)} got ${qFree?.length} of ${qAllAdmin}`)
   // …while a premium pack still only gives level 1.
   const { data: paidPack } = await admin.from('deep_talk_packs')
     .insert({ slug: `verify-paid-${Date.now()}`, title: 'Verify Paid', is_published: true, is_free: false }).select('id').single()
   const { data: paidLv } = await admin.from('deep_talk_levels').select('id, level_number').eq('pack_id', paidPack?.id)
   const l1 = paidLv?.find((l) => l.level_number === 1)?.id
   const l2 = paidLv?.find((l) => l.level_number === 2)?.id
-  await admin.from('deep_talk_questions').insert([{ level_id: l1, question_text: 'L1?', sort_order: 1 }, { level_id: l2, question_text: 'L2?', sort_order: 1 }])
+  const l5 = paidLv?.find((l) => l.level_number === 5)?.id
+  await admin.from('deep_talk_questions').insert([{ level_id: l1, question_text: 'L1?', sort_order: 1 }, { level_id: l2, question_text: 'L2?', sort_order: 1 }, { level_id: l5, question_text: 'L5?', sort_order: 1 }])
   const { data: q2 } = await b.from('deep_talk_questions').select('id').eq('level_id', l2)
+  const { data: q5 } = await b.from('deep_talk_questions').select('id').eq('level_id', l5)
   const { data: q1 } = await b.from('deep_talk_questions').select('id').eq('level_id', l1)
   ok('free couple cannot fetch level-2 questions of a premium pack', (q2 ?? []).length === 0 && (q1 ?? []).length > 0, `l1=${q1?.length} l2=${q2?.length}`)
+  ok('free couple cannot fetch level-5 questions of a premium pack', !!l5 && (q5 ?? []).length === 0, `l5=${l5} got ${q5?.length}`)
   await admin.from('deep_talk_packs').delete().eq('id', paidPack?.id)
   const { data: first } = await b.rpc('complete_deep_talk_level', { p_pack_id: PACK_1, p_level_number: 1 })
   const { data: second } = await a.rpc('complete_deep_talk_level', { p_pack_id: PACK_1, p_level_number: 1 })
@@ -289,8 +368,8 @@ async function main() {
 
   // --- Admin content management ------------------------------------------
   const { data: newPack, error: npE } = await raka.from('deep_talk_packs').insert({ slug: `verify-${Date.now()}`, title: 'Verify Pack' }).select().single()
-  const { data: newLv } = await raka.from('deep_talk_levels').select('id').eq('pack_id', newPack?.id)
-  ok('new pack gets 3 levels', !npE && newLv?.length === 3, npE?.message)
+  const { data: newLv } = await raka.from('deep_talk_levels').select('id, level_number').eq('pack_id', newPack?.id).order('level_number')
+  ok('new pack gets 5 levels', !npE && newLv?.map((l) => l.level_number).join() === '1,2,3,4,5', npE?.message ?? JSON.stringify(newLv))
   const { error: qE } = await raka.from('deep_talk_questions').insert({ level_id: newLv?.[0]?.id, question_text: 'Q', sort_order: 1 })
   const { data: lvAfter } = await raka.from('deep_talk_levels').select('question_count').eq('id', newLv?.[0]?.id).single()
   ok('question_count trigger', !qE && lvAfter?.question_count === 1, qE?.message)

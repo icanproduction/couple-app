@@ -16,8 +16,9 @@ const BUILTIN = new Set(['NODE_ENV', 'NEXT_RUNTIME', 'VERCEL', 'VERCEL_ENV', 'VE
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name)
-    if (statSync(p).isDirectory()) walk(p, out)
-    else if (/\.(ts|tsx|js|mjs)$/.test(name)) out.push(p)
+    // Tests read their own switches (CLAUDE_LIVE, PET_DB, …); only app code must be documented.
+    if (statSync(p).isDirectory()) { if (name !== '__tests__') walk(p, out) }
+    else if (/\.(ts|tsx|js|mjs)$/.test(name) && !/\.test\.(ts|tsx|js|mjs)$/.test(name)) out.push(p)
   }
   return out
 }

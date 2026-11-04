@@ -1,10 +1,7 @@
-// AI date ideas (F21): the model call (GPT Luna via OpenRouter) and the output
-// check. Server-only — imported by src/app/api/ai/date-ideas/route.ts; never
-// import it from a client component (it carries the prompt and the SDK).
-import { generateText, NoObjectGeneratedError, NoOutputGeneratedError, Output } from 'ai'
-import { z } from 'zod'
-import { providerOptionsFor } from '@/lib/llm-provider/provider'
-import { LlmNotConfiguredError, type Llm } from '@/lib/llm'
+// AI date ideas (F21): the prompt, the Claude call and the output check.
+// Server-only: imported by src/app/api/ai/date-ideas/route.ts; never import it
+// from a client component (it carries the prompt and the AI client).
+import { claudeJson, type ClaudeFailure, type ClaudeUsage } from '@/lib/claude'
 import { AI_STYLE_RULES, tidyAiText } from '@/lib/ai-style'
 import {
   IDEA_CATEGORIES,
@@ -22,6 +19,8 @@ const MAX_COST_IDR = 100_000_000
 const MAX_BUCKET_TITLES = 40
 /** Whole call, retries included. A pending run holds its quota slot for 5 minutes. */
 export const DATE_IDEAS_TIMEOUT_MS = 45_000
+/** Room for a short think at effort "low" plus three short ideas as JSON. */
+export const DATE_IDEAS_MAX_TOKENS = 1536
 
 /** The model answered, but not with three usable ideas. */
 export class DateIdeasError extends Error {}
@@ -57,7 +56,7 @@ const CATEGORY_PROMPT: Record<IdeaCategory, string> = {
   lainnya: 'anything else',
 }
 
-const SYSTEM_PROMPT = `You help couples in Indonesia find concrete date ideas they can do right away.
+export const DATE_IDEAS_SYSTEM_PROMPT = `You help couples in Indonesia find concrete date ideas they can do right away.
 
 RULES:
 - Give EXACTLY 3 ideas that are clearly different from each other (different kinds of activity, not small variations).
@@ -72,24 +71,41 @@ RULES:
 
 ${AI_STYLE_RULES}`
 
-// Sent as a strict json_schema response_format (the llm-provider module turns
-// on supportsStructuredOutputs). Only keywords strict mode accepts: array
-// length and minimum. String lengths live in the descriptions and are
-// enforced by validateIdeas below.
-export const IDEAS_SCHEMA = z.object({
-  ideas: z
-    .array(
-      z.object({
-        title: z.string().describe(`A short title in English, at most ${IDEA_LIMITS.title} characters.`),
-        description: z.string().describe(`1–2 sentences in English about what to do, at most ${IDEA_LIMITS.description} characters.`),
-        estimated_cost_idr: z.number().int().min(0).describe('Estimated total cost for the two of them in Rupiah, a whole number >= 0.'),
-        category: z.enum(IDEA_CATEGORIES),
-        tips: z.string().describe(`One practical tip in English, at most ${IDEA_LIMITS.tips} characters.`),
-      }),
-    )
-    .length(IDEA_COUNT)
-    .describe('Exactly 3 different date ideas.'),
-})
+// Sent as structured output (output_config.format). The text lengths stay in
+// the descriptions only: validateIdeas enforces them after trimming and
+// collapsing whitespace, so a stray double space can't fail a good answer.
+const IDEA_SCHEMA = {
+  type: 'object',
+  properties: {
+    title: { type: 'string', description: `A short title in English, at most ${IDEA_LIMITS.title} characters.` },
+    description: { type: 'string', description: `1 or 2 sentences in English about what to do, at most ${IDEA_LIMITS.description} characters.` },
+    estimated_cost_idr: {
+      type: 'integer',
+      minimum: 0,
+      maximum: MAX_COST_IDR,
+      description: 'Estimated total cost for the two of them in Rupiah, a whole number of 0 or more.',
+    },
+    category: { type: 'string', enum: [...IDEA_CATEGORIES] },
+    tips: { type: 'string', description: `One practical tip in English, at most ${IDEA_LIMITS.tips} characters.` },
+  },
+  required: ['title', 'description', 'estimated_cost_idr', 'category', 'tips'],
+  additionalProperties: false,
+}
+
+export const IDEAS_SCHEMA = {
+  type: 'object',
+  properties: {
+    ideas: {
+      type: 'array',
+      items: IDEA_SCHEMA,
+      minItems: IDEA_COUNT,
+      maxItems: IDEA_COUNT,
+      description: 'Exactly 3 different date ideas.',
+    },
+  },
+  required: ['ideas'],
+  additionalProperties: false,
+}
 
 function cleanText(value: unknown, max: number): string | null {
   if (typeof value !== 'string') return null
@@ -130,7 +146,7 @@ export interface DateIdeaContext {
   bucketTitles: string[]
 }
 
-function buildPrompt(input: DateIdeaInput, ctx: DateIdeaContext): string {
+export function buildDateIdeasPrompt(input: DateIdeaInput, ctx: DateIdeaContext): string {
   const titles = ctx.bucketTitles
     .slice(0, MAX_BUCKET_TITLES)
     .map((t) => t.replace(/\s+/g, ' ').trim().slice(0, 80))
@@ -151,43 +167,37 @@ function buildPrompt(input: DateIdeaInput, ctx: DateIdeaContext): string {
   ].join('\n')
 }
 
+export type DateIdeasResult = { ok: true; ideas: DateIdea[]; usage: ClaudeUsage } | ClaudeFailure
+
 /**
- * One model call → 3 validated ideas. Throws LlmNotConfiguredError (no key,
- * nothing sent), the provider's error, or DateIdeasError for an answer that
- * is not three usable ideas (refusal, cut off, wrong shape, failed checks).
+ * One Sonnet call → 3 validated ideas, billed to `coupleId` under
+ * 'date_ideas'. Never throws: a missing key, the daily cap, a refusal, a
+ * timeout or an answer that is not three usable ideas come back as a
+ * ClaudeFailure.
  */
 export async function generateDateIdeas(
-  llm: Llm,
+  coupleId: string,
   input: DateIdeaInput,
   ctx: DateIdeaContext,
   { timeoutMs = DATE_IDEAS_TIMEOUT_MS }: { timeoutMs?: number } = {},
-): Promise<DateIdea[]> {
-  if (!llm.configured) throw new LlmNotConfiguredError()
-
-  let object: unknown
+): Promise<DateIdeasResult> {
+  const result = await claudeJson<unknown>({
+    feature: 'date_ideas',
+    coupleId,
+    system: DATE_IDEAS_SYSTEM_PROMPT,
+    prompt: buildDateIdeasPrompt(input, ctx),
+    schema: IDEAS_SCHEMA,
+    maxTokens: DATE_IDEAS_MAX_TOKENS,
+    timeoutMs,
+    // A couple often asks again within minutes with other choices: the same
+    // system prompt is then read from the cache at a tenth of the price.
+    cacheSystem: true,
+  })
+  if (!result.ok) return result
   try {
-    // generateText + Output.object sends the same strict json_schema request as
-    // the deprecated generateObject (ai v7).
-    const result = await generateText({
-      model: llm.model(),
-      output: Output.object({ schema: IDEAS_SCHEMA, name: 'date_ideas' }),
-      instructions: SYSTEM_PROMPT,
-      prompt: buildPrompt(input, ctx),
-      // Room for medium reasoning plus three short ideas.
-      maxOutputTokens: 4096,
-      maxRetries: llm.maxRetries,
-      abortSignal: AbortSignal.timeout(timeoutMs),
-      providerOptions: providerOptionsFor('medium'),
-    })
-    object = result.output
+    return { ok: true, ideas: validateIdeas(result.data), usage: result.usage }
   } catch (err) {
-    if (NoObjectGeneratedError.isInstance(err)) {
-      throw new DateIdeasError(`bad structured output (finish reason ${err.finishReason ?? 'unknown'}): ${err.message}`)
-    }
-    if (NoOutputGeneratedError.isInstance(err)) {
-      throw new DateIdeasError(`no structured output: ${err.message}`)
-    }
+    if (err instanceof DateIdeasError) return { ok: false, reason: 'invalid', detail: err.message }
     throw err
   }
-  return validateIdeas(object)
 }

@@ -409,7 +409,7 @@ Navigation: bottom nav is Beranda · **Jelajah** · Keuangan · Kalender · Prof
 | Jar (was Toples Apresiasi) | `/app/toples` | notes to the partner, drawn one at a time ("Ambil satu") |
 | Arsip jawaban | `/app/arsip-pertanyaan` | past daily questions; partner's answer only on days you answered too |
 | Milestone | home card, `/app/milestone` | 7, 30, every 100 days to 1000, then every 500; yearly anniversaries |
-| Ide Date AI | `/app/ide-date` | budget / vibe / setting / city → 3 ideas (GPT Luna via OpenRouter, strict structured JSON), 5 per couple per day |
+| Ide Date AI | `/app/ide-date` | budget / vibe / setting / city → 3 ideas (Claude Sonnet 5.5, strict structured JSON), 5 per couple per day |
 | Perjalanan Kita | `/app/perjalanan` | one timeline: start date, milestones, moments, bucket done, letters opened (no content), dates |
 | Aktivitas | bell on home, `/app/aktivitas` | written by DB triggers; summaries never include private text |
 | Recap bulanan | `/app/recap` | numbers for one month + share text |
@@ -439,3 +439,15 @@ Privacy rules worth remembering: letters are readable only by sender and receive
 | Two Truths & a Lie | `/app/games/two-truths` | async: write 3 statements, mark the lie, optional story; partner gets a push, guesses once, reveal; tally both ways | `two_truths_rounds`, RPC-only (`two_truths_create/guess/list/cancel`), the lie and story stay hidden until the guess; one open round per author |
 
 Brave content is bold but safe: no sexual content, no alcohol, nothing dangerous or humiliating, spending dares capped at Rp 50.000.
+
+
+---
+
+## 21. v0.8 (2026-11-04): Claude AI, Pet Kita and Samakan remade, Deep Talk 5 levels, bucket references, Quick Moment
+
+- **AI:** everything runs on Claude Sonnet 5.5 via `src/lib/claude.ts` (`claudeJson`, per-couple daily caps in `ai_usage`, reserved atomically). OpenRouter and the Vault key UI are gone. Data sent per feature is listed on `/privasi`.
+- **Deep Talk:** every pack has 5 levels × 6 questions (300 total). Levels 4-5 come from `content/deep-talk-l45/*.ts` → `20261104090000_deep_talk_levels_4_5.sql` (`scripts/verify/build-dt-l45-migration.mjs`). New admin packs start with 5 levels.
+- **Bucket list:** optional reference link (chip with the site name) and optional private picture per item (`bucket-items` storage bucket), cleaned up with the item, the account or the couple.
+- **Quick Moment:** "Add from photos" opens the picker; EXIF date/place fill in, an editable title is suggested ("Saturday evening at …"), "Taken just now? Use where you are" when GPS is missing on a fresh photo; one tap to save.
+- **Pet Kita (spec `docs/superpowers/specs/2026-11-04-pet-remake.md`):** no decay, roles or cooldowns. Warmth comes from what the couple does in the app plus one "say hi" each per day; the room fills with living items as levels grow; a short daily note (Claude, template fallback). Lives on Home (couple hero) and `/app/pet`, not in the Games hub.
+- **Samakan (spec `docs/superpowers/specs/2026-11-04-samakan-remake.md`):** async "answer now, reveal together" sets of 7 rounds (pick yours, guess theirs), live reveals when both are on the screen, "Play now together" invite, 6 curated themes (120 rounds) plus one AI "For you two" set a day (may use Daily Question answers; switch in Profile), results with both answers, Older games read-only.

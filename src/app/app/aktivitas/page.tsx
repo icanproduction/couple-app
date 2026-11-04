@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Activity as ActivityIcon, ArrowLeft, Bell, CalendarDays, Camera, CircleCheck, Heart, HeartHandshake,
-  ListChecks, LogOut, Mail, MessageCircle, MessageSquareHeart, PiggyBank, Smile,
+  Activity as ActivityIcon, ArrowLeft, Bell, CalendarDays, Camera, CircleCheck, Dices, Gamepad2, Heart,
+  HeartHandshake, ListChecks, LogOut, Mail, MessageCircle, MessageSquareHeart, PawPrint, PiggyBank, Smile,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { getCoupleInfo, type CoupleInfo } from '@/lib/moments'
@@ -29,10 +29,26 @@ const KIND_STYLE: Record<string, { icon: typeof Bell; tone: string }> = {
   saving: { icon: PiggyBank, tone: 'bg-sage/20 text-sage-dark' },
   daily: { icon: MessageSquareHeart, tone: 'bg-rose/10 text-rose' },
   left: { icon: LogOut, tone: 'bg-ink/5 text-ink-muted' },
+  // Pet Kita: adopted, said hi (once a day per person), reached a level, renamed.
+  pet: { icon: PawPrint, tone: 'bg-sage/20 text-sage-dark' },
+  // Samakan v2: a set started, finished or ended, and the personal-rounds switch.
+  samakan: { icon: Gamepad2, tone: 'bg-purple-100 text-purple-600' },
+  two_truths: { icon: Dices, tone: 'bg-purple-100 text-purple-600' },
 }
 const DEFAULT_STYLE = { icon: ActivityIcon, tone: 'bg-ink/5 text-ink-muted' }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const safeUrl = (url: string | null) => (url && url.startsWith('/') && !url.startsWith('//') ? url : null)
+
+/** Where a row leads: its own url, or the default page for its kind. */
+function activityHref(a: Activity): string | null {
+  const own = safeUrl(a.url)
+  if (own) return own
+  if (a.kind === 'pet') return '/app/pet'
+  if (a.kind === 'samakan') return a.ref_id && UUID.test(a.ref_id) ? `/app/games/samakan/set/${a.ref_id}` : '/app/games/samakan'
+  if (a.kind === 'two_truths') return '/app/games/two-truths'
+  return null
+}
 
 export default function AktivitasPage() {
   const router = useRouter()
@@ -149,7 +165,7 @@ export default function AktivitasPage() {
           </div>
           <h2 className="text-lg font-bold text-ink">No activity yet</h2>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-muted">
-            Moments, moods, savings and letters you add will show up here.
+            Moments, moods, savings, letters, games and Pet Kita will show up here.
           </p>
         </div>
       ) : (
@@ -158,7 +174,7 @@ export default function AktivitasPage() {
             {items.map((a) => {
               const style = KIND_STYLE[a.kind] ?? DEFAULT_STYLE
               const Icon = style.icon
-              const href = safeUrl(a.url)
+              const href = activityHref(a)
               const fresh = isNew(a)
               const body = (
                 <>

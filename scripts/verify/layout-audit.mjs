@@ -80,6 +80,48 @@ async function pair(a, b) {
   return couple
 }
 
+const jakartaDay = (offsetDays = 0) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date(Date.now() + offsetDays * 86400000))
+const jakartaWeekday = (key) => new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Jakarta', weekday: 'long' }).format(new Date(`${key}T12:00:00+07:00`))
+
+/**
+ * Today's pet note, already written (and yesterday's, which is still "today"
+ * before 05:00 WIB). A real couple has one after the first visit of the day;
+ * without it every page visit that shows the pet would ask Claude for one.
+ */
+async function seedPetNotes(petId, cid, long) {
+  for (const day of [jakartaDay(0), jakartaDay(-1)]) {
+    must('pet note', await admin.from('pet_daily_notes').upsert({
+      pet_id: petId, couple_id: cid, note_date: day, kind: jakartaWeekday(day) === 'Monday' ? 'weekly' : 'daily',
+      status: 'ready', source: 'template', pose: long ? 'proud' : 'cozy',
+      title: long ? 'A big week for the two of you, with three Moments and a Jar note' : null,
+      line: long
+        ? 'You two were everywhere this week: a picnic in Bogor, two long Daily Question answers, a letter that waits until February and a Jar note I keep reading again. I napped in the sun and felt very proud of my people.'
+        : 'Hi. I just moved in and I am still sniffing every corner.',
+      highlight: long ? 'Raka Aditya Pratama Wijayakusuma said hi before breakfast three days in a row, and Nadia answered every Daily Question.' : null,
+    }, { onConflict: 'pet_id,note_date' }))
+  }
+}
+
+/** A valid Samakan v2 bank set (7 rounds, fixed kind order) with long text. */
+function samakanRounds(tag) {
+  const R = [
+    { kind: 'match', prompt: 'After a long week, which Friday night sounds better to you right now, honestly?', options: ['A quiet dinner at home', 'Out late with friends'] },
+    { kind: 'guess', prompt: 'Which breakfast would your partner pick on a slow Sunday morning at a hotel in Bandung?', options: ['Nasi uduk with extra tempe', 'Pancakes and strong coffee', 'Bubur ayam from the cart', 'Just fruit and juice'] },
+    { kind: 'scale', prompt: 'How much do you enjoy planning every detail of a trip before you go anywhere?', low: 'Let it happen', high: 'Spreadsheet everything' },
+    { kind: 'guess', prompt: 'Where would your partner choose to spend a free afternoon in the city?', options: ['A bookshop with a cafe', 'The gym, then a long nap', 'A mall with good aircon', 'A park with street food'] },
+    { kind: 'match', prompt: 'Rainy evening at home: a movie marathon or a long talk over hot tea?', options: ['Movie marathon', 'Long talk over tea'] },
+    { kind: 'scale', prompt: 'How important is it to you that we eat dinner together every single night?', low: 'Not a big deal', high: 'Very important to me' },
+    { kind: 'guess', prompt: 'What would your partner do first with a surprise day off from work?', options: ['Sleep until noon', 'Call their mom', 'Clean the whole house', 'Plan a quick trip'] },
+  ]
+  return R.map((r, i) => ({ options: [], talk: 'Ask each other about the last time this came up and what you would change.', source: 'general', bank_id: `layout-${tag}-${i}`, ...r }))
+}
+/** Answer arguments for a round: `v` picks a different answer per person. */
+function samakanAnswer(round, v) {
+  if (round.kind === 'match') return { p_round_id: round.id, p_pick: v % 2 }
+  if (round.kind === 'guess') return { p_round_id: round.id, p_pick: v % 4, p_guess: (v + 1) % 4 }
+  return { p_round_id: round.id, p_pick: 2 + v, p_guess: 3 }
+}
+
 const LONG = {
   title: 'Piknik sore di Kebun Raya Bogor sambil nyobain semua jajanan di sepanjang jalan Suryakencana sampai matahari terbenam',
   place: 'Kebun Raya Bogor, Jl. Ir. H. Juanda No.13, Paledang, Kecamatan Bogor Tengah, Kota Bogor, Jawa Barat',
@@ -93,6 +135,11 @@ async function seedFull() {
   const cid = couple.id
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date())
   const yesterday = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date(Date.now() - 86400000))
+
+  // Pet Kita: a grown pet (XP from before the remake arrives as one legacy
+  // ledger row; the longest name allowed), adopted first so the warmth ledger
+  // fills from the Moments, moods, letters and Jar notes seeded below.
+  const pet = must('pet', await admin.from('couple_pets').insert({ couple_id: cid, pet_type: 'cat', name: 'Mochi Si Kucing Oren', xp: 1450, level: 15 }).select().single())
 
   // Moments with long text, photos, GPS, comments and reactions.
   const momentIds = []
@@ -164,13 +211,63 @@ async function seedFull() {
     couple_id: cid, profile_id: a.id, status: 'done', input: { budget: 'sedang', vibe: 'romantis', setting: 'bebas', city: 'Bandung' },
     ideas: [1, 2, 3].map((n) => ({ title: `Piknik senja di bukit dengan pemandangan kota Bandung nomor ${n}`.slice(0, 80), description: LONG.text.slice(0, 290), estimated_cost_idr: 450000 * n, category: 'romantis', tips: 'Datang sebelum jam lima sore supaya dapat spot terbaik dan bawa jaket karena anginnya dingin.' })),
   }))
-  const pet = must('pet', await admin.from('couple_pets').insert({ couple_id: cid, pet_type: 'cat', name: 'Mochi Kecil Kesayangan Kita' }).select().single())
-  must('pet mood', await admin.from('pet_mood_state').insert({ pet_id: pet.id }))
+  // Both said hi today: the pet is home. Its note is already written.
+  must('hi a', await a.client.rpc('pet_say_hi', { p_gesture: 'snack' }))
+  must('hi b', await b.client.rpc('pet_say_hi', { p_gesture: 'play' }))
+  await seedPetNotes(pet.id, cid, true)
+
+  // Deep Talk: levels 1-4 done, so the level 5 page plays instead of redirecting.
+  const pack = must('pack', await admin.from('deep_talk_packs').select('id').eq('slug', 'bahasa-sayang').single())
+  for (const n of [1, 2, 3, 4]) must(`deep talk level ${n}`, await a.client.rpc('complete_deep_talk_level', { p_pack_id: pack.id, p_level_number: n }))
+
+  // Samakan v2: one finished set with its read-out (so the results page never
+  // asks Claude for one), then an open set mid-way: two rounds revealed, one
+  // waiting on Nadia, one skipped.
+  const done = must('samakan set 1', await admin.rpc('samakan_insert_set', { p_couple: cid, p_creator: a.id, p_source: 'bank', p_theme: 'weekends', p_reason: null, p_rounds: samakanRounds('done') }))
+  const doneRounds = must('samakan rounds 1', await admin.from('samakan_rounds').select('id, kind, position').eq('set_id', done.id).order('position'))
+  for (const r of doneRounds) {
+    must('answer a', await a.client.rpc('samakan_answer', samakanAnswer(r, 0)))
+    must('answer b', await b.client.rpc('samakan_answer', samakanAnswer(r, r.position % 2 ? 1 : 0)))
+  }
+  must('readout', await admin.rpc('samakan_save_readout', { p_set_id: done.id, p_readout: {
+    headline: 'You two agree on Friday nights and almost nothing about breakfast',
+    note: 'Five of seven rounds matched. Raka guessed every one of Nadia\'s answers about free afternoons, and you both want dinner together most nights, even when the week is long and the traffic on the way home is terrible.',
+    ask: 'Which slow Sunday breakfast would you both actually enjoy, if neither of you had to cook it?',
+    by: 'template',
+  } }))
+  const doneRow = must('set 1 status', await admin.from('samakan_sets').select('status, readout_status').eq('id', done.id).single())
+  if (doneRow.status !== 'done' || doneRow.readout_status !== 'done') throw new Error(`samakan set 1 not finished: ${JSON.stringify(doneRow)}`)
+  const open = must('samakan set 2', await admin.rpc('samakan_insert_set', { p_couple: cid, p_creator: b.id, p_source: 'bank', p_theme: 'food', p_reason: null, p_rounds: samakanRounds('open') }))
+  if (open.existing) throw new Error('samakan set 2: an open set was already there')
+  const openRounds = must('samakan rounds 2', await admin.from('samakan_rounds').select('id, kind, position').eq('set_id', open.id).order('position'))
+  for (const r of openRounds.slice(0, 3)) must('answer a', await a.client.rpc('samakan_answer', samakanAnswer(r, 1)))
+  for (const r of openRounds.slice(0, 2)) must('answer b', await b.client.rpc('samakan_answer', samakanAnswer(r, 1)))
+  must('skip', await b.client.rpc('samakan_skip', { p_round_id: openRounds[4].id }))
+
+  // A finished game from the first Samakan (read-only "Older games").
+  const v1Rounds = [
+    { type: 'pilih_sama', roundIndex: 0, config: { type: 'pilih_sama', storyPrompt: 'Libur panjang akhirnya datang dan kalian bebas pergi ke mana saja selama seminggu penuh, mau ke mana?', options: ['Pantai di Lombok yang sepi', 'Gunung dan kebun teh di Puncak'] }, hostAnswer: 'Pantai di Lombok yang sepi', guestAnswer: 'Gunung dan kebun teh di Puncak', score: 0 },
+    { type: 'slider_sama', roundIndex: 1, config: { type: 'slider_sama', storyPrompt: '', question: 'Seberapa suka kamu bangun pagi di hari libur untuk olahraga bareng?', minLabel: 'Mending tidur', maxLabel: 'Semangat banget' }, hostAnswer: 7, guestAnswer: 4, score: 12 },
+    { type: 'tebak_angka', roundIndex: 2, config: { type: 'tebak_angka', storyPrompt: '', question: 'Dari 1 sampai 10, seberapa sering kamu kangen masakan rumah waktu lagi jauh?' }, hostAnswer: 9, guestAnswer: 8, score: 18 },
+    { type: 'tebak_pasangan', roundIndex: 3, config: { type: 'tebak_pasangan', storyPrompt: '', questionForSelf: 'Kalau dapat hadiah kejutan, kamu paling senang dapat apa dari pasanganmu?', questionForPartner: 'Pasanganmu paling senang dapat apa?', options: ['Surat tulisan tangan yang panjang', 'Makan malam di tempat baru', 'Barang yang sudah lama diincar', 'Seharian tanpa HP berdua'] }, hostAnswer: { real: 'Surat tulisan tangan yang panjang', guess: 'Makan malam di tempat baru' }, guestAnswer: { real: 'Barang yang sudah lama diincar', guess: 'Surat tulisan tangan yang panjang' }, score: 20 },
+  ]
+  const lastMonth = new Date(Date.now() - 40 * 86400000).toISOString()
+  const v1 = must('v1 game', await admin.from('game_sessions').insert({
+    couple_id: cid, created_by: a.id, partner_id: b.id, chapter_id: 'hari-pertama', status: 'completed', rounds: v1Rounds,
+    round_types: v1Rounds.map((r) => r.type), total_score: 50, created_at: lastMonth, completed_at: lastMonth,
+  }).select('id').single())
+
+  // Two Truths: one round Raka already guessed, one from Nadia waiting for him.
+  const tt1 = must('two truths 1', await b.client.rpc('two_truths_create', { p_statements: ['Aku pernah ketinggalan kereta terakhir ke Bogor dan jalan kaki dua jam', 'Aku belum pernah naik pesawat sendirian', 'Aku bisa masak rendang tanpa lihat resep sama sekali'], p_lie_index: 2, p_story: LONG.text.slice(0, 300) }))
+  must('two truths guess', await a.client.rpc('two_truths_guess', { p_round_id: tt1, p_index: 1 }))
+  const tt2 = must('two truths 2', await b.client.rpc('two_truths_create', { p_statements: ['Aku pernah menang lomba makan kerupuk tingkat RW waktu SD', 'Aku takut banget sama kupu-kupu yang besar', 'Aku pernah ketemu artis idola di bandara Soekarno-Hatta'], p_lie_index: 0, p_story: null }))
 
   const { data: openLetter } = await admin.from('letters').select('id').eq('couple_id', cid).eq('receiver_id', a.id).limit(1)
   return {
     name: 'full', user: a, partner: b, cid, code: couple.invite_code,
-    params: { momentId: momentIds[0], letterId: openLetter?.[0]?.id, packSlug: 'bahasa-sayang', level: '3' },
+    params: { momentId: momentIds[0], letterId: openLetter?.[0]?.id, packSlug: 'bahasa-sayang', level: '5', setId: open.id, sessionId: v1.id, roundId: tt2 },
+    // Second instances of dynamic routes, in another state.
+    extra: [`/app/games/samakan/set/${done.id}`, `/app/games/two-truths/${tt1}`, '/app/games/deep-talk/bahasa-sayang/4'],
   }
 }
 
@@ -178,7 +275,19 @@ async function seedEmpty() {
   const c = await makeUser('c-empty', 'Dimas')
   const d = await makeUser('d-empty', 'Ayu')
   const couple = await pair(c, d)
+  // A pet that just moved in: Dimas said hi, Ayu hasn't yet (not home).
+  const pet = must('adopt', await c.client.rpc('adopt_pet', { p_type: 'dog', p_name: 'Kopi' }))
+  must('hi c', await c.client.rpc('pet_say_hi', { p_gesture: 'pat' }))
+  await seedPetNotes(pet.id, couple.id, false)
   return { name: 'empty', user: c, cid: couple.id, code: couple.invite_code, params: { packSlug: 'seru-aja', level: '1' } }
+}
+
+/** Paired, with long names, no pet yet: the adopt screen with a partner. */
+async function seedAdopt() {
+  const f = await makeUser('f-adopt', 'Galih Prasetyo Adinegoro Wicaksono')
+  const g = await makeUser('g-adopt', 'Ratna Sekar Ayuningtyas Kusumadewi')
+  const couple = await pair(f, g)
+  return { name: 'adopt', user: f, cid: couple.id, code: couple.invite_code, params: {}, only: ['/app/home', '/app/pet', '/app/pet/adopt', '/app/games', '/app/games/samakan'] }
 }
 
 async function seedSolo() {
@@ -220,7 +329,8 @@ function routeTemplates() {
 function resolveRoute(tpl, params, code) {
   const map = {
     '[momentId]': params.momentId, '[letterId]': params.letterId, '[packSlug]': params.packSlug,
-    '[level]': params.level, '[code]': code, '[sessionId]': null, '[packId]': null,
+    '[level]': params.level, '[code]': code, '[packId]': null,
+    '[setId]': params.setId, '[sessionId]': params.sessionId, '[roundId]': params.roundId,
   }
   let ok = true
   const path = tpl.replace(/\[[^\]]+\]/g, (seg) => { const v = map[seg]; if (!v) ok = false; return v ?? seg })
@@ -237,16 +347,20 @@ function pageChecks({ scope }) {
   if (!root) return { issues: [{ kind: 'no-scope', detail: scope }] }
 
   const visible = (el) => {
-    for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
+    for (let n = el, child = null; n && n !== document.documentElement; child = n, n = n.parentElement) {
       const s = getComputedStyle(n)
       if (s.display === 'none' || s.visibility === 'hidden' || Number(s.opacity) === 0) return false
+      // A closed <details> draws only its <summary>. The rest still measures
+      // (content-visibility: hidden keeps its layout), but nobody sees it.
+      if (n.tagName === 'DETAILS' && !n.open && child && child.tagName !== 'SUMMARY') return false
     }
     const r = el.getBoundingClientRect()
     return r.width > 0.5 && r.height > 0.5
   }
   const describe = (el) => {
     const cls = (el.getAttribute('class') || '').split(/\s+/).filter(Boolean).slice(0, 4).join('.')
-    const text = (el.innerText || el.getAttribute('aria-label') || el.getAttribute('placeholder') || '').replace(/\s+/g, ' ').trim().slice(0, 40)
+    // SVG elements have no innerText; their text is textContent.
+    const text = ((el.innerText ?? el.textContent) || el.getAttribute('aria-label') || el.getAttribute('placeholder') || '').replace(/\s+/g, ' ').trim().slice(0, 40)
     return `${el.tagName.toLowerCase()}${cls ? '.' + cls : ''}${text ? ` "${text}"` : ''}`
   }
   const isFixed = (el) => {
@@ -256,6 +370,11 @@ function pageChecks({ scope }) {
     }
     return null
   }
+  // A dialog shown inside the page (e.g. over the pet room, with its own
+  // backdrop) is a layer of its own, like fixed chrome: it is meant to cover
+  // what's under it. Its contents are checked on their own (scoped run in
+  // auditPage), never against the page beneath.
+  const layerOf = (el) => (scope ? null : el.closest('[role=dialog]'))
   const absAncestor = (el, depth = 3) => {
     for (let n = el, i = 0; n && i < depth; n = n.parentElement, i++) if (getComputedStyle(n).position === 'absolute') return true
     return false
@@ -318,14 +437,14 @@ function pageChecks({ scope }) {
       const inset = raw.height * 0.18 // glyph boxes include leading; compare ink areas
       const r = clipRect(el, { left: raw.left, right: raw.right, top: raw.top + inset, bottom: raw.bottom - inset })
       if (r.x2 - r.x1 < 1 || r.y2 - r.y1 < 1) continue
-      boxes.push({ type: 'text', el, x1: r.x1, x2: r.x2, y1: r.y1 + sy, y2: r.y2 + sy, fixed: isFixed(el) })
+      boxes.push({ type: 'text', el, x1: r.x1, x2: r.x2, y1: r.y1 + sy, y2: r.y2 + sy, fixed: isFixed(el), layer: layerOf(el) })
     }
   }
   for (const el of root.querySelectorAll('button, a[href], input:not([type=hidden]), textarea, select, [role=button], svg')) {
     if (!visible(el) || srOnly(el)) continue
     const r = clipRect(el, el.getBoundingClientRect())
     if (r.x2 - r.x1 < 1 || r.y2 - r.y1 < 1) continue
-    boxes.push({ type: el.tagName === 'svg' ? 'icon' : 'control', el, x1: r.x1, x2: r.x2, y1: r.y1 + sy, y2: r.y2 + sy, fixed: isFixed(el) })
+    boxes.push({ type: el.tagName === 'svg' ? 'icon' : 'control', el, x1: r.x1, x2: r.x2, y1: r.y1 + sy, y2: r.y2 + sy, fixed: isFixed(el), layer: layerOf(el) })
   }
 
   // 3) Overlaps between boxes that aren't nested and scroll together.
@@ -335,6 +454,7 @@ function pageChecks({ scope }) {
     for (let j = i + 1; j < boxes.length; j++) {
       const a = boxes[i], b = boxes[j]
       if (a.fixed !== b.fixed) continue // fixed chrome vs content is checked in (5)
+      if (a.layer !== b.layer) continue // an in-page dialog vs what it covers: dialog checked on its own
       if (a.type !== 'text' && b.type !== 'text') {
         // control vs control: only real if they overlap noticeably
         if (a.el.contains(b.el) || b.el.contains(a.el)) continue
@@ -495,6 +615,25 @@ async function auditPage(session, { path, width, label, interact }) {
     await page.screenshot({ path: join(OUT, shot), fullPage: true })
     result.screenshot = shot
 
+    // A dialog already open on load (e.g. the pet's "moved in" card over the
+    // room) gets the same scoped check as a sheet opened by a tap.
+    const autoDialogs = await page.evaluate(() => {
+      const ids = []
+      document.querySelectorAll('[role=dialog]').forEach((d, i) => {
+        const s = getComputedStyle(d)
+        const r = d.getBoundingClientRect()
+        if (s.display === 'none' || s.visibility === 'hidden' || r.width < 1 || r.height < 1) return
+        const inner = d.querySelector('div.relative, div[class*="rounded"]') || d
+        inner.setAttribute('data-audit-auto', String(i))
+        ids.push(String(i))
+      })
+      return ids
+    })
+    for (const id of autoDialogs) {
+      const r = await page.evaluate(pageChecks, { scope: `[data-audit-auto="${id}"]` })
+      result.dialogs.push({ trigger: 'open on load', issues: r.issues, screenshot: shot })
+    }
+
     if (interact) {
       const buttons = await page.$$('button, [role=button], a[href]')
       const triggers = []
@@ -567,8 +706,12 @@ async function sweepOldRuns() {
 
 async function main() {
   await sweepOldRuns()
-  const datasets = [await seedFull(), await seedEmpty(), await seedSolo()]
+  const datasets = [await seedFull(), await seedEmpty(), await seedSolo(), await seedAdopt()]
   const templates = routeTemplates().filter((r) => !r.startsWith('/admin'))
+  // Every /app route must be rendered by at least one dataset: a dynamic route
+  // with no seeded id would otherwise drop out of the audit silently.
+  const unresolved = templates.filter((t) => t.startsWith('/app') && !datasets.some((ds) => resolveRoute(t, ds.params, ds.code)))
+  if (unresolved.length && !ONLY) throw new Error(`no dataset renders ${unresolved.join(', ')}: seed an id for it`)
   const browser = await chromium.launch()
   // One worker per dataset × width: sign in once, then visit every page in turn.
   const groups = []
@@ -576,10 +719,12 @@ async function main() {
     const paths = []
     for (const tpl of templates) {
       if (!tpl.startsWith('/app')) continue
+      if (ds.only && !ds.only.includes(tpl)) continue
       const path = resolveRoute(tpl, ds.params, ds.code)
       if (!path || (ONLY && !ONLY.includes(tpl) && !ONLY.includes(path))) continue
       paths.push(path)
     }
+    for (const path of ds.extra ?? []) if (!ONLY || ONLY.includes(path)) paths.push(path)
     for (const width of WIDTHS) groups.push({ label: ds.name, width, email: ds.user.email, paths, interact: ds.name === 'full' && width === WIDTHS[0] })
   }
   const publicPaths = templates

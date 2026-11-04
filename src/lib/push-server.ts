@@ -1,7 +1,7 @@
 // Server-only Web Push sending. Never import from a client component.
 import webpush from 'web-push'
 import { createServiceRoleClient } from './supabase-server'
-import { inQuietHours, isPushMuted } from './quiet-hours'
+import { inQuietHours, isPushMuted, type MutePrefs } from './quiet-hours'
 
 export interface PushPayload {
   title: string
@@ -19,14 +19,29 @@ export interface PushResult {
 
 /**
  * What a notification is about; each maps to a switch in notification_prefs
- * (/app/profile/notifikasi). 'admin' broadcasts ignore the switches but still
- * respect quiet hours.
+ * (/app/profile/notifikasi). 'games' covers game invites and results from the
+ * partner (Samakan). 'pet' is Pet Kita: only the adoption notice and the
+ * Monday note, both sent by the server. 'admin' broadcasts ignore the
+ * switches but still respect quiet hours.
  */
-export type PushKind = 'kangen' | 'letters' | 'moments' | 'reminders' | 'activity' | 'admin'
-export const PUSH_KINDS: readonly PushKind[] = ['kangen', 'letters', 'moments', 'reminders', 'activity', 'admin']
+export type PushKind = 'kangen' | 'letters' | 'moments' | 'reminders' | 'activity' | 'games' | 'pet' | 'admin'
+export const PUSH_KINDS: readonly PushKind[] = ['kangen', 'letters', 'moments', 'reminders', 'activity', 'games', 'pet', 'admin']
 
+/**
+ * Kinds only the server sends (spec 2026-11-04-pet-remake.md 5.6: Pet Kita
+ * pushes are the adoption notice and the Monday note, nothing else). A request
+ * to /api/push/send can't name them.
+ */
+export const SERVER_ONLY_PUSH_KINDS: readonly PushKind[] = ['pet']
+
+/**
+ * A kind a client request may name (/api/push/send). Every PushKind except the
+ * server-only ones; 'admin' is checked against the caller's role there.
+ */
 export function isPushKind(value: unknown): value is PushKind {
-  return typeof value === 'string' && (PUSH_KINDS as readonly string[]).includes(value)
+  return typeof value === 'string'
+    && (PUSH_KINDS as readonly string[]).includes(value)
+    && !(SERVER_ONLY_PUSH_KINDS as readonly string[]).includes(value)
 }
 
 // Quiet-hours math lives in an import-free module so it can be unit-tested.
@@ -45,7 +60,7 @@ async function isMuted(profileId: string, kind: PushKind | undefined, options: S
   const admin = createServiceRoleClient()
   const { data: prefs, error } = await admin
     .from('notification_prefs')
-    .select('kangen, letters, moments, reminders, activity, quiet_start, quiet_end')
+    .select('kangen, letters, moments, reminders, activity, games, pet, quiet_start, quiet_end')
     .eq('profile_id', profileId)
     .maybeSingle()
   if (error) {
@@ -53,7 +68,7 @@ async function isMuted(profileId: string, kind: PushKind | undefined, options: S
     console.error('[push] prefs lookup failed:', error.message)
     return false
   }
-  return isPushMuted(prefs, kind, options)
+  return isPushMuted(prefs satisfies MutePrefs | null, kind, options)
 }
 
 let vapidReady: boolean | null = null

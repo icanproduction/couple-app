@@ -7,7 +7,7 @@ interface CoupleProfileHeroProps {
   partnerAvatarUrl?: string | null
   daysTogether: number
   relationshipStartDate: string | null
-  children?: React.ReactNode  // slot for the Kangen button
+  children?: React.ReactNode  // slot: the Pet Kita row, then the Kangen button
 }
 
 const LEVEL_STYLES: Record<string, { bg: string; text: string }> = {
@@ -59,7 +59,7 @@ export default function CoupleProfileHero({
         </div>
 
         {/* Names */}
-        <h1 className="text-lg font-extrabold text-ink">
+        <h1 className="max-w-full break-words text-center text-lg font-extrabold text-ink">
           {myName ?? 'You'} <span className="font-normal text-ink-muted">&amp;</span> {partnerName ?? 'Your partner'}
         </h1>
 
@@ -77,8 +77,8 @@ export default function CoupleProfileHero({
           )}
         </div>
 
-        {/* Kangen button slot */}
-        {children && <div className="mt-3 w-full">{children}</div>}
+        {/* Slot: Pet Kita row (PetPeek) and the Kangen button */}
+        {children && <div className="mt-3 w-full min-w-0 space-y-2.5">{children}</div>}
       </div>
     </div>
   )

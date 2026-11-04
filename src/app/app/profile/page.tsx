@@ -18,6 +18,7 @@ import { daysSince, formatDateID, getRelationshipLevel, relationshipLevelLabel, 
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import NotificationToggle from '@/components/app/NotificationToggle'
+import PersonalRoundsSwitch from '@/components/games/samakan/PersonalRoundsSwitch'
 import AvatarUpload from '@/components/app/AvatarUpload'
 import { InviteExpiry } from '@/components/account/InviteExpiry'
 import { ExpiredInviteNotice } from '@/components/account/ExpiredInviteNotice'
@@ -46,7 +47,7 @@ const HELP_ITEMS = [
   },
   {
     q: 'Who can see our data?',
-    a: 'Only you and your partner. Moment photos are stored privately, and a letter only opens for the person it is for once its time comes. When you use AI questions or AI Date Ideas, some of your data is sent to OpenRouter and OpenAI (GPT Luna) to be processed. The details are on the Privacy & Data page.',
+    a: 'Only you and your partner. Moment photos are stored privately, and a letter only opens for the person it is for once its time comes. When you use AI questions, AI Date Ideas or personal rounds in Samakan, the data they need is sent to Claude by Anthropic to be processed. Personal rounds have their own switch in Profile. The details are on the Privacy & Data page.',
   },
   {
     q: 'Forgot password?',
@@ -574,6 +575,9 @@ export default function ProfilePage() {
 
         {/* ===== NOTIFICATION TOGGLE ===== */}
         <NotificationToggle />
+
+        {/* ===== SAMAKAN PERSONAL ROUNDS (a couple switch) ===== */}
+        {couple && hasPartner && <PersonalRoundsSwitch coupleId={couple.id} />}
 
         {/* ===== MORE ===== */}
         <div>

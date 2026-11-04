@@ -35,14 +35,14 @@ Set for Production and Preview. All are listed in `.env.example`.
 | `NEXT_PUBLIC_APP_URL` | final domain, no trailing slash |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | reuse the old pair if the domain stays the same; a new pair forces every device to re-enable notifications (the app re-subscribes automatically when a user taps enable) |
 | `VAPID_SUBJECT` | `mailto:` contact for push services |
-| `LLM_API_KEY` | **server only** — OpenRouter key for the AI daily question and Ide Date AI (model `openai/gpt-6-luna`, GPT Luna; date ideas are capped at 5 per couple per day). Optional when the key is pasted in **Admin → AI** (`/admin/ai`) after deploy; that key is kept in Supabase Vault and wins over this variable. With neither set, both features answer 503 "Fitur AI belum diaktifkan". **Set a credit limit on the key in OpenRouter** (a used-up limit shows users "Kuota AI sedang habis") |
-| `LLM_BASE_URL`, `LLM_MODEL_SYNTHESIS` | optional; default `https://openrouter.ai/api/v1` and `openai/gpt-6-luna`. Only set to switch endpoint/model, and always pin an exact model id, never a `~…-latest` alias |
+| `ANTHROPIC_API_KEY` | **server only**, mark as sensitive. Claude API key for every AI feature (Claude Sonnet 5.5, `claude-sonnet-5-5`). Per-couple daily caps live in `AI_DAILY_CAP_USD` (`src/lib/claude.ts`); set a monthly spend limit in the Claude Console as the hard stop. Without it, AI features answer "AI features aren't turned on yet" and the pet/Samakan use templates and the curated bank |
+| `PET_AI_ENABLED` | optional; `false` turns off the pet's daily AI note (templates instead) |
 | `PAYMENT_DUMMY` | `true` = premium unlocks free (soft launch). Unset/`false` = unlock returns "Pembayaran belum tersedia" |
 | `CRON_SECRET` | random string; Vercel Cron sends it to `/api/cron/letter-unlocks` (letter-unlocked notifications) and `/api/cron/event-reminders` (calendar reminders) |
 
 `NEXT_PUBLIC_*` values are compiled into the build — redeploy after changing them. Paste keys without trailing newlines.
 
-**AI cost (GPT Luna via OpenRouter):** $0.10 per million input tokens, $0.50 per million output tokens. Output is capped per call (2,048 tokens for the daily question, 4,096 for date ideas, reasoning included), so a call costs at most about $0.001 (question) or $0.002 (3 ideas); the worst case per couple per day (1 question + 5 idea runs) is about $0.012. The credit limit on the OpenRouter key is the hard stop.
+**AI cost (Claude Sonnet 5.5, $2 / $10 per million input/output tokens), measured 2026-11-04:** daily question ≈ $0.0024, Date Ideas ≈ $0.0084 (≈ $0.0054 cached; cap $0.04/day for 5 runs), pet note ≈ $0.004, Samakan personal set ≈ $0.014 (combined Samakan cap $0.025/day). A busy couple stays well under $0.10/day; the Console spend limit is the hard stop.
 
 ## 4. Vercel project
 

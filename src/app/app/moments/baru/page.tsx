@@ -5,16 +5,25 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import MomentForm from '@/components/moments/MomentForm'
 import { getCoupleInfo, parseMomentPrefill, type CoupleInfo } from '@/lib/moments'
+import { clearHandedOffPhotos, peekHandedOffPhotos } from './photo-handoff'
 
 type SearchParams = Record<string, string | string[] | undefined>
 
 // Optional prefill: ?title=&date=YYYY-MM-DD&location=&lat=&lng=&bucket=<bucket_items id>
+// ?from=photos: the photos picked with "Add from photos" on the Moments page.
 export default function NewMomentPage({ searchParams }: { searchParams?: SearchParams }) {
   const router = useRouter()
   const [info, setInfo] = useState<CoupleInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const prefill = useMemo(() => parseMomentPrefill(searchParams), [searchParams])
+  const fromPhotos = searchParams?.from === 'photos'
+  // Taken once for this visit; going back and forward again starts empty.
+  const [pickedPhotos] = useState<File[]>(() => (fromPhotos ? peekHandedOffPhotos() : []))
+
+  useEffect(() => {
+    if (pickedPhotos.length > 0) clearHandedOffPhotos()
+  }, [pickedPhotos])
 
   useEffect(() => {
     let cancelled = false
@@ -48,5 +57,5 @@ export default function NewMomentPage({ searchParams }: { searchParams?: SearchP
       </div>
     )
   }
-  return <MomentForm info={{ ...info, coupleId: info.coupleId }} prefill={prefill} />
+  return <MomentForm info={{ ...info, coupleId: info.coupleId }} prefill={prefill} initialFiles={pickedPhotos} />
 }

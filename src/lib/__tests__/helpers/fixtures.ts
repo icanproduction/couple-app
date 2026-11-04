@@ -48,6 +48,7 @@ export const IDEA_INPUT: DateIdeaInput = { budget: 'hemat', vibe: 'santai', sett
 /** The part of a JSON Schema the tests inspect. */
 export type SchemaNode = {
   type?: string
+  description?: string
   properties?: Record<string, SchemaNode>
   items?: SchemaNode
   required?: string[]
@@ -55,12 +56,6 @@ export type SchemaNode = {
   minItems?: number
   maxItems?: number
   minimum?: number
+  maxLength?: number
   additionalProperties?: boolean
-}
-
-export type ChatRequestBody = {
-  model?: string
-  reasoning_effort?: string
-  response_format?: { type: string; json_schema: { name: string; strict: boolean; schema: SchemaNode } }
-  messages?: Array<{ role: string; content: unknown }>
 }

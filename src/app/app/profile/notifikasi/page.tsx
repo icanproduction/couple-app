@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Check, Moon } from 'lucide-react'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient, getClientUser } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { hourLabel, inQuietHours } from '@/lib/quiet-hours'
@@ -10,7 +11,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { Button } from '@/components/ui/Button'
 import NotificationToggle from '@/components/app/NotificationToggle'
 
-type KindKey = 'kangen' | 'letters' | 'moments' | 'reminders' | 'activity'
+type KindKey = 'kangen' | 'letters' | 'moments' | 'reminders' | 'activity' | 'games' | 'pet'
 
 interface Prefs {
   kangen: boolean
@@ -18,16 +19,23 @@ interface Prefs {
   moments: boolean
   reminders: boolean
   activity: boolean
+  games: boolean
+  pet: boolean
   quiet_start: number | null
   quiet_end: number | null
 }
 
 // No row yet means everything is on (same default as the database).
 const DEFAULTS: Prefs = {
-  kangen: true, letters: true, moments: true, reminders: true, activity: true,
+  kangen: true, letters: true, moments: true, reminders: true, activity: true, games: true, pet: true,
   quiet_start: null, quiet_end: null,
 }
-const PREF_COLUMNS = 'kangen, letters, moments, reminders, activity, quiet_start, quiet_end'
+const PREF_COLUMNS = 'kangen, letters, moments, reminders, activity, games, pet, quiet_start, quiet_end'
+
+/** notification_prefs through an untyped client view (the columns are listed in PREF_COLUMNS). */
+function prefsTable() {
+  return (createClient() as unknown as SupabaseClient).from('notification_prefs')
+}
 const QUIET_DEFAULT = { start: 22, end: 6 }
 const HOURS = Array.from({ length: 24 }, (_, h) => h)
 
@@ -37,6 +45,8 @@ const KINDS: { key: KindKey; label: string; desc: string }[] = [
   { key: 'moments', label: 'Moments', desc: 'New moments, comments and reactions' },
   { key: 'reminders', label: 'Calendar reminders', desc: 'Birthdays, anniversaries and events you set a reminder for' },
   { key: 'activity', label: 'Partner activity', desc: 'Daily Mood, Bucket List, Savings, Jar and the Daily Question' },
+  { key: 'games', label: 'Games', desc: 'Game invites and results from your partner' },
+  { key: 'pet', label: 'Pet Kita', desc: 'When your pet moves in, and its note on Monday mornings' },
 ]
 
 function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: () => void; label: string; disabled?: boolean }) {
@@ -80,13 +90,12 @@ export default function NotificationSettingsPage() {
 
   /** The prefs row as stored (DEFAULTS when there is none yet). */
   const fetchPrefs = useCallback(async (profileId: string): Promise<Prefs | null> => {
-    const { data, error } = await createClient()
-      .from('notification_prefs')
+    const { data, error } = await prefsTable()
       .select(PREF_COLUMNS)
       .eq('profile_id', profileId)
       .maybeSingle()
     if (error) return null
-    return data ?? DEFAULTS
+    return (data as Prefs | null) ?? DEFAULTS
   }, [])
 
   const load = useCallback(async () => {
@@ -120,11 +129,11 @@ export default function NotificationSettingsPage() {
     setSaving((n) => n + 1)
     const seq = ++latestRef.current
     chainRef.current = chainRef.current.then(async () => {
-      const { data, error } = await createClient()
-        .from('notification_prefs')
+      const { data: row, error } = await prefsTable()
         .upsert({ profile_id: userId, ...next }, { onConflict: 'profile_id' })
         .select(PREF_COLUMNS)
         .single()
+      const data = row as Prefs | null
       if (error || !data) {
         setSaveError("That didn't save. Check your connection and try again.")
         const stored = await fetchPrefs(userId)
@@ -255,6 +264,7 @@ export default function NotificationSettingsPage() {
                     <p className="col-span-2 text-[11px] leading-relaxed text-ink-muted">
                       Jakarta time (WIB). Notifications that come in during quiet hours aren&apos;t sent, including announcements from the admin.
                       Calendar reminders and letters that are ready to open still come through, because they go out only once a day (at 07:00 WIB).
+                      The Monday note from Pet Kita doesn&apos;t: if it lands in your quiet hours, that week&apos;s notification is skipped.
                     </p>
                   </div>
                 )}

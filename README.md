@@ -9,7 +9,7 @@ v0.6 added a **Jelajah** tab that lists every feature: mood check-in, bucket lis
 - Next.js 14 (App Router) + TypeScript + Tailwind
 - Supabase: auth, Postgres with RLS, storage (`avatars` public, `moments` private), realtime (Samakan broadcast + live updates between partners via `postgres_changes`)
 - Web Push (VAPID) via a service worker (`public/sw.js`), per-type switches and quiet hours
-- GPT Luna (`openai/gpt-6-luna`) via OpenRouter for the AI daily question and AI date ideas, through the Vercel AI SDK and the module library's `llm-provider` (`src/lib/llm-provider/`, wired in `src/lib/llm.ts`)
+- Claude Sonnet 5.5 (`claude-sonnet-5-5`) through the official `@anthropic-ai/sdk` for every AI feature (daily question, Date Ideas, the pet's daily note, Samakan "For you two" sets and read-outs), all via `src/lib/claude.ts` with per-couple daily cost caps logged in `ai_usage`
 - Leaflet + OpenStreetMap tiles for the moments map
 - Deploy: Vercel (see [DEPLOY.md](DEPLOY.md))
 
@@ -23,12 +23,9 @@ supabase start          # local Supabase on ports 5642x (see supabase/config.tom
 npm run dev -- -p 3030  # http://localhost:3030
 ```
 
-`.env.development.local` points `next dev` at the local Supabase (URL + the standard local demo keys) and sets `PAYMENT_DUMMY=true` and `CRON_SECRET`. `.env.local` supplies the rest (VAPID keys). Without an OpenRouter key the two AI features answer 503 "Fitur AI belum diaktifkan". Every variable is documented in `.env.example`.
+`.env.development.local` points `next dev` at the local Supabase (URL + the standard local demo keys) and sets `PAYMENT_DUMMY=true` and `CRON_SECRET`. `.env.local` supplies the rest (VAPID keys). Without `ANTHROPIC_API_KEY` the AI features answer "AI features aren't turned on yet" (pet notes and Samakan fall back to templates and the curated bank). Every variable is documented in `.env.example`.
 
-Two ways to give the app the OpenRouter key (GPT Luna):
-
-- **Admin → AI** (`/admin/ai`, via Profil → Admin Panel → Pengaturan AI): paste the key, it is stored encrypted in Supabase Vault, and only its last 4 characters are ever shown. This key wins over `LLM_API_KEY`. The page also has a *Tes koneksi* button and a model override.
-- **`ENV-PASTE.md`** (git-ignored): paste `LLM_API_KEY` (and optional VAPID/cron values) there, then run `npm run env:paste`. The values are validated and moved into `.env.development.local`, and the secrets in the `.md` are blanked again. Supabase and app URLs are skipped, because local dev stays on the local stack. `next dev` reloads env on its own.
+The Claude key lives only in env (`ANTHROPIC_API_KEY`, server-only; set it on Vercel for production). For local dev, paste it into `ENV-PASTE.md` (git-ignored) and run `npm run env:paste`, which validates the `sk-ant-` prefix and moves it into `.env.development.local`. **Admin → AI** (`/admin/ai`) shows whether the key is set (last 4 characters only), today's spend per feature against the caps, and a *Test connection* button.
 
 `supabase db reset` rebuilds the database from `supabase/migrations` (including the 10 Deep Talk packs) and loads `supabase/seed.sql`: two demo accounts already paired as a couple (one admin; logins listed at the top of the seed file).
 
@@ -55,6 +52,7 @@ node scripts/verify/layout-audit.mjs      # every page at 360 + 390 px (long nam
 node scripts/verify/game-truth-or-dare.mjs    # deck rules, custom cards RLS, closed couple
 node scripts/verify/game-love-languages.mjs   # question bank rules, DB-recomputed scores, answers never readable, RLS
 node scripts/verify/game-two-truths.mjs       # the lie stays hidden until the guess, one guess, RPC-only access
+node scripts/verify/realtime-browser.mjs      # live updates in a real browser: fresh-load join as the user, socket kept across a page change
 node scripts/verify/run-all.mjs               # builds with the local env, starts :3030, runs every suite above, stops the server
 ```
 

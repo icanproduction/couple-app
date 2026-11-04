@@ -1,58 +1,63 @@
-// Maps LLM provider failures (OpenRouter via the ai SDK) to friendly
-// English messages and HTTP statuses for the /api/ai/* routes.
-// Server-only.
-import { APICallError, RetryError } from 'ai'
-import { LlmNotConfiguredError } from '@/lib/llm'
+// Maps a failed Claude call (src/lib/claude.ts) to the HTTP status and the
+// English message the /api/ai/* routes and Admin → AI show. Server-only.
+import type { ClaudeFailure } from '@/lib/claude'
 
-/** No LLM_API_KEY: the feature is off and nothing is sent anywhere. */
+/** No ANTHROPIC_API_KEY: the feature is off and nothing is sent anywhere. */
 export const AI_NOT_CONFIGURED = { status: 503, error: 'AI features aren\'t turned on yet' } as const
 
 export const AI_KEY_INVALID = 'The AI isn\'t set up correctly yet'
 export const AI_CREDITS_EXHAUSTED = 'The AI has run out of credits for now'
 export const AI_BUSY = 'The AI is busy. Try again in a moment.'
+export const AI_SLOW = 'The AI is taking too long right now. Try again in a moment.'
+export const AI_DAILY_LIMIT = 'You\'ve reached today\'s AI limit for this. Try again tomorrow.'
 
 export type AiFailure = { status: number; error: string }
 
-/** After retries the SDK throws a RetryError; the last attempt says what happened. */
-function unwrap(error: unknown): unknown {
-  return RetryError.isInstance(error) ? error.lastError : error
+export type AiMessages = {
+  /** The feature's own "try again" line: refusals, network and server errors. */
+  retry: string
+  /** The answer came back but wasn't usable (wrong shape, cut off). Defaults to `retry`. */
+  invalid?: string
+  /** The couple hit today's spend cap for this feature. Defaults to AI_DAILY_LIMIT. */
+  cap?: string
 }
 
-function isTimeout(error: unknown): boolean {
-  return (
-    typeof error === 'object' && error !== null &&
-    ['TimeoutError', 'AbortError'].includes((error as { name?: unknown }).name as string)
-  )
-}
-
-/**
- * Provider failure → response. `fallback` is the feature's own "try again"
- * message for timeouts, network errors, 5xx and other API errors (502).
- * Returns null when the error did not come from the provider call.
- */
-export function providerFailure(error: unknown, fallback: string): AiFailure | null {
-  const err = unwrap(error)
-  if (err instanceof LlmNotConfiguredError) return { ...AI_NOT_CONFIGURED }
-  if (APICallError.isInstance(err)) {
-    switch (err.statusCode) {
-      case 401:
-      case 403:
-        return { status: 503, error: AI_KEY_INVALID }
-      case 402:
-        return { status: 503, error: AI_CREDITS_EXHAUSTED }
-      case 429:
-        return { status: 429, error: AI_BUSY }
-      default:
-        return { status: 502, error: fallback }
-    }
+/** Failed call → response. */
+export function aiFailure(failure: ClaudeFailure, messages: AiMessages): AiFailure {
+  switch (failure.reason) {
+    case 'no_key':
+      return { ...AI_NOT_CONFIGURED }
+    case 'cap':
+      return { status: 429, error: messages.cap ?? AI_DAILY_LIMIT }
+    case 'timeout':
+      return { status: 504, error: AI_SLOW }
+    case 'invalid':
+      return { status: 502, error: messages.invalid ?? messages.retry }
+    case 'refusal':
+      return { status: 502, error: messages.retry }
+    case 'error':
+      switch (failure.detail) {
+        case 'http_401':
+        case 'http_403':
+          return { status: 503, error: AI_KEY_INVALID }
+        case 'http_402':
+          return { status: 503, error: AI_CREDITS_EXHAUSTED }
+        case 'http_429':
+        case 'http_529':
+        case 'busy':
+          return { status: 429, error: AI_BUSY }
+        default:
+          return { status: 502, error: messages.retry }
+      }
   }
-  if (isTimeout(err)) return { status: 502, error: fallback }
-  return null
 }
 
-/** One log line without the request body (it carries the couple's data). */
-export function describeProviderError(error: unknown): string {
-  const err = unwrap(error)
-  if (APICallError.isInstance(err)) return `HTTP ${err.statusCode ?? '-'} ${err.message}`
-  return err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+/** Whether the failure is worth an error log line (expected limits are not). */
+export function shouldLogFailure(failure: ClaudeFailure): boolean {
+  return failure.reason !== 'no_key' && failure.reason !== 'cap' && failure.detail !== 'busy'
+}
+
+/** One log line, without the prompt (it carries the couple's data) or the key. */
+export function describeAiFailure(failure: ClaudeFailure): string {
+  return failure.detail ? `${failure.reason} (${failure.detail})` : failure.reason
 }

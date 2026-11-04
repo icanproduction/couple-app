@@ -1,6 +1,7 @@
 // Monthly recap (F25): counts for one Jakarta calendar month, aggregated in
 // the browser from RLS-scoped reads. The headline is built from the numbers
 // (no AI).
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
 import { formatRupiah } from '@/lib/utils'
 import { MOMENTS_BUCKET, type CoupleInfo } from '@/lib/moments'
@@ -121,7 +122,7 @@ export async function loadRecap(info: CoupleInfo, monthKey: string): Promise<Mon
   const supabase = createClient()
   const { startDate, endDate, startTs, endTs } = monthRange(monthKey)
 
-  const [moments, kangen, daily, moods, bucket, tx, letters, gratitude, games] = await Promise.all([
+  const [moments, kangen, daily, moods, bucket, tx, letters, gratitude, games, samakanSets] = await Promise.all([
     supabase.from('moments')
       .select('id, title, location_name, is_favorite, moment_date, moment_photos(storage_path, sort_order, created_at)')
       .eq('couple_id', coupleId).gte('moment_date', startDate).lt('moment_date', endDate),
@@ -141,10 +142,16 @@ export async function loadRecap(info: CoupleInfo, monthKey: string): Promise<Mon
       .eq('couple_id', coupleId).gte('created_at', startTs).lt('created_at', endTs),
     supabase.from('gratitude_notes').select('id', { count: 'exact', head: true })
       .eq('couple_id', coupleId).gte('created_at', startTs).lt('created_at', endTs),
+    // Samakan v1 games ("Older games"), finished before the remake.
     supabase.from('game_sessions').select('id', { count: 'exact', head: true })
       .eq('couple_id', coupleId).eq('status', 'completed').gte('completed_at', startTs).lt('completed_at', endTs),
+    // Samakan v2 sets finished this month (20261104121000_samakan_v2.sql). The
+    // untyped handle keeps this compiling before and after src/types/database.ts
+    // is regenerated with the new table.
+    (supabase as unknown as SupabaseClient).from('samakan_sets').select('id', { count: 'exact', head: true })
+      .eq('couple_id', coupleId).eq('status', 'done').gte('finished_at', startTs).lt('finished_at', endTs),
   ])
-  for (const r of [moments, kangen, daily, moods, bucket, tx, letters, gratitude, games]) if (r.error) throw r.error
+  for (const r of [moments, kangen, daily, moods, bucket, tx, letters, gratitude, games, samakanSets]) if (r.error) throw r.error
 
   // Moments, photos, places, best photo
   const momentRows = moments.data ?? []
@@ -219,7 +226,8 @@ export async function loadRecap(info: CoupleInfo, monthKey: string): Promise<Mon
     savingsOut,
     lettersWritten: letters.count ?? 0,
     gratitudeNotes: gratitude.count ?? 0,
-    gamesCompleted: games.count ?? 0,
+    // Old and new Samakan together: a finished v2 set or a completed v1 game.
+    gamesCompleted: (games.count ?? 0) + (samakanSets.count ?? 0),
   }
 
   return {

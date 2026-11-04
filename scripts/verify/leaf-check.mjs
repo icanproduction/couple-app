@@ -29,7 +29,7 @@ const others = tscLines.length - mine.length
 mine.forEach((l) => console.log(l))
 console.log(`tsc: ${mine.length} error(s) in owned paths, ${others} elsewhere (not this leaf's)`)
 
-const lintTargets = owned.filter((p) => fs.existsSync(path.join(ROOT, p)) && /\.(tsx?|jsx?|mjs)$|^[^.]+$/.test(path.basename(p)) && /^src\//.test(p))
+const lintTargets = owned.filter((p) => fs.existsSync(path.join(ROOT, p)) && /\.(tsx?|jsx?|mjs)$|^[^.]+$/.test(path.basename(p)) && /^src(\/|$)/.test(p))
 let lintOk = true
 if (lintTargets.length) {
   const lintArgs = ['lint', '--max-warnings', '0']

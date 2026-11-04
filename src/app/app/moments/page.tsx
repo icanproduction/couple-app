@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { BookHeart, Camera, Images, Map as MapIcon, MapPin, Plus, Search, SearchX, Star, X } from 'lucide-react'
+import { BookHeart, Camera, ImagePlus, Images, Map as MapIcon, MapPin, Plus, Search, SearchX, Star, X } from 'lucide-react'
 import SignedPhoto from '@/components/moments/SignedPhoto'
 import { formatDateID } from '@/lib/dates'
 import { useCoupleRealtime } from '@/lib/realtime'
 import { cn } from '@/lib/utils'
 import { getCoupleInfo, listMoments, monthLabel, setMomentFavorite, type MomentWithPhotos } from '@/lib/moments'
+import { handOffPhotos } from './baru/photo-handoff'
 
 type Filter = 'all' | 'favorite' | number
 
@@ -33,6 +34,20 @@ export default function MomentsPage() {
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const alive = useRef(true)
   const loaded = useRef(false)
+  const photoInput = useRef<HTMLInputElement>(null)
+
+  // "Add from photos": the picker opens here, the form opens with the photos
+  // already in it, and their date, place and a title fill in.
+  function pickPhotos() {
+    photoInput.current?.click()
+  }
+  function onPhotosPicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (files.length === 0) return
+    handOffPhotos(files)
+    router.push('/app/moments/baru?from=photos')
+  }
 
   const load = useCallback(async (id: string) => {
     try {
@@ -136,24 +151,32 @@ export default function MomentsPage() {
   return (
     <div className="animate-fade-in pb-8">
       <div className="border-b border-border bg-white px-6 pb-5 pt-6">
-        <div className="flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold text-ink">Moments</h1>
-            <p className="text-sm text-ink-muted">
-              {moments.length > 0
-                ? `${moments.length} ${moments.length === 1 ? 'moment' : 'moments'} · ${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}`
-                : 'Every date, saved in one place'}
-            </p>
-          </div>
-          {hasCouple && (
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-ink">Moments</h1>
+          <p className="text-sm text-ink-muted">
+            {moments.length > 0
+              ? `${moments.length} ${moments.length === 1 ? 'moment' : 'moments'} · ${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}`
+              : 'Every date, saved in one place'}
+          </p>
+        </div>
+        {hasCouple && (
+          <div className="mt-4 flex gap-2">
+            <button
+              type="button"
+              onClick={pickPhotos}
+              className="flex min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-2xl bg-rose px-3 py-3 text-xs font-bold text-white shadow-elevated active:scale-[0.98]"
+            >
+              <ImagePlus className="h-4 w-4 shrink-0" /> <span className="truncate">Add from photos</span>
+            </button>
             <Link
               href="/app/moments/baru"
-              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-2xl bg-rose px-4 py-2.5 text-xs font-bold text-white shadow-elevated active:scale-[0.98]"
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-2xl border border-border bg-white px-3 py-3 text-xs font-semibold text-ink-light active:scale-[0.98]"
             >
               <Plus className="h-4 w-4" /> New moment
             </Link>
-          )}
-        </div>
+          </div>
+        )}
+        <input ref={photoInput} type="file" accept="image/*" multiple hidden onChange={onPhotosPicked} />
       </div>
 
       {refreshError && !error && (
@@ -183,12 +206,14 @@ export default function MomentsPage() {
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-muted">
             Save the photos, places and stories from every date. Later you can turn them into your scrapbook.
           </p>
-          <Link
-            href="/app/moments/baru"
+          <button
+            type="button"
+            onClick={pickPhotos}
             className="mt-6 w-full max-w-xs rounded-2xl bg-rose py-3.5 text-sm font-bold text-white shadow-elevated"
           >
             Save your first moment
-          </Link>
+          </button>
+          <p className="mt-2 max-w-xs text-xs leading-relaxed text-ink-muted">Pick your photos first. The date and place fill in from them.</p>
         </div>
       ) : (
         <div className="pt-5">

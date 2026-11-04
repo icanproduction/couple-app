@@ -13,6 +13,9 @@ import ActivityBell from '@/components/app/ActivityBell'
 import MoodCheckinCard from '@/components/app/MoodCheckinCard'
 import MilestoneCard from '@/components/app/MilestoneCard'
 import OnThisDayCard from '@/components/moments/OnThisDayCard'
+import PetPeek from '@/components/app/PetPeek'
+import { parseStatus } from '@/components/pet/parse'
+import type { PetStatus } from '@/types/pet'
 
 /** Earliest of the partners' start dates ("YYYY-MM-DD" sorts as text) */
 function earliestDate(...dates: (string | null | undefined)[]): string | null {
@@ -60,12 +63,20 @@ export default async function HomePage() {
 
   const coupleId = myMembership?.couple_id ?? null
 
+  // Pet Kita lives in the hero. Read on the server so the row doesn't jump in;
+  // undefined (not null) when it couldn't be read, so the row stays hidden.
+  let petStatus: PetStatus | null | undefined
+  if (coupleId) {
+    const { data: rawPet, error: petError } = await supabase.rpc('pet_status', {})
+    petStatus = petError ? undefined : parseStatus(rawPet)
+  }
+
   return (
     <div className="relative animate-fade-in">
       {/* ===== ACTIVITY BELL (partner's latest actions, unread badge) ===== */}
       <ActivityBell coupleId={coupleId} userId={user.id} className="absolute right-4 top-4 z-10" />
 
-      {/* ===== COUPLE HERO (big avatars) + KANGEN BUTTON ===== */}
+      {/* ===== COUPLE HERO (big avatars) + PET KITA + KANGEN BUTTON ===== */}
       <CoupleProfileHero
         myName={profile?.name ?? null}
         partnerName={partnerName}
@@ -74,13 +85,17 @@ export default async function HomePage() {
         daysTogether={daysTogether}
         relationshipStartDate={relationshipStartDate}
       >
-        <MissYouButton
-          myId={user.id}
-          myName={profile?.name ?? 'Someone'}
-          partnerId={partnerId}
-          partnerName={partnerName}
-          coupleId={myMembership?.couple_id ?? null}
-        />
+        <PetPeek coupleId={coupleId} hasPartner={!!partnerId} initialStatus={petStatus} />
+        {/* #kangen: the pet's comfort line links here */}
+        <div id="kangen" className="scroll-mt-4">
+          <MissYouButton
+            myId={user.id}
+            myName={profile?.name ?? 'Someone'}
+            partnerId={partnerId}
+            partnerName={partnerName}
+            coupleId={myMembership?.couple_id ?? null}
+          />
+        </div>
       </CoupleProfileHero>
 
       <div className="space-y-5 pb-6 pt-4">

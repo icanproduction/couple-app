@@ -2,9 +2,9 @@
 // a LOCAL Supabase, plus the /api/ai/date-ideas guards on the local dev server.
 //   node scripts/verify/feed-realtime.mjs        (APP_URL defaults to http://localhost:3030)
 // Never calls the AI provider: the only route request that passes validation
-// is made with the day's quota already used up (or, without LLM_API_KEY, is
-// refused as "AI not enabled" before any claim). Prints "FEED-REALTIME VERIFY
-// PASSED" only when every check passes.
+// is made with the day's quota already used up (or, without ANTHROPIC_API_KEY,
+// is refused as "AI not enabled" before any claim). Prints "FEED-REALTIME
+// VERIFY PASSED" only when every check passes.
 import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -328,16 +328,18 @@ async function main() {
     ok('route: city over 40 chars → 400', longCity.status === 400, `status ${longCity.status}`)
     const { count: runsBefore } = await admin.from('ai_date_idea_runs').select('id', { count: 'exact', head: true }).eq('couple_id', cid)
     const quota = await post({ budget: 'sedang', vibe: 'kuliner', setting: 'indoor', city: ' Bandung ' }, cookieA)
-    // The dev server reads the same env files. Without LLM_API_KEY the route
-    // answers 503 before claiming (the AI feature is off), so the 429 path can
-    // only be reached with a key; it is also covered offline by `npm test`.
-    if (env.LLM_API_KEY?.trim()) {
-      ok('route: quota used up → 429 with message', quota.status === 429 && quota.json?.error === 'You\'ve used up today\'s ideas. Try again tomorrow.',
+    // The server reads the same env files (run-all starts it with
+    // .env.development.local). Without ANTHROPIC_API_KEY the route answers 503
+    // before claiming (the AI feature is off), so the 429 path can only be
+    // reached with a key; it is also covered offline by `npm test`. Either way
+    // Claude is never called: the day's quota is already used up.
+    if (env.ANTHROPIC_API_KEY?.trim()) {
+      ok('route: quota used up → 429 with message', quota.status === 429 && quota.json?.error === 'You\'ve used up today\'s ideas. Try again tomorrow.' && quota.json?.remaining === 0,
         `status ${quota.status} ${JSON.stringify(quota.json)}`)
     } else {
-      ok('route: no LLM_API_KEY → 503 "AI features aren\'t turned on yet"', quota.status === 503 && quota.json?.error === 'AI features aren\'t turned on yet',
+      ok('route: no ANTHROPIC_API_KEY → 503 "AI features aren\'t turned on yet"', quota.status === 503 && quota.json?.error === 'AI features aren\'t turned on yet',
         `status ${quota.status} ${JSON.stringify(quota.json)}`)
-      notes.push('route quota → 429 check needs LLM_API_KEY in .env.local; checked the 503 "AI off" answer instead')
+      notes.push('route quota → 429 check needs ANTHROPIC_API_KEY in .env.development.local; checked the 503 "AI off" answer instead')
     }
     const { count: runsAfter } = await admin.from('ai_date_idea_runs').select('id', { count: 'exact', head: true }).eq('couple_id', cid)
     ok('route: refused request adds no run', runsAfter === runsBefore, `${runsBefore} → ${runsAfter}`)

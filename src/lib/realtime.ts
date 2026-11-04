@@ -3,7 +3,42 @@
 // Live refresh between partners (F24). Pages keep their own loader and call
 // it again when the other partner (or another tab) changes a row.
 import { useEffect, useRef } from 'react'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { createClient } from './supabase'
+
+/**
+ * Leaves `channel` without ever closing the shared socket. supabase.removeChannel
+ * disconnects when the list is empty at the moment its leave reply lands; on a
+ * page change that is often before the next page has added its channels, which
+ * then join a closing socket and never hear another change (manual disconnects
+ * don't reconnect). A closed channel drops itself from the client's list.
+ */
+export function leaveChannel(channel: RealtimeChannel): void {
+  void channel.unsubscribe().then((status) => { if (status === 'ok') channel.teardown() })
+}
+
+/**
+ * Subscribes `channel` once the realtime client carries the signed-in user's
+ * token, and returns a cleanup that leaves it. On a fresh page load the join
+ * otherwise races the session load and goes out with only the anon key: the
+ * server then checks each postgres_changes filter against anon's column
+ * grants, and the pet and Samakan tables grant anon nothing, so the join
+ * fails with "invalid column for filter" and the screen never updates.
+ */
+export function subscribeAsUser(
+  supabase: ReturnType<typeof createClient>,
+  channel: RealtimeChannel,
+  onStatus?: Parameters<RealtimeChannel['subscribe']>[0],
+): () => void {
+  let removed = false
+  void supabase.realtime.setAuth()
+    .catch(() => { /* join anyway; the visibility refetch still covers */ })
+    .then(() => { if (!removed) channel.subscribe(onStatus) })
+  return () => {
+    removed = true
+    leaveChannel(channel)
+  }
+}
 
 /** Tables in the supabase_realtime publication that carry couple_id. */
 export type RealtimeTable =
@@ -17,6 +52,15 @@ export type RealtimeTable =
   | 'couple_events'
   | 'couple_transactions'
   | 'savings_goals'
+  // Pet Kita (20261104120000_pet_remake): a partner's hi, a level, a rename,
+  // and today's note show up on an open pet screen without a reload.
+  | 'couple_pets'
+  | 'pet_warmth_events'
+  | 'pet_daily_notes'
+  // Samakan v2 (20261104121000_samakan_v2): set progress and live invites.
+  // Both carry counts and status only, never answer values.
+  | 'samakan_sets'
+  | 'samakan_live_invites'
 
 /**
  * Calls `onChange` (debounced) after an INSERT or UPDATE on any of `tables`
@@ -53,7 +97,7 @@ export function useCoupleRealtime(
     }
     // Refetch once the channel is live (and after every reconnect): changes
     // made between the page's first load and SUBSCRIBED are never replayed.
-    channel.subscribe((status) => { if (status === 'SUBSCRIBED') fire() })
+    const unsubscribe = subscribeAsUser(supabase, channel, (status) => { if (status === 'SUBSCRIBED') fire() })
 
     const onVisible = () => { if (document.visibilityState === 'visible') fire() }
     document.addEventListener('visibilitychange', onVisible)
@@ -61,7 +105,7 @@ export function useCoupleRealtime(
     return () => {
       if (timer) clearTimeout(timer)
       document.removeEventListener('visibilitychange', onVisible)
-      supabase.removeChannel(channel)
+      unsubscribe()
     }
   }, [coupleId, key, debounceMs])
 }

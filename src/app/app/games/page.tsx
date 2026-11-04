@@ -1,23 +1,17 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Flame, HeartHandshake, VenetianMask, Lock, MessageCircleHeart, Zap, PawPrint } from 'lucide-react'
+import { Flame, HeartHandshake, VenetianMask, Lock, MessageCircleHeart, Zap } from 'lucide-react'
+import { loadHub } from '@/lib/samakan'
+import { isMyTurn } from '@/components/games/samakan/ui'
 
+// Pet Kita lives on Home now, not among the games.
 const GAMES = [
-  {
-    id: 'pet',
-    title: 'Pet Kita',
-    desc: 'Look after a virtual pet together',
-    icon: PawPrint,
-    color: 'bg-amber-50 text-amber-600',
-    available: true,
-    href: '/app/pet',
-    badge: null,
-  },
   {
     id: 'samakan',
     title: 'Samakan',
-    desc: 'Match answers in real time',
+    desc: 'Guess each other\'s answers',
     icon: Zap,
     color: 'bg-purple-50 text-purple-600',
     available: true,
@@ -68,6 +62,20 @@ const GAMES = [
 
 export default function GamesPage() {
   const router = useRouter()
+  // "Your turn" on the Samakan card when the partner is waiting on my answers.
+  const [samakanTurn, setSamakanTurn] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    loadHub()
+      .then((hub) => {
+        if (!cancelled) setSamakanTurn(!!hub.openSet && !hub.closed && isMyTurn(hub.openSet, hub.me))
+      })
+      .catch(() => {
+        // The badge is a nicety; the card works without it.
+      })
+    return () => { cancelled = true }
+  }, [])
 
   return (
     <div className="animate-fade-in pb-6">
@@ -79,6 +87,7 @@ export default function GamesPage() {
       <div className="grid grid-cols-2 gap-3 px-6 pt-6">
         {GAMES.map(game => {
           const Icon = game.icon
+          const badge = game.id === 'samakan' && samakanTurn ? 'Your turn' : game.badge
           return (
             <button
               key={game.id}
@@ -90,9 +99,11 @@ export default function GamesPage() {
                   : 'border-border opacity-60'
               }`}
             >
-              {game.badge && (
+              {badge && (
                 <div className="absolute right-3 top-3">
-                  <span className="rounded-full bg-rose/10 px-2 py-0.5 text-[10px] font-bold text-rose">{game.badge}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    badge === 'Your turn' ? 'bg-purple-100 text-purple-700' : 'bg-rose/10 text-rose'
+                  }`}>{badge}</span>
                 </div>
               )}
               {!game.available && (

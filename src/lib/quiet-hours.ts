@@ -19,7 +19,7 @@ export function inQuietHours(start: number | null, end: number | null, now: Date
 }
 
 /** Kinds with an on/off switch in notification_prefs. */
-const SWITCH_KINDS = ['kangen', 'letters', 'moments', 'reminders', 'activity'] as const
+const SWITCH_KINDS = ['kangen', 'letters', 'moments', 'reminders', 'activity', 'games', 'pet'] as const
 
 export interface MutePrefs {
   kangen: boolean
@@ -27,6 +27,10 @@ export interface MutePrefs {
   moments: boolean
   reminders: boolean
   activity: boolean
+  /** Game invites and results. Optional: a row read without the column counts as on. */
+  games?: boolean
+  /** Pet Kita (adoption, Monday note). Optional: a row read without the column counts as on. */
+  pet?: boolean
   quiet_start: number | null
   quiet_end: number | null
 }

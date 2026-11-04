@@ -55,7 +55,7 @@ const SECTIONS: Section[] = [
       { href: '/app/games/deep-talk', icon: MessageCircleHeart, label: 'Deep Talk', desc: 'Themed question packs', tone: ROSE, badge: 'New' },
       { href: '/app/games', icon: Gamepad2, label: 'Games', desc: 'Samakan and more', tone: PURPLE },
       { href: '/app/arsip-pertanyaan', icon: Archive, label: 'Past Answers', desc: 'Your daily answers', tone: BLUE, badge: 'New' },
-      { href: '/app/pet', icon: PawPrint, label: 'Pet', desc: 'Look after it together', tone: SAGE },
+      { href: '/app/pet', icon: PawPrint, label: 'Pet Kita', desc: 'Grows with what you two do', tone: SAGE, badge: 'New' },
     ],
   },
   {

@@ -33,9 +33,12 @@ const LETTER_META = 'id, couple_id, sender_id, receiver_id, occasion, occasion_l
 
 /**
  * Download my data (F05) as JSON: everything I can see through RLS, read
- * with my own session. The one exception is letter text, which users can't
- * select: the service role reads it, limited to letters I sent, or received
- * and have already opened.
+ * with my own session. Two exceptions, read with the service role and
+ * filtered to me:
+ *  - letter text, which users can't select: only letters I sent, or received
+ *    and have already opened;
+ *  - my Samakan answers (samakan_answers has no client access): only rows
+ *    with my profile_id, in this couple's sets. My partner's answers never.
  */
 export async function GET() {
   try {
@@ -70,7 +73,8 @@ export async function GET() {
         all((f, t) => loose.from(table).select(select).eq('couple_id', cid).order(order).range(f, t))
 
       const [coupleRow, members, moments, comments, reactions, events, goals, transactions, monthlyEntries,
-        wishlist, weddingBudget, bucket, moods, gratitude, letterMeta, kangen, pets] = await Promise.all([
+        wishlist, weddingBudget, bucket, moods, gratitude, letterMeta, kangen, pets, petWarmth, petNotes,
+        samakanSets, samakanRounds] = await Promise.all([
         supabase.from('couples')
           .select('id, created_at, invite_code, invite_expires_at, closed_at, is_premium, unlocked_at')
           .eq('id', cid).maybeSingle().then(single),
@@ -93,6 +97,10 @@ export async function GET() {
         byCouple('letters', 'created_at', LETTER_META),
         byCouple('miss_you', 'created_at'),
         byCouple('couple_pets', 'created_at'),
+        byCouple('pet_warmth_events', 'created_at'),
+        byCouple('pet_daily_notes', 'note_date'),
+        byCouple('samakan_sets', 'created_at'),
+        byCouple('samakan_rounds', 'created_at'),
       ])
 
       const memberIds = members.map((m) => m.profile_id)
@@ -105,12 +113,24 @@ export async function GET() {
         : null
 
       const petIds = (pets as { id: string }[]).map((p) => p.id)
-      const petMood = petIds.length
-        ? single(await supabase.from('pet_mood_state').select('*').in('pet_id', petIds)) ?? []
+      const [petMood, petVisits] = petIds.length
+        ? await Promise.all([
+            supabase.from('pet_mood_state').select('*').in('pet_id', petIds).then((r) => single(r) ?? []),
+            // Own rows only (RLS), listed by me explicitly as well.
+            supabase.from('pet_visits').select('*').in('pet_id', petIds).eq('profile_id', uid).then((r) => single(r) ?? []),
+          ])
+        : [[], []]
+
+      const admin = createServiceRoleClient()
+
+      // Samakan answers: service role, strictly my own rows in this couple's sets.
+      const setIds = new Set((samakanSets as { id: string }[]).map((s) => s.id))
+      const myAnswers = setIds.size
+        ? (await all((f, t) => admin.from('samakan_answers').select('*').eq('profile_id', uid).order('answered_at').order('id').range(f, t)))
+            .filter((a) => setIds.has((a as { set_id: string }).set_id) && (a as { profile_id: string | null }).profile_id === uid)
         : []
 
       // Letter text: service role, strictly letters I sent or received and opened.
-      const admin = createServiceRoleClient()
       const readable = single(await admin
         .from('letters')
         .select('id, content')
@@ -144,7 +164,8 @@ export async function GET() {
         gratitude_notes: gratitudeNotes,
         letters,
         kangen,
-        pet: { pets, mood: petMood },
+        pet: { pets, mood: petMood, warmth_events: petWarmth, daily_notes: petNotes, my_visits: petVisits },
+        samakan: { sets: samakanSets, rounds: samakanRounds, my_answers: myAnswers },
       }
     }
 
